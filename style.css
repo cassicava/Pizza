@@ -108,20 +108,21 @@ h2{
 }
 
 h4 {
-    font-size: 20px;
+    font-size: 18px;
     font-family: 'Roboto Condensed', sans-serif;
-    padding-bottom: 10px;
+    padding-bottom: 7px;
+    text-transform: bold;
 }
 
 h5 {
-    font-size: 16px;
+    font-size: 14px;
     font-family: 'Roboto Condensed', sans-serif;
     color: #717185;
     padding-bottom: 5px;
 }
 
 h6 {
-    font-size: 16px;
+    font-size: 14px;
     font-family: 'Roboto Condensed', sans-serif;
     color: #28a967;
     padding-bottom: 5px;
