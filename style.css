@@ -1,12 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Alexandria:wght@500&family=Dancing+Script&family=Fjalla+One&family=Frank+Ruhl+Libre&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed&display=swap');
 *{
     margin:0;
     padding:0;
     box-sizing: border-box;
 }
-
-/* TOPO */
 
 body{
     background-color:white;
@@ -14,28 +12,67 @@ body{
     height: auto;
 }
 
+
+/* TOPO */
+
 header{
     width:100%;
-    padding-top: 10px;
-    padding-bottom: 0px;
-    border-bottom: 10px solid #EE3A43;
+    padding-top: 15px;
+    padding-bottom: 10px;
+    background: #8c1414;
+    background: linear-gradient(180deg, rgba(140,20,20,1) 0%, rgba(208,69,69,1) 100%);
 }
 
 h1{
     font-family: 'Alexandria', sans-serif;
     text-align: center;
+    font-size: 38px;
+    color:white
+}
 
+header p{
+    color: white;
+    text-align: center;
+    font-size: 18px;
+    font-family: 'Roboto Condensed', sans-serif;
+}
+
+.pin{
+    width: 16px;
 }
 
 /* TOPO */
 
 
+/* CARDAPIO */
+
+.cardapio{
+    display: flex;
+    flex-direction: center;
+    align-items: center;
+    justify-content: center;
+    padding-top: 30px;
+}
+
+.cardapio img{
+    height: 32px;
+    padding-right: 10px;
+}
+
+h5{
+    font-size: 40px;
+    font-family: 'Roboto Condensed', sans-serif;
+    border-bottom: 5px solid #000000;
+}
+
+/* CARDAPIO */
+
 
 /* TIPOS */
 
 main{
-    margin-right: 10%;
-    margin-left: 10%;
+    margin-right: 12%;
+    margin-left: 12%;
 
 }
 
@@ -48,11 +85,10 @@ main{
 
 h2{
     text-align: center;
-    border-bottom: 5px solid #000000;
-    font-family: 'Alexandria', sans-serif;    
-    padding-top: 50px;
-
-    
+    padding-top: 30px;
+    font-size: 40px;
+    font-family: 'Roboto Condensed', sans-serif;
+    border-bottom: 2px solid #000000;
 }
 
 .fotopizza{
