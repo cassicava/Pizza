@@ -84,15 +84,15 @@ h2{
     padding-top: 30px;
     font-size: 30px;
     font-family: 'Roboto Condensed', sans-serif;
-    border-bottom: 2px solid #000000;
-    margin-right: 12%;
-    margin-left: 12%;
+    border-bottom: 1px solid #000000;
+    margin-right: 15%;
+    margin-left: 15%;
 }
 
 .fotopizza{
     width: 76%;
-    margin-right: 12%;
-    margin-left: 12%;
+    margin-right: 15%;
+    margin-left: 15%;
 }
 
 /* TIPOS */
