@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Alexandria:wght@500&family=Dancing+Script&family=Fjalla+One&family=Frank+Ruhl+Libre&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing: border-box;
+}
+
+/* TOPO */
+
+body{
+    background-color:white;
+    width:auto;
+    height: auto;
+}
+
+header{
+    width:100%;
+    padding-top: 10px;
+    padding-bottom: 0px;
+    border-bottom: 10px solid #EE3A43;
+}
+
+h1{
+    font-family: 'Alexandria', sans-serif;
+    text-align: center;
+
+}
+
+/* TOPO */
+
+
+
+/* TIPOS */
+
+main{
+    margin-right: 10%;
+    margin-left: 10%;
+
+}
+
+.tipos{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+}
+
+h2{
+    text-align: center;
+    border-bottom: 5px solid #000000;
+    font-family: 'Alexandria', sans-serif;    
+    padding-top: 50px;
+
+    
+}
+
+.fotopizza{
+    width: 100%;
+}
+
+/* TIPOS */
+
+
+
+/* PIZZAS */
+
+/* PIZZAS */
