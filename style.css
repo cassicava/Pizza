@@ -55,12 +55,12 @@ header p{
 }
 
 .cardapio img{
-    height: 32px;
+    height: 40px;
     padding-right: 10px;
 }
 
 h5{
-    font-size: 40px;
+    font-size: 48px;
     font-family: 'Roboto Condensed', sans-serif;
     border-bottom: 5px solid #000000;
 }
