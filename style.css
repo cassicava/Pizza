@@ -167,7 +167,7 @@ footer button{
     height: 50px;
 }
 
-button{
+button {
     cursor: pointer;
     font-size:28px;
     text-align: center;
@@ -177,4 +177,9 @@ button{
     border: 5px solid #075E54;
     width: 100%; 
     height: 100%;
+}
+
+a{
+    text-decoration: none;
+    color: white;
 }
