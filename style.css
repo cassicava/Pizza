@@ -59,7 +59,7 @@ header p{
 }
 
 h3 {
-    font-size: 48px;
+    font-size: 55px;
     font-family: 'Roboto Condensed', sans-serif;
     border-bottom: 5px solid #000000;
 }
@@ -137,3 +137,44 @@ h7 {
 }
 
 /* PIZZAS */
+
+footer{
+    background: #8c1414;
+    background: linear-gradient(360deg, rgba(140,20,20,1) 0%, rgba(208,69,69,1) 100%);
+    padding-bottom: 100px;
+}
+
+footer p{
+    color: white;
+    text-align: center;
+    font-size: 20px;
+    font-family: 'Roboto Condensed', sans-serif;
+}
+
+footer button{
+    color: white;
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+}
+
+.bot{
+    display: flex;
+    position: fixed;
+    bottom: 30px;
+    left: 60px;
+    right: 60px;
+    height: 50px;
+}
+
+button{
+    cursor: pointer;
+    font-size:28px;
+    text-align: center;
+    color: white;
+    background-color: #128C7E;
+    border-radius: 50px;
+    border: 5px solid #075E54;
+    width: 100%; 
+    height: 100%;
+}
