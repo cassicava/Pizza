@@ -41,37 +41,23 @@ header p{
     width: 16px;
 }
 
-/* TOPO */
-
-
-/* CARDAPIO */
-
-.cardapio{
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding-top: 30px;
-}
-
-.cardapio img{
-    height: 40px;
-    padding-right: 10px;
+.menu{
+    height: 27px;
+    padding-right: 5px;
 }
 
 h3 {
-    font-size: 55px;
+    padding-top: 15px;
+    color: white;
+    text-align: center;
+    font-size: 38px;
     font-family: 'Roboto Condensed', sans-serif;
-    border-bottom: 5px solid #000000;
 }
-
-/* CARDAPIO */
-
 
 /* TIPOS */
 
 main{
     display: inline;
-    background-color:white;
 }
 
 .tipos{
@@ -82,7 +68,7 @@ main{
 
 h2{
     text-align: center;
-    padding-top: 30px;
+    padding-top: 40px;
     font-size: 30px;
     font-family: 'Roboto Condensed', sans-serif;
     border-bottom: 1px solid #000000;
@@ -94,6 +80,7 @@ h2{
     width: 70%;
     margin-right: 15%;
     margin-left: 15%;
+    padding-bottom: 40px;
 }
 
 /* TIPOS */
