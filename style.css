@@ -18,7 +18,7 @@ body{
 header{
     width:100%;
     padding-top: 15px;
-    padding-bottom: 10px;
+    padding-bottom: 15px;
     background: #8c1414;
     background: linear-gradient(180deg, rgba(140,20,20,1) 0%, rgba(208,69,69,1) 100%);
 }
@@ -33,7 +33,7 @@ h1{
 header p{
     color: white;
     text-align: center;
-    font-size: 18px;
+    font-size: 20px;
     font-family: 'Roboto Condensed', sans-serif;
 }
 
@@ -127,6 +127,13 @@ h6 {
     color: #28a967;
     padding-bottom: 5px;
     border-bottom: 2px solid #71718547;
+}
+
+h7 {
+    font-size: 14px;
+    font-family: 'Roboto Condensed', sans-serif;
+    color: #28a967;
+    padding-bottom: 5px;
 }
 
 /* PIZZAS */
