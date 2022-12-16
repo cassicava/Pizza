@@ -7,7 +7,7 @@
 }
 
 body{
-    background-color:white;
+    background-color: WHITE;
     width:auto;
     height: auto;
 }
@@ -53,6 +53,28 @@ h3 {
     font-size: 38px;
     font-family: 'Roboto Condensed', sans-serif;
 }
+
+/* TOPO */
+
+/* MENU */
+
+.menul{
+    display: flex;
+    position: sticky;
+    top: 0;
+    align-items:center;
+    justify-content:space-around;
+    height: 50px;
+    border-bottom: 1px solid black ;
+    background-color: white;
+}
+
+.menul img{
+    height: 40px;
+    padding: 2.5px;
+}
+
+/* MENU */
 
 /* TIPOS */
 
