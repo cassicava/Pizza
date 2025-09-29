@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Gestor de Escalas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/01-main.css" />
+    <link rel="stylesheet" href="css/02-layout.css" />
+    <link rel="stylesheet" href="css/03-components.css" />
+    <link rel="stylesheet" href="css/04-logo.css" />
+    <link rel="stylesheet" href="css/05-dark-theme.css" />
+    <link rel="stylesheet" href="css/06-responsive.css" />
+    <link rel="stylesheet" href="css/07-gerador-escala.css" />
+    <link rel="stylesheet" href="css/08-welcome.css" />
+    <link rel="stylesheet" href="css/09-editor-manual.css" />
+    <link rel="stylesheet" href="css/10-animations.css" />
+    <link rel="stylesheet" href="css/11-home-screen.css" />
+    <link rel="stylesheet" href="css/12-glow-effects.css" />
+    <link rel="stylesheet" href="css/13-animated-fields.css" />
+    <link rel="stylesheet" href="css/14-relatorios.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <div id="welcome-overlay">
+        <div class="welcome-card">
+
+            <div id="welcome-step-1" class="welcome-step">
+                <h2 class="welcome-title">Boas-vindas ao <span class="animated-brand-text"
+                        style="font-size: inherit;">Escala Fácil</span>!</h2>
+                <p class="welcome-subtitle">Sua nova ferramenta para criar escalas de trabalho de forma inteligente e
+                    sem estresse.</p>
+                <button id="welcome-start-btn" class="welcome-btn welcome-btn-primary">Começar</button>
+            </div>
+
+            <div id="welcome-step-2" class="welcome-step">
+                <h2 class="welcome-title">Vamos personalizar sua experiência</h2>
+                <div class="welcome-form-group">
+                    <label for="welcome-nome-input" class="welcome-label">Primeiro, como podemos te chamar?</label>
+                    <input type="text" id="welcome-nome-input" class="welcome-input"
+                        placeholder="Seu nome ou nome da empresa">
+                </div>
+                <div class="welcome-form-group">
+                    <label class="welcome-label">Qual aparência você prefere?</label>
+                    <div class="toggle-group" id="welcomeThemeToggle">
+                        <button type="button" class="toggle-btn" data-value="light">☀️ Claro</button>
+                        <button type="button" class="toggle-btn" data-value="dark">🌙 Escuro</button>
+                    </div>
+                </div>
+                <button id="welcome-personalizacao-next" class="welcome-btn welcome-btn-primary">Próximo</button>
+                <button class="welcome-btn-secondary welcome-btn-back" data-to-step="1">
+                    < Voltar</button>
+            </div>
+
+            <div id="welcome-step-3" class="welcome-step">
+                <h2 class="welcome-title">Como vamos simplificar o seu dia a dia:</h2>
+                <ul class="welcome-features-list">
+                    <li class="welcome-feature-item"><span>🚀</span>
+                        <div><strong>Geração Inteligente:</strong> Crie escalas complexas em minutos, não em horas.
+                        </div>
+                    </li>
+                    <li class="welcome-feature-item"><span>✅</span>
+                        <div><strong>Prevenção de Erros:</strong> Nosso algoritmo evita conflitos e garante o descanso
+                            obrigatório da equipe.</div>
+                    </li>
+                    <li class="welcome-feature-item"><span>🎨</span>
+                        <div><strong>Edição Rápida e Visual:</strong> Use a Caixa de Ferramentas para ajustar, trocar e
+                            alocar turnos de forma ágil e intuitiva.</div>
+                    </li>
+                    <li class="welcome-feature-item"><span>📂</span>
+                        <div><strong>Tudo Centralizado:</strong> Mantenha turnos, cargos e funcionários organizados em
+                            um só lugar.</div>
+                    </li>
+                </ul>
+                <button id="welcome-proposta-next" class="welcome-btn welcome-btn-primary">Próximo</button>
+                <button class="welcome-btn-secondary welcome-btn-back" data-to-step="2">
+                    < Voltar</button>
+            </div>
+
+            <div id="welcome-step-4" class="welcome-step">
+                <h2 class="welcome-title">Quase pronto!</h2>
+                <p class="welcome-subtitle">Para continuar, por favor, leia e aceite nossos termos de uso e política de privacidade.</p>
+                <div class="welcome-terms-container">
+                    <div class="info-card" id="welcome-terms-card">
+                        <span class="icon"></span>
+                        <span class="text">Termos de Uso</span>
+                    </div>
+                    <div class="info-card" id="welcome-privacy-card">
+                        <span class="icon"></span>
+                        <span class="text">Política de Privacidade</span>
+                    </div>
+                </div>
+                <button id="welcome-finish-btn" class="welcome-btn welcome-btn-primary">Concluir e Começar a
+                    Usar!</button>
+                <button class="welcome-btn-secondary welcome-btn-back" data-to-step="3">
+                    < Voltar</button>
+            </div>
+
+            <div class="welcome-progress-indicator">
+                <span class="progress-dot" data-step="1"></span>
+                <span class="progress-dot" data-step="2"></span>
+                <span class="progress-dot" data-step="3"></span>
+                <span class="progress-dot" data-step="4"></span>
+            </div>
+
+        </div>
+    </div>
+    <nav id="sidebar">
+        <a href="#" class="app-brand" onclick="go('home')">
+            <span class="logo-compact">EF</span>
+            <span class="logo-full animated-brand-text">Escala Fácil</span>
+        </a>
+
+        <div class="sidebar-links">
+            <button class="tab-btn active" data-page="home">
+                <span class="tab-icon">🏠</span>
+                <span class="tab-text">Início</span>
+            </button>
+            <button class="tab-btn" data-page="turnos">
+                <span class="tab-icon">🕒</span>
+                <span class="tab-text">Turnos</span>
+            </button>
+            <button class="tab-btn" data-page="cargos">
+                <span class="tab-icon">🏥</span> <span class="tab-text">Cargos</span>
+            </button>
+            <button class="tab-btn" data-page="funcionarios">
+                <span class="tab-icon">👨‍⚕️</span> <span class="tab-text">Funcionários</span>
+            </button>
+            <button class="tab-btn" data-page="gerar-escala">
+                <span class="tab-icon">📅</span>
+                <span class="tab-text">Geração Automática</span>
+            </button>
+            <button class="tab-btn" data-page="montar-escala">
+                <span class="tab-icon">✍️</span>
+                <span class="tab-text">Criação Manual</span>
+            </button>
+            <button class="tab-btn" data-page="escalas-salvas">
+                <span class="tab-icon">🗂️</span>
+                <span class="tab-text">Escalas Salvas</span>
+            </button>
+            <button class="tab-btn" data-page="relatorios">
+                <span class="tab-icon">📊</span>
+                <span class="tab-text">Relatórios</span>
+            </button>
+        </div>
+
+        <button class="tab-btn" data-page="configuracoes" title="Configurações">
+            <span class="tab-icon">⚙️</span>
+            <span class="tab-text">Configurações</span>
+        </button>
+    </nav>
+
+    <main class="container">
+        <section id="page-home" class="page active">
+            <div class="welcome-container">
+                <h2 id="welcomeTitle" class="welcome-title"></h2>
+                <p class="welcome-subtitle">Para começar, configure os <strong>3 passos</strong> principais ou inicie a criação de uma escala.</p>
+            </div>
+
+            <div class="home-grid-principal">
+                <a class="card home-card" data-goto="turnos"><span class="card-step">Passo 1</span>
+                    <h3>🕒 Turnos</h3>
+                    <p>Primeiro, crie os horários de trabalho, como 'Manhã' ou 'Noturno'.</p>
+                </a>
+                <a class="card home-card" data-goto="cargos"><span class="card-step">Passo 2</span>
+                    <h3>🏥 Cargos</h3>
+                    <p>Depois, crie os cargos e associe os turnos que cada um pode cumprir.</p>
+                </a>
+                <a class="card home-card" data-goto="funcionarios"><span class="card-step">Passo 3</span>
+                    <h3>👨‍⚕️ Funcionários</h3>
+                    <p>Por fim, adicione seus funcionários, definindo seus cargos e disponibilidade.</p>
+                </a>
+            </div>
+            <div class="home-grid-secundario">
+                <a class="card home-card card-animated-border" data-goto="gerar-escala">
+                    <h3>📅 Geração Automática ✨</h3>
+                    <p>Utilize o algoritmo para criar uma escala otimizada com base nas regras e na disponibilidade da equipe.</p>
+                </a>
+                <a class="card home-card" data-goto="montar-escala">
+                    <h3>✍️ Criação Manual</h3>
+                    <p>Comece com uma grade em branco e tenha total liberdade para montar a escala como preferir.</p>
+                </a>
+                <a class="card home-card" data-goto="escalas-salvas">
+                    <h3>🗂️ Escalas Salvas</h3>
+                    <p>Acesse e gerencie as escalas que você já salvou anteriormente.</p>
+                </a>
+            </div>
+            <div class="home-grid-terciario" style="grid-template-columns: 1fr 1fr;">
+                <a class="card home-card" data-goto="relatorios">
+                    <h3>📊 Relatórios</h3>
+                    <p>Analise métricas e a distribuição de horas das suas escalas.</p>
+                </a>
+                <a class="card home-card" data-goto="configuracoes">
+                    <h3>⚙️ Configurações</h3>
+                    <p>Personalize a aparência e gerencie os dados da aplicação.</p>
+                </a>
+            </div>
+        </section>
+
+        <section id="page-turnos" class="page">
+            <h1>🕒 Turnos</h1>
+            <div class="card">
+                <h2>Criar / Editar</h2>
+                
+                <div class="grid-3-col" style="align-items: end;">
+                    <div class="animated-field" style="grid-column: 1;">
+                        <input id="turnoNome" type="text" placeholder=" " />
+                        <label for="turnoNome">Nome</label>
+                    </div>
+                </div>
+
+                <fieldset class="fieldset-wrapper">
+                    <legend>Ícone</legend>
+                    <div class="grid-3-col" style="align-items: end; gap: 24px;">
+                        <div class="animated-field" style="grid-column: 1;">
+                            <input id="turnoSigla" type="text" placeholder=" " maxlength="2" />
+                            <label for="turnoSigla">Sigla</label>
+                        </div>
+                        <div id="turnoCorContainer" style="grid-column: 2 / 4;">
+                            <div id="turnoCorPalette" class="color-palette"></div>
+                            <input type="hidden" id="turnoCorHidden" value="#e2e8f0">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="fieldset-wrapper">
+                    <legend>Carga Horária</legend>
+                    <div class="form-row form-row-vcenter">
+                        <label>Início <input id="turnoInicio" type="time" /></label>
+                        <label>Fim <input id="turnoFim" type="time" /></label>
+                        <label>Dia de Término
+                            <select id="turnoFimDia">
+                                <option value="0">Mesmo dia</option>
+                                <option value="1">Dia seguinte</option>
+                                <option value="2">2 dias depois</option>
+                                <option value="3">3 dias depois</option>
+                            </select>
+                        </label>
+                    </div>
+                </fieldset>
+                
+                <div class="form-row form-row-vcenter">
+                    <div class="animated-field">
+                        <input id="turnoAlmoco" type="number" min="0" step="5" placeholder=" " />
+                        <label for="turnoAlmoco">Almoço (min)</label>
+                    </div>
+
+                    <span id="turnoCarga" class="muted badge">Carga: 00:00</span>
+                    <div id="turnoViraDia" class="badge-explanation hidden">
+                        <span>🌙</span>
+                        <span>Turno Noturno</span>
+                    </div>
+                    <div id="turnoDeLongaDuracao" class="badge-explanation hidden">
+                        <span>🔁</span>
+                        <span>Longa Duração</span>
+                    </div>
+                </div>
+
+                <fieldset>
+                    <legend>Descanso Obrigatório</legend>
+                    <div class="grid-2-col-uneven">
+                        <div class="form-section-column">
+                            <div class="toggle-group" id="descansoToggleGroup">
+                                <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                <input type="hidden" id="descansoObrigatorioHidden" value="nao">
+                            </div>
+                            <div id="descansoHorasGroup" class="expandable-content hidden-height" style="width: 100%;">
+                                <div class="animated-field">
+                                    <input type="number" id="turnoDescansoHoras" min="1" placeholder=" " disabled />
+                                    <label for="turnoDescansoHoras">Horas de Descanso</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="explanation-box">
+                            Define o intervalo mínimo em horas que um funcionário precisa descansar após concluir este
+                            turno, antes de poder iniciar qualquer outro.
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="form-row">
+                    <button id="btnSalvarTurno" class="primary">💾 Salvar Turno</button>
+                    <button id="btnCancelarEdTurno" class="secondary hidden">Cancelar Edição</button>
+                    <button id="btnLimparTurno" class="secondary ml-auto">🗑️ Limpar</button>
+                </div>
+            </div>
+            <div class="card card-lista">
+                <h2>Turnos Cadastrados</h2>
+                <div class="form-row"><input type="search" id="filtroTurnos" placeholder="🔎 Buscar turno..."
+                        style="width: 100%;" /></div>
+                <table class="table" id="tblTurnos">
+                    <thead>
+                        <tr>
+                            <th>Cor</th>
+                            <th>Nome</th>
+                            <th>Sigla</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th>Almoço</th>
+                            <th>Carga</th>
+                            <th>Descanso</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="page-cargos" class="page">
+            <h1>🏥 Cargos</h1>
+            <div class="card">
+                <h2>Criar / Editar Cargo</h2>
+                
+                <div class="grid-3-col">
+                    <div class="animated-field" style="grid-column: 1;">
+                        <input id="cargoNome" type="text" placeholder=" " />
+                        <label for="cargoNome">Nome do Cargo</label>
+                    </div>
+                </div>
+
+                <fieldset>
+                    <legend>Turnos Associados</legend>
+                    <div id="cargoTurnosContainer" class="check-container"></div>
+                </fieldset>
+
+                <fieldset id="cargoRegrasFieldset">
+                    <legend>Regras de Funcionamento do Cargo</legend>
+                    <div class="grid-2-col">
+                        <div class="form-section-column">
+                            <label class="form-label">Dias em que o cargo opera:</label>
+                            <div id="cargoDiasContainer" class="dias-semana-container"></div>
+                        </div>
+                        <div class="form-section-column">
+                            <label class="form-label">Horário de operação:</label>
+                            <div class="form-row-aligned">
+                                <div class="toggle-group" id="cargoHorarioToggle">
+                                    <button type="button" class="toggle-btn" data-value="automatico">Automático</button>
+                                    <button type="button" class="toggle-btn" data-value="24h">24 Horas</button>
+                                    <button type="button" class="toggle-btn" data-value="parcial">Horário
+                                        Definido</button>
+                                    <input type="hidden" id="cargoTipoHorarioHidden" value="automatico">
+                                </div>
+                                <div id="cargoHorarioInputs" class="form-row expandable-content">
+                                    <label>Início <input id="cargoInicio" type="time" /></label>
+                                    <label>Fim <input id="cargoFim" type="time" /></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="cargoRegrasExplicacao" class="explanation-box">
+                        Defina os dias e a faixa de horário em que este cargo precisa de cobertura. Isso ajudará o
+                        gerador de escala a entender a demanda.
+                    </div>
+                </fieldset>
+
+                <div class="form-row">
+                    <button id="btnSalvarCargo" class="primary">💾 Salvar Cargo</button>
+                    <button id="btnCancelarEdCargo" class="secondary hidden">Cancelar Edição</button>
+                    <button id="btnLimparCargo" class="secondary ml-auto">🗑️ Limpar</button>
+                </div>
+            </div>
+            <div class="card card-lista">
+                <h2>Cargos Cadastrados</h2>
+                <div class="form-row"><input type="search" id="filtroCargos" placeholder="🔎 Buscar cargo..."
+                        style="width: 100%;" /></div>
+                <table class="table" id="tblCargos">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Turnos</th>
+                            <th>Funcionamento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="page-funcionarios" class="page">
+            <h1>👨‍⚕️ Funcionários</h1>
+            <div class="card">
+                <h2>Criar / Editar</h2>
+                
+                <div class="grid-3-col" style="gap: 24px; align-items: flex-start;">
+                    <div class="animated-field" style="grid-column: 1;">
+                        <input id="funcNome" type="text" placeholder=" " />
+                        <label for="funcNome">Nome</label>
+                    </div>
+                    <div class="animated-field" style="grid-column: 2;">
+                        <input id="funcDocumento" type="text" placeholder=" " />
+                        <label for="funcDocumento">Documento (Opcional)</label>
+                    </div>
+                </div>
+                <div class="grid-3-col" style="gap: 24px; align-items: flex-start;">
+                    <fieldset class="fieldset-wrapper" style="grid-column: 1;">
+                        <legend>Cargo</legend>
+                        <select id="funcCargo"></select>
+                    </fieldset>
+                </div>
+
+                <fieldset>
+                    <legend>Detalhes do Contrato e Carga Horária</legend>
+                    <div class="grid-3-col">
+                        <div class="form-section-column">
+                            <div class="form-section-header">
+                                <label>Tipo de Contrato</label>
+                            </div>
+                            <div class="toggle-group" id="contratoToggleGroup">
+                                <button type="button" class="toggle-btn" data-value="clt">CLT / Concursado</button>
+                                <button type="button" class="toggle-btn" data-value="pj">Prestador de Serviço</button>
+                                <input type="hidden" id="funcContrato" value="clt">
+                            </div>
+                            <div id="contratoExplicacao" class="explanation-box">
+                                Funcionários <strong>CLT / Concursados</strong> seguirão rigorosamente as regras de
+                                descanso obrigatório.
+                            </div>
+                        </div>
+                        <div class="form-section-column">
+                            <div class="form-section-header">
+                                <label>Período da Carga Horária</label>
+                            </div>
+                            <div class="toggle-group" id="periodoHorasToggleGroup">
+                                <button type="button" class="toggle-btn" data-value="semanal">Semanal</button>
+                                <button type="button" class="toggle-btn" data-value="mensal">Mensal</button>
+                                <input type="hidden" id="funcPeriodoHoras" value="semanal">
+                            </div>
+                            <div class="animated-field">
+                                <input id="funcCargaHoraria" type="number" placeholder=" " min="1" />
+                                <label for="funcCargaHoraria">Carga Horária (h)</label>
+                            </div>
+                        </div>
+                        <div class="form-section-column">
+                            <div class="form-section-header">
+                                <label>Faz Hora Extra?</label>
+                            </div>
+                            <div class="toggle-group" id="horaExtraToggleGroup">
+                                <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                <input type="hidden" id="funcHoraExtra" value="nao">
+                            </div>
+                            <div class="explanation-box">
+                                Se habilitado, o algoritmo poderá escalar este funcionário além de sua carga horária.
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset id="funcTurnosFieldset">
+                    <legend>Disponibilidade de Turnos</legend>
+                    <div id="funcTurnosContainer" class="turno-disponibilidade-grid">
+                        <div class="turno-placeholder">
+                            <p>Selecione um cargo para ver os turnos disponíveis.</p>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="form-row">
+                    <button id="btnSalvarFunc" class="primary">💾 Salvar Funcionário</button>
+                    <button id="btnCancelarEdFunc" class="secondary hidden">Cancelar Edição</button>
+                    <button id="btnLimparFunc" class="secondary ml-auto">🗑️ Limpar</button>
+                </div>
+            </div>
+            <div class="card card-lista">
+                <h2>Funcionários Cadastrados</h2>
+                <div class="form-row"><input type="search" id="filtroFuncionarios"
+                        placeholder="🔎 Buscar funcionário..." style="width: 100%;" /></div>
+                <table class="table" id="tblFuncionarios">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Contrato</th>
+                            <th>Carga Horária</th>
+                            <th>H. Extra</th>
+                            <th>Turnos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="page-gerar-escala" class="page">
+            <h1 id="gerador-escala-titulo">📅 Geração Automática de Escala ✨</h1>
+            <div id="gerador-container">
+                <div id="passo1-selecao" class="wizard-step active card card-animated-border">
+                    <h3>Passo 1: Selecione o Período e Feriados</h3>
+                    <div class="passo1-grid" style="gap: 12px; margin: 0;">
+                        <fieldset class="regras-fieldset">
+                            <legend>Cargo e Período</legend>
+                            <label>
+                                <select id="escCargo" style="width: 100%; margin-bottom: 16px;"></select>
+                            </label>
+                            <fieldset class="fieldset-wrapper">
+                                <legend>Período da Escala</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <label>Início <input type="date" id="escIni" class="input-sm"></label>
+                                    <label>Fim <input type="date" id="escFim" class="input-sm" disabled></label>
+                                </div>
+                            </fieldset>
+                            <span id="escResumoDias" class="dias-resumo-box">Selecione o período para ver a duração da
+                                escala.</span>
+                        </fieldset>
+
+                        <fieldset class="regras-fieldset" id="feriados-fieldset" disabled>
+                            <legend>Feriados no período</legend>
+                            
+                            <fieldset class="fieldset-wrapper">
+                                <legend>Data e Nome do Feriado</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <label><input type="date" id="feriado-data-input" class="input-sm"></label>
+                                    <div class="animated-field" style="flex-grow: 1;">
+                                        <input type="text" id="feriado-nome-input" placeholder=" " />
+                                        <label for="feriado-nome-input">Nome</label>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="fieldset-wrapper">
+                                <legend>Haverá Trabalho?</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <div class="toggle-group" id="feriado-trabalha-toggle">
+                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                        <button type="button" class="toggle-btn" data-value="nao">Não (Folga Geral)</button>
+                                    </div>
+                                    <div class="explanation-box" style="flex-grow: 1;">
+                                        Se "Não", o dia será de folga para todos.
+                                    </div>
+                                </div>
+                            </fieldset>
+                            
+                            <fieldset class="fieldset-wrapper">
+                                <legend>Ajuste de Carga Horária</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <label>Descontar horas?</label>
+                                    <div class="toggle-group" id="feriado-descontar-toggle">
+                                        <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                    </div>
+                                    <div id="feriado-horas-desconto-container" style="display: none;">
+                                        <div class="animated-field">
+                                            <input type="number" id="feriado-horas-desconto"
+                                                placeholder=" " min="0" />
+                                            <label for="feriado-horas-desconto">Horas</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <div class="form-row" style="margin-top: 16px;">
+                                <button class="secondary ml-auto" id="btn-add-feriado">Adicionar Feriado</button>
+                            </div>
+                            <div class="feriados-tags" id="feriados-tags-container"></div>
+                        </fieldset>
+                    </div>
+                    <div class="form-row">
+                        <button id="btn-goto-passo2" class="primary ml-auto">Próximo Passo ></button>
+                    </div>
+                </div>
+
+                <div id="passo2-cobertura" class="wizard-step card card-animated-border">
+                    <button id="btn-back-passo1" class="secondary button-voltar">
+                        < Voltar</button>
+                            <h3>Passo 2: Defina Cobertura e Regras Gerais</h3>
+                            <div class="passo2-grid">
+                                <fieldset class="regras-fieldset">
+                                    <legend>Cobertura de Turnos</legend>
+                                    <div id="cobertura-manual-container">
+                                        <div id="cobertura-turnos-container"></div>
+                                        <div class="explanation-box" style="margin-top: 12px;">
+                                            Defina o número <strong>mínimo</strong> de funcionários necessários para
+                                            cobrir cada turno em seus respectivos dias de operação. O algoritmo
+                                            tentará preencher esta demanda.
+                                        </div>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="regras-fieldset">
+                                    <legend>Regras da Escala</legend>
+                                    <div class="regra-item">
+                                        <div class="animated-field">
+                                            <input type="number" id="maxDiasConsecutivos" value="6" min="1" placeholder=" " />
+                                            <label for="maxDiasConsecutivos">Máximo de dias de trabalho consecutivos</label>
+                                        </div>
+                                    </div>
+                                    <div class="regra-item">
+                                        <div class="animated-field">
+                                            <input type="number" id="minFolgasSabados" value="1" min="0" placeholder=" " />
+                                            <label for="minFolgasSabados">Mínimo de Sábados de folga por mês</label>
+                                        </div>
+                                    </div>
+                                    <div class="regra-item">
+                                        <div class="animated-field">
+                                            <input type="number" id="minFolgasDomingos" value="1" min="0" placeholder=" " />
+                                            <label for="minFolgasDomingos">Mínimo de Domingos de folga por mês</label>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </div>
+                            <div class="form-row">
+                                <button id="btn-goto-passo3" class="primary ml-auto">Próximo Passo ></button>
+                            </div>
+                </div>
+                <div id="passo3-excecoes" class="wizard-step card card-animated-border">
+                    <button id="btn-back-passo2" class="secondary button-voltar">
+                        < Voltar</button>
+                            <h3>Passo 3: Configure Férias e Folgas para a Equipe</h3>
+                            <p class="muted">Marque os dias em que funcionários específicos não devem ser escalados.</p>
+                            <div id="excecoes-funcionarios-container"></div>
+                            <div class="explanation-box" style="margin-top: 12px;">
+                                O gerador de escalas respeitará os períodos de férias ou afastamentos, não alocando turnos para o funcionário nesses dias.
+                            </div>
+                            <div class="form-row">
+                                <button id="btnGerarEscala" class="primary ml-auto">✨ Gerar Escala ✨</button>
+                            </div>
+                </div>
+            </div>
+
+            <div id="escalaView" class="hidden">
+                <div class="card">
+                    <button id="btnVoltarPasso3" class="secondary button-voltar">
+                        < Voltar para Ajustes</button>
+                            <h2 id="escalaViewTitle">Visualização da Escala</h2>
+                            <p id="escalaResumo" class="muted" style="margin-top: 16px;"></p>
+                            <div id="escalaViewLegenda" class="escala-legenda"></div>
+                </div>
+
+                <div class="card card-lista">
+                    <div id="escalaTabelaWrap">
+                    </div>
+                </div>
+
+                <div class="card card-lista">
+                    <div id="escalaResumoDetalhado">
+                    </div>
+                </div>
+
+                <div class="bottom-actions-container">
+                    <button id="btnExcluirEscala" class="danger">🔥 Excluir e Gerar Novamente</button>
+                    <button id="btnSalvarEscala" class="primary">💾 Salvar Escala</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-montar-escala" class="page">
+            <h1>✍️ Criação Manual de Escala</h1>
+            <div id="montador-container">
+                <div id="montar-passo1" class="wizard-step card">
+                    <h3>Passo 1: Selecione o Cargo, Período e Feriados</h3>
+                    <div class="passo1-grid" style="gap: 12px; margin: 0;">
+                        <fieldset class="regras-fieldset">
+                            <legend>Cargo e Período</legend>
+                             <label>
+                                <select id="montarCargo" style="width: 100%; margin-bottom: 16px;"></select>
+                            </label>
+                            <fieldset class="fieldset-wrapper">
+                                <legend>Período da Escala</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <label>Início <input type="date" id="montarIni" class="input-sm"></label>
+                                    <label>Fim <input type="date" id="montarFim" class="input-sm" disabled></label>
+                                </div>
+                            </fieldset>
+                            <span id="montarResumoDias" class="dias-resumo-box">Selecione o período para ver a duração da
+                                escala.</span>
+                        </fieldset>
+
+                        <fieldset class="regras-fieldset" id="montar-feriados-fieldset" disabled>
+                            <legend>Feriados no período</legend>
+                            
+                             <fieldset class="fieldset-wrapper">
+                                <legend>Data e Nome do Feriado</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <label><input type="date" id="montar-feriado-data-input" class="input-sm"></label>
+                                    <div class="animated-field" style="flex-grow: 1;">
+                                        <input type="text" id="montar-feriado-nome-input" placeholder=" " />
+                                        <label for="montar-feriado-nome-input">Nome</label>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="fieldset-wrapper">
+                                <legend>Haverá Trabalho?</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <div class="toggle-group" id="montar-feriado-trabalha-toggle">
+                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                        <button type="button" class="toggle-btn" data-value="nao">Não (Folga Geral)</button>
+                                    </div>
+                                    <div class="explanation-box" style="flex-grow: 1;">
+                                         Se "Não", o dia será ignorado na montagem.
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                             <fieldset class="fieldset-wrapper">
+                                <legend>Ajuste de Carga Horária</legend>
+                                <div class="form-row form-row-vcenter">
+                                    <label>Descontar horas?</label>
+                                    <div class="toggle-group" id="montar-feriado-descontar-toggle">
+                                        <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                    </div>
+                                    <div id="montar-feriado-horas-desconto-container" style="display: none;">
+                                        <div class="animated-field">
+                                            <input type="number" id="montar-feriado-horas-desconto"
+                                                placeholder=" " min="0" />
+                                            <label for="montar-feriado-horas-desconto">Horas</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <div class="form-row" style="margin-top: 16px;">
+                                <button class="secondary ml-auto" id="btn-add-montar-feriado">Adicionar Feriado</button>
+                            </div>
+                            <div class="feriados-tags" id="montar-feriados-tags-container"></div>
+                        </fieldset>
+                    </div>
+                    <div class="form-row">
+                        <button id="btn-montar-goto-passo2" class="primary ml-auto">Próximo Passo ></button>
+                    </div>
+                </div>
+
+                <div id="montar-passo2" class="wizard-step card">
+                    <button id="btn-montar-back-passo1" class="secondary button-voltar">
+                        < Voltar</button>
+                            <h3>Passo 2: Configure Férias e Folgas para a Equipe</h3>
+                            <p class="muted">Marque os dias em que funcionários específicos não devem ser escalados. Essas datas já aparecerão preenchidas na grade.</p>
+                            <div id="montar-excecoes-funcionarios-container"></div>
+                            <div class="form-row">
+                                <button id="btnIniciarEdicaoManual" class="primary ml-auto">Montar Escala</button>
+                            </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="page-escalas-salvas" class="page">
+            <h1>Escalas Salvas</h1>
+            <div id="lista-escalas-container" class="card">
+                <h2>Lista de Escalas</h2>
+                <ul id="listaEscalas" class="list"></ul>
+            </div>
+
+            <div id="escalaSalvaView" class="hidden">
+                <div class="card">
+                    <button id="btnVoltarParaLista" class="secondary button-voltar">
+                        < Voltar para a Lista</button>
+                            <h2 id="escalaSalvaViewTitle">Visualização da Escala</h2>
+                            <p id="escalaSalvaResumo" class="muted" style="margin-top: 16px;"></p>
+                            <div id="escalaSalvaViewLegenda" class="escala-legenda"></div>
+                </div>
+                <div class="card card-lista">
+                    <div id="escalaSalvaTabelaWrap">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-relatorios" class="page">
+            <h1>📊 Relatórios e Métricas</h1>
+            <div class="card">
+                <div class="grid-2-col" style="gap: 16px;">
+                    <label>Selecione um cargo:
+                        <select id="relatorioCargoSelect"></select>
+                    </label>
+                    <label>Selecione uma escala para analisar:
+                        <select id="relatorioEscalaSelect" disabled></select>
+                    </label>
+                </div>
+            </div>
+            <div id="relatorios-container" class="hidden">
+                <div class="grid-2-col" id="relatorios-summary-cards" style="margin-top: 16px; gap: 16px;"></div>
+                
+                <div class="card card-lista" style="margin-top: 16px;">
+                    <h2>Horas Trabalhadas vs. Meta</h2>
+                    <canvas id="horasChart"></canvas>
+                </div>
+
+                <div class="grid-2-col" style="margin-top: 16px; gap: 16px;">
+                    <div class="card card-lista">
+                        <h2>Distribuição de Turnos na Escala</h2>
+                        <div style="position: relative; height:300px">
+                            <canvas id="turnosChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card card-lista">
+                        <h2>Folgas de Fim de Semana</h2>
+                        <canvas id="folgasChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card card-lista" style="margin-top: 16px;">
+                    <h2>Resumo de Ausências (Férias/Folgas)</h2>
+                    <div id="ausenciasContainer"></div>
+                </div>
+
+            </div>
+            <div id="relatorios-empty-state"></div>
+        </section>
+
+        <section id="page-configuracoes" class="page">
+            <h1>Configurações</h1>
+            <div class="config-grid">
+                <div class="card">
+                    <h2>Preferências</h2>
+                    <div class="form-row" style="padding-top: 0;">
+                        <div class="animated-field" style="width: 100%;">
+                            <input type="text" id="configNome" placeholder=" " />
+                            <label for="configNome">Nome (Empresa ou Pessoal)</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label>Aparência</label>
+                        <div class="toggle-group" id="themeToggleGroup">
+                            <button type="button" class="toggle-btn" data-value="light">☀️ Claro</button>
+                            <button type="button" class="toggle-btn" data-value="dark">🌙 Escuro</button>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <button id="btnSalvarConfig" class="primary">💾 Salvar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Sobre e Suporte</h2>
+                    <p class="muted">Precisa de ajuda ou quer saber mais sobre o software?</p>
+                    <div class="config-terms-container">
+                        <div class="info-card" id="config-terms-card">
+                            <span class="icon"></span>
+                            <span class="text">Ler os Termos de Uso</span>
+                        </div>
+                        <div class="info-card" id="config-privacy-card">
+                            <span class="icon"></span>
+                            <span class="text">Ler a Política de Privacidade</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card card-lista">
+                <h2>Ferramentas de Desenvolvedor</h2>
+                <p class="muted">Use estas opções para testar o comportamento da aplicação.</p>
+                <div class="form-row">
+                    <button id="btnReiniciarOnboarding" class="secondary">🔁 Reiniciar Onboarding</button>
+                    <button id="btnHardReset" class="danger">🔥 Apagar Todos os Dados (Hard Reset)</button>
+                </div>
+            </div>
+        </section>
+
+        <aside id="editor-toolbox" class="hidden">
+            <div class="toolbox-mode-selector">
+                <label class="toolbox-mode-label">Editar com:</label>
+                <div class="toolbox-mode-buttons">
+                    <button class="toolbox-mode-btn active" data-mode="employee">🎨 Funcionário</button>
+                    <button class="toolbox-mode-btn" data-mode="eraser">🗑️ Apagar</button>
+                    <button class="toolbox-mode-btn" data-mode="settings">⚙️ Regras</button>
+                </div>
+            </div>
+            <div class="toolbox-header">
+                <h3 class="toolbox-title">Caixa de Ferramentas</h3>
+                <p class="toolbox-subtitle">Selecione uma célula para editar</p>
+            </div>
+            <div class="toolbox-content">
+                <div class="focused-employee-view">
+                    </div>
+                <div class="employee-progress-indicator">
+                    </div>
+            </div>
+            <div id="conflict-panel-container" class="hidden">
+                <h4>🚨 Conflitos e Avisos</h4>
+                <div id="conflict-list"></div>
+            </div>
+        </aside>
+
+    </main>
+
+    <div id="modalBackdrop" class="modal-backdrop hidden">
+        <div id="modal" class="modal">
+            <h3 id="modalTitle"></h3>
+            <div id="modalMessage" style="text-align: left; max-height: 400px; overflow-y: auto; padding-right: 16px;">
+            </div>
+            <div class="modal-actions" style="margin-top: 24px;">
+                <button id="modalCancel" class="secondary">Cancelar</button>
+                <button id="modalConfirm" class="primary">✓ Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden">
+        <p id="toastMessage"></p>
+    </div>
+
+    <div id="loader-overlay" class="hidden">
+        <div class="loader-spinner"></div>
+        <p class="loader-text">Gerando escala...</p>
+    </div>
+
+    <script src="js/constants.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/turnos.js"></script>
+    <script src="js/cargos.js"></script>
+    <script src="js/funcionarios.js"></script>
+    <script src="js/escalas-gerador.js"></script>
+    <script src="js/escalas-interface.js"></script>
+    <script src="js/escalas-visualizacao.js"></script>
+    <script src="js/escalas.js"></script>
+    <script src="js/escalas-salvas.js"></script>
+    <script src="js/configuracoes.js"></script>
+    <script src="js/editor-manual.js"></script>
+    <script src="js/welcome.js"></script>
+    <script src="js/montar-escala.js"></script>
+    <script src="js/relatorios.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>

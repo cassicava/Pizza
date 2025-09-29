@@ -1,0 +1,43 @@
+:root {
+  --bg: #f8fafc;
+  --fg: #0f172a;
+  --muted: #64748b;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --topbar-bg: var(--card);
+  --brand: #2563eb;
+  --brand-2: #1e40af;
+  --danger: #ef4444;
+  --danger-2: #b91c1c;
+  --secondary: #475569;
+  --shadow: 0 4px 18px rgba(0, 0, 0, .06);
+  --radius: 42px;
+  --font-sans: 'Figtree', sans-serif;
+
+  /* NOVAS VARIÁVEIS ADICIONADAS */
+  --text-brush-color: #1e293b;
+  --overtime-color: #f97316;
+  --gradient-start: #00BFFF;
+  --gradient-mid: #FF00FF;
+  --gradient-end: #FF0000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--fg);
+  background: var(--bg);
+}

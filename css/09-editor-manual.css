@@ -1,0 +1,571 @@
+/**************************************
+ * 🎨 Estilos do Editor Manual v4.1 (UI Final)
+ **************************************/
+
+#editor-toolbox {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 600px;
+    z-index: 100;
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 80px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+#editor-toolbox::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+    margin: -1px;
+    border-radius: inherit;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.1));
+}
+
+html[data-theme="dark"] #editor-toolbox {
+    background: rgba(42, 42, 48, 0.5);
+}
+
+html[data-theme="dark"] #editor-toolbox::before {
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+}
+
+#editor-toolbox.hidden {
+    transform: translateX(120%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* --- Seletor de Modo --- */
+.toolbox-mode-selector {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.toolbox-mode-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.toolbox-mode-buttons {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
+}
+
+.toolbox-mode-btn {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 600;
+    border: none;
+    transition: all 0.25s ease-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.toolbox-mode-btn.active {
+    background-color: var(--card);
+    color: var(--brand);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Cabeçalho e Tipografia --- */
+.toolbox-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    transition: background-color 0.3s ease-in-out;
+}
+
+#editor-toolbox.override-active {
+    box-shadow: 0 0 16px 4px rgba(239, 68, 68, 0.5); /* var(--danger) -> #ef4444 */
+    border-color: rgba(239, 68, 68, 0.6);
+}
+
+.toolbox-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+}
+
+.toolbox-subtitle {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin: 0;
+}
+
+.toolbox-back-btn {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--muted);
+}
+
+.toolbox-back-btn:hover {
+    color: var(--fg);
+}
+
+/* --- Conteúdo Principal --- */
+.toolbox-content {
+    padding: 16px;
+    overflow-y: auto;
+    flex-grow: 1;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* --- Painel de Configurações de Regras --- */
+.settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 8px;
+}
+
+.settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.settings-row .form-label {
+    font-weight: 500;
+    color: var(--fg);
+    margin: 0;
+}
+
+/* --- Visão Focada de Funcionário --- */
+.focused-employee-view {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.nav-arrow {
+    background: transparent;
+    border: none;
+    font-size: 1.8rem;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-arrow:hover {
+    background-color: var(--border);
+    color: var(--fg);
+}
+
+.focused-employee-card {
+    flex-grow: 1;
+    border: 1px solid var(--border);
+    background-color: var(--card);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.focused-employee-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.employee-info {
+    flex-shrink: 0;
+}
+
+.employee-info h5 {
+    margin: 0 0 4px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.employee-stats {
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.shift-brushes-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.shift-brush {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--text-brush-color);
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.25s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.shift-brush:hover {
+    transform: scale(1.1);
+}
+
+.shift-brush.selected {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px var(--card), 0 0 12px 3px var(--brand);
+}
+
+.employee-progress-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.employee-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--border);
+    transition: all 0.3s ease-in-out;
+}
+
+.employee-dot.active {
+    background-color: var(--brand);
+    transform: scale(1.3);
+}
+
+/* --- Paleta de Funcionários (Modo Reatribuir) --- */
+.employee-palette {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.employee-card {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 12px;
+    transition: all 0.25s ease-out;
+    border: 1px solid var(--border);
+    background-color: var(--bg);
+    cursor: pointer;
+}
+
+.employee-card:hover {
+    border-color: var(--brand);
+    background-color: #eff6ff;
+}
+
+html[data-theme="dark"] .employee-card:hover {
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+/* --- Estilos na Tabela --- */
+.escala-final-table .editable-cell {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+}
+
+.escala-final-table .editable-cell:hover::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--brand);
+    opacity: 0.1;
+}
+
+.escala-final-table .editable-cell.selected {
+    box-shadow: inset 0 0 0 2px var(--brand), 0 0 12px var(--brand);
+}
+
+/* NOVO: Estilo para a célula focada pelo teclado */
+.escala-final-table .editable-cell.cell-focused {
+    box-shadow: inset 0 0 0 3px var(--brand);
+}
+
+
+.escala-final-table tr.employee-row-highlight>td {
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+.escala-final-table.employee-paint-mode {
+    cursor: cell;
+}
+
+.escala-final-table.employee-paint-mode .editable-cell:hover::after {
+    background: var(--brand);
+    opacity: 0.2;
+}
+
+.escala-final-table.eraser-mode {
+    cursor: crosshair;
+}
+
+.escala-final-table.eraser-mode .editable-cell[data-slot-id]:hover::after {
+    background: var(--danger);
+    opacity: 0.25;
+}
+
+/* --- Indicadores Visuais --- */
+.employee-indicators {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    align-items: center;
+    gap: 8px 12px;
+    margin-top: 8px;
+}
+
+.indicator-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-align: right;
+}
+
+.workload-summary-compact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-bar-container-compact {
+    height: 10px;
+    background-color: var(--bg);
+    border-radius: 999px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    flex-grow: 1;
+}
+
+.workload-text-compact {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    min-width: 80px; /* Garante alinhamento consistente */
+    white-space: nowrap;
+}
+
+.progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease-out, background-color 0.4s ease-out;
+}
+
+.progress-bar-main {
+    z-index: 2;
+}
+
+.progress-bar-overtime {
+    background-color: var(--overtime-color);
+    z-index: 1;
+}
+
+.progress-bar-blue {
+    background-color: #3b82f6;
+}
+
+.progress-bar-yellow {
+    background-color: #facc15;
+}
+
+.progress-bar-green {
+    background-color: #4ade80;
+}
+
+.consecutive-days-container {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.day-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--border);
+    transition: background-color 0.3s;
+}
+
+.day-dot.filled {
+    background-color: var(--secondary);
+}
+
+.day-dot.limit {
+    background-color: #ef4444;
+}
+
+.limit-alert {
+    color: #ef4444;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-left: 4px;
+}
+
+/* --- Validação de Conflitos --- */
+.card-slide-in-right { animation: slideInFromRight 0.3s ease-out forwards; }
+.card-slide-out-left { animation: slideOutToLeft 0.3s ease-out forwards; }
+.card-slide-in-left { animation: slideInFromLeft 0.3s ease-out forwards; }
+.card-slide-out-right { animation: slideOutToRight 0.3s ease-out forwards; }
+
+@keyframes highlight-cell {
+    from {
+        box-shadow: inset 0 0 0 3px var(--brand), 0 0 15px var(--brand);
+    }
+    to {
+        box-shadow: none;
+    }
+}
+.cell-highlight-animation {
+    animation: highlight-cell 1.5s ease-out;
+}
+
+.conflict-marker {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 12px 12px 0;
+    border-color: transparent var(--danger) transparent transparent;
+}
+
+.editable-cell .conflict-marker-tooltip {
+    visibility: hidden;
+    width: 220px;
+    background-color: var(--danger);
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 10;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -110px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.editable-cell .conflict-marker-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--danger) transparent transparent transparent;
+}
+
+.editable-cell.has-conflict:hover .conflict-marker-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+
+/* --- NOVO: Estilos do Painel de Conflitos --- */
+#conflict-panel-container {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 16px;
+    flex-shrink: 0; /* Impede que o painel seja esmagado */
+}
+#conflict-panel-container.hidden {
+    display: none;
+}
+#conflict-panel-container h4 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+#conflict-list {
+    max-height: 150px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.conflict-item {
+    padding: 8px;
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.conflict-item:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+}
+.conflict-item strong {
+    color: var(--danger-2);
+}
+html[data-theme="dark"] .conflict-item strong {
+    color: #fca5a5;
+}
+
+
+/* --- NOVO: Estilos para Arrastar e Soltar (Drag and Drop) --- */
+.editable-cell.dragging {
+    opacity: 0.4;
+    transform: scale(0.9);
+}
+.editable-cell.drop-target {
+    box-shadow: inset 0 0 0 3px var(--brand);
+}
