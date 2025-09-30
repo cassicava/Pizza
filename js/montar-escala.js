@@ -151,7 +151,6 @@ function renderMontarExcecoes(cargoId) {
         div.className = 'excecao-func-card';
         const tipoFolgaOptions = TIPOS_FOLGA.map(t => `<option value="${t.nome}">${t.nome} (${t.sigla})</option>`).join('');
 
-        // ALTERADO: Estrutura HTML do Passo 3 (Manual) completamente refeita
         div.innerHTML = `
             <div class="excecao-header"><strong>${func.nome}</strong></div>
             <div class="excecao-body">
@@ -216,7 +215,7 @@ function handleMontarExcecaoToggle(event, funcId) {
     container.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
 
-    $(`#montar-excecoes-funcionarios-container [data-dates-container="${tipo}"][data-func-id="${funcId}"]`).classList.toggle('hidden', value === 'nao');
+    $(`#montar-excecoes-funcionarios-container [data-dates-container="${tipo}"][data-func-id="${func.id}"]`).classList.toggle('hidden', value === 'nao');
     if (value === 'nao') {
         const iniInput = $(`#montar-excecoes-funcionarios-container [data-date-ini="${tipo}"][data-func-id="${func.id}"]`);
         iniInput.value = '';
@@ -279,7 +278,7 @@ function iniciarEdicaoManual() {
         historico[f.id] = { horasTrabalhadas: 0, ultimoTurnoFim: null };
     });
 
-    const nomeEscala = `Escala Manual: ${cargo.nome} (${new Date(inicio+'T12:00:00').toLocaleDateString()} a ${new Date(fim+'T12:00:00').toLocaleDateString()})`;
+    const nomeEscala = generateEscalaNome(cargo.nome, inicio, fim);
 
     currentEscala = {
         id: uid(), nome: nomeEscala, cargoId, inicio, fim,
@@ -292,7 +291,7 @@ function iniciarEdicaoManual() {
     $('#page-montar-escala').classList.remove('active');
     $('#montador-container').classList.add('hidden');
     $('#page-gerar-escala').classList.add('active');
-    $('#gerador-escala-titulo').textContent = '✍️ Editor Manual de Escala'; // Corrige o título
+    $('#gerador-escala-titulo').textContent = '✍️ Editor Manual de Escala';
     $('#gerador-container').classList.add('hidden');
     $('#escalaView').classList.remove('hidden');
 
@@ -312,6 +311,11 @@ function initMontarEscalaPage() {
 
     const iniInput = $("#montarIni");
     const fimInput = $("#montarFim");
+    
+    // ALTERAÇÃO: Adiciona o .onclick para abrir o calendário
+    if (iniInput) iniInput.onclick = () => iniInput.showPicker();
+    if (fimInput) fimInput.onclick = () => fimInput.showPicker();
+
     iniInput.onchange = (e) => {
         if (e.target.value) {
             fimInput.disabled = false;
@@ -329,14 +333,14 @@ function initMontarEscalaPage() {
     $("#btn-montar-goto-passo2").onclick = handleMontarGoToPasso2;
     $("#btn-add-montar-feriado").onclick = addMontarFeriado;
     
-    // Define valores padrão para os toggles de feriado
     $$('#montar-feriado-trabalha-toggle .toggle-btn').forEach(button => {
         button.onclick = () => {
             $$('#montar-feriado-trabalha-toggle .toggle-btn').forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
         };
     });
-    $('#montar-feriado-trabalha-toggle .toggle-btn[data-value="sim"]').click();
+    const trabalhaToggleDefault = $('#montar-feriado-trabalha-toggle .toggle-btn[data-value="sim"]');
+    if(trabalhaToggleDefault) trabalhaToggleDefault.click();
 
     const descontarToggle = $('#montar-feriado-descontar-toggle');
     $$('.toggle-btn', descontarToggle).forEach(button => {
@@ -346,13 +350,13 @@ function initMontarEscalaPage() {
              $('#montar-feriado-horas-desconto-container').style.display = button.dataset.value === 'sim' ? 'flex' : 'none';
         }
     });
-     $('#montar-feriado-descontar-toggle .toggle-btn[data-value="nao"]').click();
+     const descontarToggleDefault = $('#montar-feriado-descontar-toggle .toggle-btn[data-value="nao"]');
+     if(descontarToggleDefault) descontarToggleDefault.click();
 
 
     $("#btn-montar-back-passo1").onclick = () => navigateWizardWithAnimation('#montador-container', 'montar-passo1', 'backward');
     $("#btnIniciarEdicaoManual").onclick = iniciarEdicaoManual;
     
-    // Garante que apenas o passo 1 esteja visível ao iniciar a página
     $$("#montador-container .wizard-step").forEach(step => step.classList.remove('active'));
     $(`#montar-passo1`).classList.add('active');
 }

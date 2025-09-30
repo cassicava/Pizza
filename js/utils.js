@@ -12,6 +12,34 @@ function loadJSON(key, fallback){
   catch { return fallback; }
 }
 
+/**
+ * Gera um nome padronizado para a escala.
+ * Formato: "Nome do Cargo Mês DD-DD" ou "Nome do Cargo MêsIni-MêsFim DD-DD".
+ * @param {string} cargoName - O nome do cargo.
+ * @param {string} inicio - A data de início (YYYY-MM-DD).
+ * @param {string} fim - A data de fim (YYYY-MM-DD).
+ * @returns {string} O nome gerado para a escala.
+ */
+function generateEscalaNome(cargoName, inicio, fim) {
+    const dIni = new Date(inicio + 'T12:00:00');
+    const dFim = new Date(fim + 'T12:00:00');
+
+    const options = { month: 'long' };
+    const mesIniNome = dIni.toLocaleString('pt-BR', options).replace(/^\w/, c => c.toUpperCase());
+    const mesFimNome = dFim.toLocaleString('pt-BR', options).replace(/^\w/, c => c.toUpperCase());
+
+    const diaIni = String(dIni.getDate()).padStart(2, '0');
+    const diaFim = String(dFim.getDate()).padStart(2, '0');
+
+    let mesStr = mesIniNome;
+    if (mesIniNome !== mesFimNome) {
+        mesStr = `${mesIniNome}-${mesFimNome}`;
+    }
+
+    return `${cargoName} ${mesStr} ${diaIni}-${diaFim}`;
+}
+
+
 // --- LOADER: Funções para controlar o indicador de carregamento ---
 function showLoader(message = "Processando...") {
     const overlay = $("#loader-overlay");

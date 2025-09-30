@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Gestor de Escalas</title>
+    <title>Escala Facil</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -242,26 +242,22 @@
                                 <option value="3">3 dias depois</option>
                             </select>
                         </label>
+                        <div class="animated-field">
+                            <input id="turnoAlmoco" type="number" min="0" step="5" placeholder=" " />
+                            <label for="turnoAlmoco">Almoço (min)</label>
+                        </div>
+                        <span id="turnoCarga" class="muted badge">Carga: 00:00</span>
+                        <div id="turnoViraDia" class="badge-explanation hidden">
+                            <span>🌙</span>
+                            <span>Turno Noturno</span>
+                        </div>
+                        <div id="turnoDeLongaDuracao" class="badge-explanation hidden">
+                            <span>🔁</span>
+                            <span>Longa Duração</span>
+                        </div>
                     </div>
                 </fieldset>
                 
-                <div class="form-row form-row-vcenter">
-                    <div class="animated-field">
-                        <input id="turnoAlmoco" type="number" min="0" step="5" placeholder=" " />
-                        <label for="turnoAlmoco">Almoço (min)</label>
-                    </div>
-
-                    <span id="turnoCarga" class="muted badge">Carga: 00:00</span>
-                    <div id="turnoViraDia" class="badge-explanation hidden">
-                        <span>🌙</span>
-                        <span>Turno Noturno</span>
-                    </div>
-                    <div id="turnoDeLongaDuracao" class="badge-explanation hidden">
-                        <span>🔁</span>
-                        <span>Longa Duração</span>
-                    </div>
-                </div>
-
                 <fieldset>
                     <legend>Descanso Obrigatório</legend>
                     <div class="grid-2-col-uneven">
@@ -513,51 +509,42 @@
 
                         <fieldset class="regras-fieldset" id="feriados-fieldset" disabled>
                             <legend>Feriados no período</legend>
-                            
-                            <fieldset class="fieldset-wrapper">
-                                <legend>Data e Nome do Feriado</legend>
-                                <div class="form-row form-row-vcenter">
-                                    <label><input type="date" id="feriado-data-input" class="input-sm"></label>
-                                    <div class="animated-field" style="flex-grow: 1;">
-                                        <input type="text" id="feriado-nome-input" placeholder=" " />
-                                        <label for="feriado-nome-input">Nome</label>
-                                    </div>
+                            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px 16px; align-items: start; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 12px;">
+                                <div class="form-group" style="grid-column: 1 / 2;">
+                                    <input type="date" id="feriado-data-input" class="input-sm" title="Data do Feriado">
                                 </div>
-                            </fieldset>
-
-                            <fieldset class="fieldset-wrapper">
-                                <legend>Haverá Trabalho?</legend>
-                                <div class="form-row form-row-vcenter">
-                                    <div class="toggle-group" id="feriado-trabalha-toggle">
-                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
-                                        <button type="button" class="toggle-btn" data-value="nao">Não (Folga Geral)</button>
-                                    </div>
-                                    <div class="explanation-box" style="flex-grow: 1;">
-                                        Se "Não", o dia será de folga para todos.
-                                    </div>
+                                <div class="animated-field" style="grid-column: 2 / 3;">
+                                    <input type="text" id="feriado-nome-input" placeholder=" " />
+                                    <label for="feriado-nome-input">Nome do Feriado</label>
                                 </div>
-                            </fieldset>
-                            
-                            <fieldset class="fieldset-wrapper">
-                                <legend>Ajuste de Carga Horária</legend>
-                                <div class="form-row form-row-vcenter">
-                                    <label>Descontar horas?</label>
-                                    <div class="toggle-group" id="feriado-descontar-toggle">
-                                        <button type="button" class="toggle-btn" data-value="nao">Não</button>
-                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
-                                    </div>
-                                    <div id="feriado-horas-desconto-container" style="display: none;">
-                                        <div class="animated-field">
-                                            <input type="number" id="feriado-horas-desconto"
-                                                placeholder=" " min="0" />
-                                            <label for="feriado-horas-desconto">Horas</label>
+                                <div class="form-group" style="grid-column: 1 / 3;">
+                                    <div class="form-row-aligned">
+                                        <div class="form-group">
+                                            <label class="form-label" style="margin-bottom: 4px;">Haverá Trabalho?</label>
+                                            <div class="toggle-group" id="feriado-trabalha-toggle">
+                                                <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                                <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                            </div>
                                         </div>
+                                        <div class="form-group">
+                                            <label class="form-label" style="margin-bottom: 4px;">Descontar Horas?</label>
+                                            <div class="toggle-group" id="feriado-descontar-toggle">
+                                                <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                                <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                            </div>
+                                        </div>
+                                        <div id="feriado-horas-desconto-container" style="display: none; align-self: flex-end;">
+                                            <div class="animated-field">
+                                                <input type="number" id="feriado-horas-desconto" placeholder=" " min="0" style="width: 80px;" />
+                                                <label for="feriado-horas-desconto">Horas</label>
+                                            </div>
+                                        </div>
+                                        <button class="secondary ml-auto" id="btn-add-feriado" style="align-self: flex-end;">Adicionar</button>
                                     </div>
                                 </div>
-                            </fieldset>
-
-                            <div class="form-row" style="margin-top: 16px;">
-                                <button class="secondary ml-auto" id="btn-add-feriado">Adicionar Feriado</button>
+                                <div class="explanation-box" style="grid-column: 1 / -1;">
+                                    Se "Não trabalha", o dia será de folga geral. O "Desconto de horas" remove horas da meta de quem folgar no feriado.
+                                </div>
                             </div>
                             <div class="feriados-tags" id="feriados-tags-container"></div>
                         </fieldset>
@@ -674,51 +661,42 @@
 
                         <fieldset class="regras-fieldset" id="montar-feriados-fieldset" disabled>
                             <legend>Feriados no período</legend>
-                            
-                             <fieldset class="fieldset-wrapper">
-                                <legend>Data e Nome do Feriado</legend>
-                                <div class="form-row form-row-vcenter">
-                                    <label><input type="date" id="montar-feriado-data-input" class="input-sm"></label>
-                                    <div class="animated-field" style="flex-grow: 1;">
-                                        <input type="text" id="montar-feriado-nome-input" placeholder=" " />
-                                        <label for="montar-feriado-nome-input">Nome</label>
-                                    </div>
+                             <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px 16px; align-items: start; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 12px;">
+                                <div class="form-group" style="grid-column: 1 / 2;">
+                                    <input type="date" id="montar-feriado-data-input" class="input-sm" title="Data do Feriado">
                                 </div>
-                            </fieldset>
-
-                            <fieldset class="fieldset-wrapper">
-                                <legend>Haverá Trabalho?</legend>
-                                <div class="form-row form-row-vcenter">
-                                    <div class="toggle-group" id="montar-feriado-trabalha-toggle">
-                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
-                                        <button type="button" class="toggle-btn" data-value="nao">Não (Folga Geral)</button>
-                                    </div>
-                                    <div class="explanation-box" style="flex-grow: 1;">
-                                         Se "Não", o dia será ignorado na montagem.
-                                    </div>
+                                <div class="animated-field" style="grid-column: 2 / 3;">
+                                    <input type="text" id="montar-feriado-nome-input" placeholder=" " />
+                                    <label for="montar-feriado-nome-input">Nome do Feriado</label>
                                 </div>
-                            </fieldset>
-
-                             <fieldset class="fieldset-wrapper">
-                                <legend>Ajuste de Carga Horária</legend>
-                                <div class="form-row form-row-vcenter">
-                                    <label>Descontar horas?</label>
-                                    <div class="toggle-group" id="montar-feriado-descontar-toggle">
-                                        <button type="button" class="toggle-btn" data-value="nao">Não</button>
-                                        <button type="button" class="toggle-btn" data-value="sim">Sim</button>
-                                    </div>
-                                    <div id="montar-feriado-horas-desconto-container" style="display: none;">
-                                        <div class="animated-field">
-                                            <input type="number" id="montar-feriado-horas-desconto"
-                                                placeholder=" " min="0" />
-                                            <label for="montar-feriado-horas-desconto">Horas</label>
+                                <div class="form-group" style="grid-column: 1 / 3;">
+                                    <div class="form-row-aligned">
+                                        <div class="form-group">
+                                            <label class="form-label" style="margin-bottom: 4px;">Haverá Trabalho?</label>
+                                            <div class="toggle-group" id="montar-feriado-trabalha-toggle">
+                                                <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                                <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                            </div>
                                         </div>
+                                        <div class="form-group">
+                                            <label class="form-label" style="margin-bottom: 4px;">Descontar Horas?</label>
+                                            <div class="toggle-group" id="montar-feriado-descontar-toggle">
+                                                <button type="button" class="toggle-btn" data-value="nao">Não</button>
+                                                <button type="button" class="toggle-btn" data-value="sim">Sim</button>
+                                            </div>
+                                        </div>
+                                        <div id="montar-feriado-horas-desconto-container" style="display: none; align-self: flex-end;">
+                                            <div class="animated-field">
+                                                <input type="number" id="montar-feriado-horas-desconto" placeholder=" " min="0" style="width: 80px;" />
+                                                <label for="montar-feriado-horas-desconto">Horas</label>
+                                            </div>
+                                        </div>
+                                        <button class="secondary ml-auto" id="btn-add-montar-feriado" style="align-self: flex-end;">Adicionar</button>
                                     </div>
                                 </div>
-                            </fieldset>
-
-                            <div class="form-row" style="margin-top: 16px;">
-                                <button class="secondary ml-auto" id="btn-add-montar-feriado">Adicionar Feriado</button>
+                                <div class="explanation-box" style="grid-column: 1 / -1;">
+                                     Se "Não trabalha", o dia será ignorado na montagem. O "Desconto de horas" remove horas da meta de quem folgar no feriado.
+                                </div>
                             </div>
                             <div class="feriados-tags" id="montar-feriados-tags-container"></div>
                         </fieldset>
@@ -745,16 +723,30 @@
             <h1>Escalas Salvas</h1>
             <div id="lista-escalas-container" class="card">
                 <h2>Lista de Escalas</h2>
-                <ul id="listaEscalas" class="list"></ul>
+                <div class="form-row" style="margin-top:0; align-items: flex-end;">
+                    <label style="flex-grow: 0; flex-basis: 300px;">Filtrar por Cargo:
+                        <select id="filtroEscalasCargo"></select>
+                    </label>
+                    <label style="flex-grow: 0;">Ano:
+                        <select id="filtroEscalasAno" style="min-width: 120px;"></select>
+                    </label>
+                </div>
+                <div id="listaEscalas" class="card-grid"></div>
             </div>
 
             <div id="escalaSalvaView" class="hidden">
                 <div class="card">
-                    <button id="btnVoltarParaLista" class="secondary button-voltar">
-                        < Voltar para a Lista</button>
-                            <h2 id="escalaSalvaViewTitle">Visualização da Escala</h2>
-                            <p id="escalaSalvaResumo" class="muted" style="margin-top: 16px;"></p>
-                            <div id="escalaSalvaViewLegenda" class="escala-legenda"></div>
+                    <div class="form-row" style="margin-top: 0; margin-bottom: 16px; justify-content: space-between;">
+                        <div>
+                            <button id="btnVoltarParaLista" class="secondary button-voltar" style="margin-bottom: 0;"> < Voltar para a Lista</button>
+                        </div>
+                        <div>
+                            <button id="btnExportarPDF" class="primary">🖨️ Exportar para PDF</button>
+                        </div>
+                    </div>
+                    <h2 id="escalaSalvaViewTitle">Visualização da Escala</h2>
+                    <p id="escalaSalvaResumo" class="muted" style="margin-top: 16px;"></p>
+                    <div id="escalaSalvaViewLegenda" class="escala-legenda"></div>
                 </div>
                 <div class="card card-lista">
                     <div id="escalaSalvaTabelaWrap">
@@ -766,41 +758,71 @@
         <section id="page-relatorios" class="page">
             <h1>📊 Relatórios e Métricas</h1>
             <div class="card">
-                <div class="grid-2-col" style="gap: 16px;">
-                    <label>Selecione um cargo:
+                <div class="form-row" style="align-items: flex-end;">
+                    <label style="flex-grow: 0; flex-basis: 300px;">Selecione o Cargo:
                         <select id="relatorioCargoSelect"></select>
                     </label>
-                    <label>Selecione uma escala para analisar:
+                    <label style="flex-grow: 0;">Ano:
+                        <select id="relatorioAnoSelect" style="min-width: 120px;" disabled></select>
+                    </label>
+                    <label style="flex-grow: 1; flex-basis: 250px;">Selecione a Escala:
                         <select id="relatorioEscalaSelect" disabled></select>
                     </label>
                 </div>
             </div>
             <div id="relatorios-container" class="hidden">
-                <div class="grid-2-col" id="relatorios-summary-cards" style="margin-top: 16px; gap: 16px;"></div>
-                
-                <div class="card card-lista" style="margin-top: 16px;">
-                    <h2>Horas Trabalhadas vs. Meta</h2>
-                    <canvas id="horasChart"></canvas>
-                </div>
-
-                <div class="grid-2-col" style="margin-top: 16px; gap: 16px;">
+                <div class="relatorios-grid-3" style="margin-top: 16px; gap: 16px;">
+                    <div class="card summary-card-small">
+                        <h4>Total de Horas Extras</h4>
+                        <p id="summary-horas-extras">0h</p>
+                    </div>
+                    <div class="card summary-card-small">
+                        <h4>Total de Funcionários</h4>
+                        <p id="summary-total-funcs">0</p>
+                    </div>
                     <div class="card card-lista">
-                        <h2>Distribuição de Turnos na Escala</h2>
-                        <div style="position: relative; height:300px">
+                        <h2>Distribuição de Turnos</h2>
+                        <div class="chart-container">
                             <canvas id="turnosChart"></canvas>
                         </div>
                     </div>
-                    <div class="card card-lista">
-                        <h2>Folgas de Fim de Semana</h2>
-                        <canvas id="folgasChart"></canvas>
+                </div>
+                
+                <div class="card card-lista" style="margin-top: 16px;">
+                    <h2>Horas Trabalhadas vs. Meta</h2>
+                    <div class="chart-container" style="height:350px">
+                        <canvas id="horasChart"></canvas>
                     </div>
                 </div>
 
                 <div class="card card-lista" style="margin-top: 16px;">
-                    <h2>Resumo de Ausências (Férias/Folgas)</h2>
-                    <div id="ausenciasContainer"></div>
+                    <h2>Folgas de Fim de Semana</h2>
+                    <div class="grid-2-col" style="gap: 24px; align-items: start;">
+                        <div>
+                            <h4>Sábados</h4>
+                            <div class="chart-container" style="height:350px">
+                                <canvas id="folgasSabadoChart"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Domingos</h4>
+                            <div class="chart-container" style="height:350px">
+                                <canvas id="folgasDomingoChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
+                <div class="grid-2-col" style="margin-top: 16px; gap: 16px; align-items: start;">
+                    <div class="card card-lista">
+                        <h2>Distribuição de Turnos por Funcionário</h2>
+                        <div id="distribuicaoTurnosContainer"></div>
+                    </div>
+                    <div class="card card-lista">
+                        <h2>Resumo de Ausências (Férias/Folgas)</h2>
+                        <div id="ausenciasContainer"></div>
+                    </div>
+                </div>
             </div>
             <div id="relatorios-empty-state"></div>
         </section>
@@ -833,11 +855,15 @@
                     <div class="config-terms-container">
                         <div class="info-card" id="config-terms-card">
                             <span class="icon"></span>
-                            <span class="text">Ler os Termos de Uso</span>
+                            <span class="text">Termos de Uso</span>
                         </div>
                         <div class="info-card" id="config-privacy-card">
                             <span class="icon"></span>
-                            <span class="text">Ler a Política de Privacidade</span>
+                            <span class="text">Política de Privacidade</span>
+                        </div>
+                        <div class="info-card" id="config-shortcuts-card">
+                            <span class="icon" style="font-size: 1.2rem; border: none;">⌨️</span>
+                            <span class="text">Dicas de Atalhos</span>
                         </div>
                     </div>
                 </div>
@@ -891,6 +917,20 @@
         </div>
     </div>
 
+    <div id="exportModalBackdrop" class="modal-backdrop hidden">
+        <div id="exportModal" class="modal">
+            <h3>Selecione o Formato do PDF</h3>
+            <p>Escolha como você deseja exportar a escala.</p>
+            <div class="modal-actions" style="flex-direction: column; gap: 12px; margin-top: 16px;">
+                <button id="btnExportVisaoGeral" class="primary">Escala Completa (PDF)</button>
+                <button id="btnExportVisaoDiaria" class="primary">Relatório Diário Detalhado</button>
+                <button id="btnExportAmbos" class="primary">Baixar Ambos (.zip)</button>
+                <button id="btnExportCancelar" class="secondary" style="margin-top: 8px;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
     <div id="toast" class="toast hidden">
         <p id="toastMessage"></p>
     </div>
@@ -899,6 +939,10 @@
         <div class="loader-spinner"></div>
         <p class="loader-text">Gerando escala...</p>
     </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <script src="js/constants.js"></script>
     <script src="js/utils.js"></script>
@@ -916,6 +960,7 @@
     <script src="js/welcome.js"></script>
     <script src="js/montar-escala.js"></script>
     <script src="js/relatorios.js"></script>
+    <script src="js/pdf-export.js"></script>
     <script src="js/main.js"></script>
 </body>
 

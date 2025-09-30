@@ -2,9 +2,6 @@
  * ✨ Animações Globais
  **************************************/
 
-/* * NOVA ADIÇÃO: Keyframe da animação de gradiente movido para cá 
- * para centralizar todas as animações.
-*/
 @keyframes animated-gradient-text {
   0% {
     background-position: 0% 50%;
@@ -12,6 +9,18 @@
   100% {
     background-position: 150% 50%; 
   }
+}
+
+@keyframes animated-border-glow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* NOVO: Animação para o efeito de faísca/brilho rápido na borda */
+@keyframes animated-glint {
+  0% { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
 }
 
 

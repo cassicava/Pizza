@@ -28,6 +28,11 @@ html[data-theme="dark"] .home-card {
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+/* ALTERAÇÃO: Garante que o fundo semi-transparente da caixa de explicação use a cor do tema escuro */
+html[data-theme="dark"] .explanation-box::after {
+    background: rgba(26, 26, 26, 0.92); /* Cor do --bg do tema escuro com transparência */
+}
+
 html[data-theme="dark"] .regras-fieldset {
   background-color: rgba(0, 0, 0, 0.2);
 }
@@ -56,7 +61,6 @@ html[data-theme="dark"] button {
   background-color: transparent;
 }
 
-/* ALTERAÇÃO: Garante cor branca no texto dos botões no estado padrão */
 html[data-theme="dark"] button.primary {
   color: var(--fg);
 }
@@ -128,23 +132,18 @@ html[data-theme="dark"] .turno-disponibilidade-dias .dia-selecionavel.selecionad
   color: #60a5fa;
 }
 
-/* --- NOVAS REGRAS PARA MELHORIA DO TEMA ESCURO --- */
-
-/* 2. Cor de seleção de turno mais escura e consistente */
 html[data-theme="dark"] .turno-disponibilidade-item.selecionado {
-    background-color: rgba(37, 99, 235, 0.15); /* Usa a cor da marca com opacidade */
+    background-color: rgba(37, 99, 235, 0.15); 
 }
 html[data-theme="dark"] .turno-disponibilidade-item.selecionado .turno-disponibilidade-header:hover {
     background-color: rgba(37, 99, 235, 0.2);
 }
 
-/* 3. Estilos para inputs de data/hora (calendário e ícones) */
 html[data-theme="dark"] input[type="time"],
 html[data-theme="dark"] input[type="date"] {
     color-scheme: dark;
 }
 
-/* 4. Estilos da barra de rolagem */
 html[data-theme="dark"] ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -161,14 +160,10 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
   background-color: var(--muted);
 }
 
-/* 5. Melhorias na tabela de escala */
-
-/* Suaviza as cores dos turnos para reduzir o cansaço visual */
 html[data-theme="dark"] .escala-final-table td[style*="background-color"] {
     filter: brightness(0.8) saturate(0.9);
 }
 
-/* Altera a cor da linha de vagas para uma tonalidade neutra */
 html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
     background-color: rgba(255, 255, 255, 0.05);
 }

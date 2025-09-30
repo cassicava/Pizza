@@ -24,7 +24,6 @@ function saveConfig() {
     showToast("Preferências salvas com sucesso!");
 }
 
-// ALTERAÇÃO: A função agora aceita um parâmetro para decidir qual modal usar.
 function exibirTermosDeUso(requireScrollableConfirm = false) {
     const termosDeUsoHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
@@ -59,11 +58,10 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
             title: "Termos de Uso do Escala Fácil",
             contentHTML: termosDeUsoHTML
         });
-        return Promise.resolve(false); // Retorna uma promessa resolvida para consistência
+        return Promise.resolve(false);
     }
 }
 
-// ALTERAÇÃO: A função agora aceita um parâmetro para decidir qual modal usar.
 function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
     const politicaHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
@@ -99,11 +97,52 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
     }
 }
 
+// NOVO: Função para exibir o modal de atalhos
+function exibirAtalhosDeTeclado() {
+    const shortcuts = [
+        { keys: ['↑', '↓', '←', '→'], desc: 'Navegam pela grade da escala.' },
+        { keys: ['Q', 'E'], desc: 'Trocam o funcionário focado na Caixa de Ferramentas.' },
+        { keys: ['1', '...', '9'], desc: 'Selecionam o pincel de turno correspondente.' },
+        { keys: ['Delete', 'Backspace'], desc: 'Apagam o turno da célula focada.' },
+        { keys: ['Enter'], desc: 'Pinta a célula focada com o pincel selecionado.' },
+    ];
+
+    const shortcutsHTML = `
+        <div class="shortcuts-modal-content">
+            <p>Use estes atalhos no Editor Manual para agilizar seu trabalho:</p>
+            <ul class="shortcuts-list">
+                ${shortcuts.map((sc, index) => `
+                    <li class="shortcut-item" style="animation-delay: ${index * 0.15}s;">
+                        <div class="keys">
+                            ${sc.keys.map(key => `<span class="key">${key}</span>`).join('')}
+                        </div>
+                        <div class="description">${sc.desc}</div>
+                    </li>
+                `).join('')}
+            </ul>
+        </div>
+    `;
+
+    showInfoModal({
+        title: "⌨️ Atalhos do Editor Manual",
+        contentHTML: shortcutsHTML
+    });
+
+    // Animação das teclas após o modal aparecer
+    setTimeout(() => {
+        const items = $$('.shortcut-item');
+        items.forEach((item, index) => {
+            setTimeout(() => {
+                item.classList.add('animate-keys');
+            }, (index * 200) + 300); // Atraso para iniciar a animação de cada linha
+        });
+    }, 200);
+}
+
 
 function initConfiguracoesPage() {
     $("#btnSalvarConfig").onclick = saveConfig;
     
-    // ALTERAÇÃO: Eventos para os novos cards de informação
     $("#config-terms-card").onclick = (e) => {
         e.preventDefault();
         exibirTermosDeUso();
@@ -111,6 +150,11 @@ function initConfiguracoesPage() {
     $("#config-privacy-card").onclick = (e) => {
         e.preventDefault();
         exibirPoliticaDePrivacidade();
+    };
+    // NOVO: Evento para o card de atalhos
+    $("#config-shortcuts-card").onclick = (e) => {
+        e.preventDefault();
+        exibirAtalhosDeTeclado();
     };
 
     const themeToggleButtons = $$('#themeToggleGroup .toggle-btn');

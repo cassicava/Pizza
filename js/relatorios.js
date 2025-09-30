@@ -4,7 +4,8 @@
 
 // Variáveis para armazenar as instâncias dos gráficos e evitar duplicação
 let horasChartInstance = null;
-let folgasChartInstance = null;
+let folgasSabadoChartInstance = null;
+let folgasDomingoChartInstance = null;
 let turnosChartInstance = null;
 
 /**
@@ -12,23 +13,21 @@ let turnosChartInstance = null;
  */
 function initRelatoriosPage() {
     const cargoSelect = $("#relatorioCargoSelect");
+    const anoSelect = $("#relatorioAnoSelect");
     const escalaSelect = $("#relatorioEscalaSelect");
 
-    if (cargoSelect) {
-        cargoSelect.addEventListener("change", handleCargoSelectChange);
-    }
-    if (escalaSelect) {
-        escalaSelect.addEventListener("change", handleEscalaSelectChange);
-    }
+    if (cargoSelect) cargoSelect.addEventListener("change", handleCargoSelectChange);
+    if (anoSelect) anoSelect.addEventListener("change", handleAnoSelectChange);
+    if (escalaSelect) escalaSelect.addEventListener("change", handleEscalaSelectChange);
 }
 
 /**
  * É chamada quando o usuário navega para a página de relatórios.
- * Popula o seletor com os cargos que possuem escalas salvas.
  */
 function renderRelatoriosPage() {
     const { cargos, escalas } = store.getState();
     const cargoSelect = $("#relatorioCargoSelect");
+    const anoSelect = $("#relatorioAnoSelect");
     const escalaSelect = $("#relatorioEscalaSelect");
     const container = $("#relatorios-container");
     const emptyState = $("#relatorios-empty-state");
@@ -36,7 +35,9 @@ function renderRelatoriosPage() {
     // Limpa e reseta a página
     container.classList.add('hidden');
     cargoSelect.innerHTML = '<option value="">Selecione um cargo...</option>';
-    escalaSelect.innerHTML = '<option value="">Primeiro, selecione um cargo...</option>';
+    anoSelect.innerHTML = '<option value="">Ano</option>';
+    escalaSelect.innerHTML = '<option value="">Selecione cargo e ano...</option>';
+    anoSelect.disabled = true;
     escalaSelect.disabled = true;
 
     const cargosComEscalasIds = [...new Set(escalas.map(e => e.cargoId))];
@@ -64,36 +65,74 @@ function renderRelatoriosPage() {
     }
 }
 
-/**
- * Lida com a mudança no seletor de CARGO.
- * Popula o seletor de escalas com base no cargo selecionado.
- */
-function handleCargoSelectChange(event) {
-    const cargoId = event.target.value;
-    const { escalas } = store.getState();
+function renderFiltroRelatoriosAno() {
+    const filtroSelect = $("#relatorioAnoSelect");
+    if (!filtroSelect) return;
+
+    const valorAtual = filtroSelect.value;
+    const anoAtual = new Date().getFullYear();
+    const anoInicio = 2025;
+    
+    filtroSelect.innerHTML = '<option value="">Selecione um ano</option>';
+    for (let ano = anoInicio; ano <= anoAtual + 2; ano++) {
+        const option = document.createElement('option');
+        option.value = ano;
+        option.textContent = ano;
+        filtroSelect.appendChild(option);
+    }
+    
+    filtroSelect.value = valorAtual;
+}
+
+
+function handleCargoSelectChange() {
+    const cargoId = $("#relatorioCargoSelect").value;
+    const anoSelect = $("#relatorioAnoSelect");
     const escalaSelect = $("#relatorioEscalaSelect");
-    const container = $("#relatorios-container");
 
-    container.classList.add('hidden');
-    escalaSelect.innerHTML = '<option value="">Selecione uma escala...</option>';
+    // Reseta os seletores seguintes
+    escalaSelect.innerHTML = '<option value="">Selecione o ano...</option>';
+    escalaSelect.disabled = true;
+    $("#relatorios-container").classList.add('hidden');
 
-    if (!cargoId) {
+    if (cargoId) {
+        renderFiltroRelatoriosAno();
+        anoSelect.disabled = false;
+        anoSelect.showPicker();
+    } else {
+        anoSelect.innerHTML = '<option value="">Ano</option>';
+        anoSelect.disabled = true;
+    }
+}
+
+function handleAnoSelectChange() {
+    const cargoId = $("#relatorioCargoSelect").value;
+    const ano = $("#relatorioAnoSelect").value;
+    const escalaSelect = $("#relatorioEscalaSelect");
+    const { escalas } = store.getState();
+
+    escalaSelect.innerHTML = '<option value="">Selecione a escala...</option>';
+    $("#relatorios-container").classList.add('hidden');
+
+    if (!cargoId || !ano) {
         escalaSelect.disabled = true;
         return;
     }
 
-    const escalasDoCargo = escalas.filter(e => e.cargoId === cargoId)
-                                  .sort((a, b) => b.inicio.localeCompare(a.inicio));
-
-    if (escalasDoCargo.length > 0) {
-        escalasDoCargo.forEach(escala => {
+    const escalasFiltradas = escalas.filter(e => e.cargoId === cargoId && e.inicio.startsWith(ano))
+                                    .sort((a, b) => b.inicio.localeCompare(a.inicio));
+    
+    if (escalasFiltradas.length > 0) {
+        escalasFiltradas.forEach(escala => {
             const option = document.createElement('option');
             option.value = escala.id;
             option.textContent = escala.nome;
             escalaSelect.appendChild(option);
         });
         escalaSelect.disabled = false;
+        escalaSelect.showPicker();
     } else {
+        escalaSelect.innerHTML = '<option value="">Nenhuma escala encontrada</option>';
         escalaSelect.disabled = true;
     }
 }
@@ -207,7 +246,7 @@ function calculateMetricsForScale(escala) {
     return {
         employeeMetrics: Object.values(employeeMetrics).sort((a,b) => a.nome.localeCompare(b.nome)),
         totalHorasExtras,
-        totalTurnosCount
+        totalTurnosCount,
     };
 }
 
@@ -218,22 +257,14 @@ function calculateMetricsForScale(escala) {
 function renderMetrics(metrics) {
     const { employeeMetrics, totalHorasExtras, totalTurnosCount } = metrics;
     
-    const summaryContainer = $("#relatorios-summary-cards");
-    summaryContainer.innerHTML = `
-        <div class="card">
-            <h3>Total de Horas Extras</h3>
-            <p style="font-size: 2rem; font-weight: bold; color: var(--brand);">${totalHorasExtras.toFixed(1)}h</p>
-        </div>
-        <div class="card">
-            <h3>Total de Funcionários na Escala</h3>
-            <p style="font-size: 2rem; font-weight: bold; color: var(--brand);">${employeeMetrics.length}</p>
-        </div>
-    `;
+    $("#summary-horas-extras").textContent = `${totalHorasExtras.toFixed(1)}h`;
+    $("#summary-total-funcs").textContent = employeeMetrics.length;
 
     const labels = employeeMetrics.map(e => e.nome);
 
     if(horasChartInstance) horasChartInstance.destroy();
-    if(folgasChartInstance) folgasChartInstance.destroy();
+    if(folgasSabadoChartInstance) folgasSabadoChartInstance.destroy();
+    if(folgasDomingoChartInstance) folgasDomingoChartInstance.destroy();
     if(turnosChartInstance) turnosChartInstance.destroy();
 
     const horasCtx = $('#horasChart').getContext('2d');
@@ -255,85 +286,119 @@ function renderMetrics(metrics) {
                 borderWidth: 1
             }]
         },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
-    });
-
-    const folgasCtx = $('#folgasChart').getContext('2d');
-    folgasChartInstance = new Chart(folgasCtx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Sábados de Folga',
-                data: employeeMetrics.map(e => e.sabadosDeFolga),
-                backgroundColor: 'rgba(168, 85, 247, 0.7)', 
-            }, {
-                label: 'Domingos de Folga',
-                data: employeeMetrics.map(e => e.domingosDeFolga),
-                backgroundColor: 'rgba(249, 115, 22, 0.7)',
-            }]
-        },
         options: { 
             responsive: true, 
-            indexAxis: 'y', 
+            maintainAspectRatio: false, 
             scales: { 
-                x: { 
-                    stacked: true, 
-                    ticks: { stepSize: 1 }
-                }, 
-                y: { stacked: true } 
+                y: { beginAtZero: true } 
             } 
         }
     });
 
+    renderFolgasCharts(employeeMetrics);
     renderTurnosChart(totalTurnosCount);
     renderAusenciasTable(employeeMetrics);
+    renderEmployeeShiftDistributionTable(employeeMetrics);
 }
 
-/**
- * Renderiza o gráfico de círculo com a distribuição de turnos.
- * @param {object} totalTurnosCount - Objeto com a contagem total de cada tipo de turno.
- */
 function renderTurnosChart(totalTurnosCount) {
+    const { turnos } = store.getState();
+    const turnosMap = Object.fromEntries(turnos.map(t => [t.nome, t]));
+
     const turnosCtx = $('#turnosChart').getContext('2d');
     const labels = Object.keys(totalTurnosCount);
     const data = Object.values(totalTurnosCount);
     
-    const colors = [
-        'rgba(59, 130, 246, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(249, 115, 22, 0.8)',
-        'rgba(168, 85, 247, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(20, 184, 166, 0.8)'
-    ];
+    const backgroundColors = labels.map(label => turnosMap[label]?.cor || '#cbd5e1');
 
     turnosChartInstance = new Chart(turnosCtx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Distribuição de Turnos',
+                label: 'Nº de Turnos',
                 data: data,
-                backgroundColor: colors,
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                borderWidth: 2
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
+                borderWidth: 1,
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+            indexAxis: 'y',
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
     });
 }
 
-/**
- * Renderiza a tabela com o resumo de ausências.
- * @param {Array} employeeMetrics - O array com as métricas de todos os funcionários.
- */
+function renderFolgasCharts(employeeMetrics) {
+    const labels = employeeMetrics.map(e => e.nome);
+    const sabadosData = employeeMetrics.map(e => e.sabadosDeFolga);
+    const domingosData = employeeMetrics.map(e => e.domingosDeFolga);
+
+    const options = {
+        type: 'bar',
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { ticks: { stepSize: 1 } } }
+        }
+    };
+    
+    const sabadoCtx = $('#folgasSabadoChart').getContext('2d');
+    folgasSabadoChartInstance = new Chart(sabadoCtx, {
+        ...options,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Sábados de Folga',
+                data: sabadosData,
+                backgroundColor: 'rgba(168, 85, 247, 0.7)',
+            }]
+        }
+    });
+    
+    const domingoCtx = $('#folgasDomingoChart').getContext('2d');
+    folgasDomingoChartInstance = new Chart(domingoCtx, {
+        ...options,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Domingos de Folga',
+                data: domingosData,
+                backgroundColor: 'rgba(249, 115, 22, 0.7)',
+            }]
+        }
+    });
+}
+
+
 function renderAusenciasTable(employeeMetrics) {
     const container = $("#ausenciasContainer");
     
-    const folgaTypes = [...TIPOS_FOLGA.map(t => t.nome)];
-    const allAusenciaTypes = new Set(['Férias']);
+    const allAusenciaTypes = new Set();
     employeeMetrics.forEach(emp => {
         Object.keys(emp.ausencias).forEach(type => {
             if(type !== 'total') allAusenciaTypes.add(type);
         });
     });
+    
+    if(employeeMetrics.some(e => e.ausencias.total > 0)) {
+        allAusenciaTypes.add('Férias');
+        TIPOS_FOLGA.forEach(tf => allAusenciaTypes.add(tf.nome));
+    }
+
+    if (allAusenciaTypes.size === 0) {
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma ausência registrada nesta escala.</p>`;
+        return;
+    }
     
     const sortedTypes = Array.from(allAusenciaTypes).sort();
 
@@ -354,5 +419,35 @@ function renderAusenciasTable(employeeMetrics) {
     container.innerHTML = tableHTML;
 }
 
+function renderEmployeeShiftDistributionTable(employeeMetrics) {
+    const container = $("#distribuicaoTurnosContainer");
+    
+    const allTurnoNames = new Set();
+    employeeMetrics.forEach(emp => {
+        Object.keys(emp.turnosCount).forEach(turnoName => allTurnoNames.add(turnoName));
+    });
+
+    if(allTurnoNames.size === 0) {
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhum turno alocado nesta escala para exibir a distribuição.</p>`;
+        return;
+    }
+
+    const sortedTurnoNames = Array.from(allTurnoNames).sort();
+
+    let tableHTML = `<table class="table table-sm"><thead><tr><th>Funcionário</th>`;
+    sortedTurnoNames.forEach(name => tableHTML += `<th>${name}</th>`);
+    tableHTML += `</tr></thead><tbody>`;
+
+    employeeMetrics.forEach(emp => {
+        tableHTML += `<tr><td>${emp.nome}</td>`;
+        sortedTurnoNames.forEach(turnoName => {
+            tableHTML += `<td>${emp.turnosCount[turnoName] || 0}</td>`;
+        });
+        tableHTML += `</tr>`;
+    });
+
+    tableHTML += `</tbody></table>`;
+    container.innerHTML = tableHTML;
+}
 
 document.addEventListener("DOMContentLoaded", initRelatoriosPage);

@@ -1,7 +1,7 @@
 /* LARGURAS DA SIDEBAR - Variáveis para fácil manutenção */
 :root {
   --sidebar-width-collapsed: 72px;
-  --sidebar-width-expanded: 220px;
+  --sidebar-width-expanded: 250px; /* ALTERADO: Aumentado de 220px para 250px */
 }
 
 /* NOVO LAYOUT PRINCIPAL COM FLEXBOX */
@@ -108,7 +108,6 @@ main.container {
   position: relative;
   flex-grow: 1; 
   margin-left: var(--sidebar-width-collapsed); 
-  /* --- AJUSTE 5: Aumentada a largura máxima para telas grandes --- */
   max-width: 1800px;
   padding: 24px;
 }
@@ -147,7 +146,6 @@ main.container {
 }
 
 .home-grid-secundario {
-    /* ALTERADO: De 2 para 3 colunas para acomodar o card de Escalas Salvas */
     grid-template-columns: repeat(3, 1fr);
 }
 
@@ -157,7 +155,6 @@ main.container {
 
 /* --- TÍTULO DE BOAS-VINDAS --- */
 .welcome-container {
-    /* --- AJUSTE 4: Garantia de alinhamento central --- */
     display: flex;
     flex-direction: column;
     align-items: center;

@@ -75,7 +75,6 @@
     flex: 1 1 auto;
 }
 
-/* ADIÇÃO: Estilo para label inválida */
 label.invalid-label {
     color: var(--danger) !important;
     font-weight: 500;
@@ -164,7 +163,6 @@ fieldset {
     border: 1px solid var(--border);
     padding: 16px;
     border-radius: 12px;
-    /* ALTERADO: Margem vertical diminuída */
     margin: 16px 0;
 }
 
@@ -197,7 +195,6 @@ fieldset {
     align-items: start;
 }
 
-/* ALTERADO: Estilo da legenda agora é unificado para todos os fieldsets */
 fieldset legend,
 .fieldset-wrapper legend {
     font-weight: bold;
@@ -219,7 +216,6 @@ fieldset legend,
     margin: 0;
 }
 
-/* --- REGRAS PARA AJUSTAR LARGURA DE INPUTS ESPECÍFICOS --- */
 #page-turnos .form-row label:has(#turnoNome) {
     flex-grow: 0;
     flex-basis: 250px;
@@ -307,19 +303,14 @@ button.primary:hover {
     color: #fff;
 }
 
-/* ADIÇÃO: Estilo para botões primários desabilitados */
-button.primary:disabled {
+button:disabled, button:disabled:hover {
     border-color: var(--border);
     color: var(--muted);
     background-color: transparent;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
-}
-
-button.primary:disabled:hover {
-    background-color: transparent;
-    color: var(--muted);
+    opacity: 0.6;
 }
 
 
@@ -436,7 +427,6 @@ button.danger:hover {
 }
 
 .tab-btn .tab-icon {
-    /* ALTERAÇÃO: Tamanho do ícone e do container aumentados */
     font-size: 1.6rem;
     min-width: 42px;
     height: 42px;
@@ -449,7 +439,6 @@ button.danger:hover {
 }
 
 .tab-btn .tab-text {
-    /* ALTERAÇÃO: Tamanho da fonte do texto aumentado */
     white-space: nowrap;
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
@@ -889,13 +878,56 @@ html[data-theme="dark"] .tab-btn:hover {
 }
 
 .explanation-box {
-    background-color: var(--bg);
-    border: 1px solid var(--border);
+    position: relative;
+    border: 1px solid transparent;
     border-radius: 8px;
     padding: 12px;
     font-size: 0.9rem;
     color: var(--muted);
     transition: all 0.3s ease-in-out;
+    overflow: hidden;
+}
+
+/* ALTERAÇÃO: Efeito "Glint" (faísca) adicionado */
+.explanation-box::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    z-index: -2;
+    margin: -1px;
+    border-radius: inherit;
+    /* Camada 1: Faísca (glint) */
+    background: 
+        linear-gradient(
+            110deg, 
+            transparent 40%, 
+            rgba(255,255,255,0.5), /* Faísca mais visível */
+            transparent 60%
+        ),
+    /* Camada 2: Brilho de fundo (glow) */
+        linear-gradient(to right, var(--border), var(--muted), var(--border));
+    
+    background-size: 250% 100%, 200% 200%;
+    background-repeat: no-repeat, repeat;
+    background-position: -150% 0, 0 0;
+
+    animation: 
+        animated-glint 6s linear infinite, /* Animação da faísca */
+        animated-border-glow 5s ease-in-out infinite; /* Animação do brilho */
+    animation-delay: 0s, 1s; /* Delay para não começarem juntas */
+}
+
+.explanation-box::after {
+    content: '';
+    position: absolute;
+    top: 1px; left: 1px;
+    width: calc(100% - 2px);
+    height: calc(100% - 2px);
+    background: rgba(248, 250, 252, 0.92);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    border-radius: 7px;
+    z-index: -1;
 }
 
 .explanation-box.align-center {
@@ -1061,7 +1093,6 @@ html[data-theme="dark"] .tab-btn:hover {
     pointer-events: none;
 }
 
-/* --- NOVA ANIMAÇÃO DE CARREGAMENTO (ESTRELA) --- */
 .loader-spinner {
     width: 100px;
     height: 100px;
@@ -1088,8 +1119,6 @@ html[data-theme="dark"] .tab-btn:hover {
     }
 }
 
-/* --- FIM DA NOVA ANIMAÇÃO --- */
-
 
 .loader-text {
     color: #FFF;
@@ -1098,28 +1127,133 @@ html[data-theme="dark"] .tab-btn:hover {
 }
 
 
-/* --- SUGESTÃO: Efeito de Hover nas Tabelas --- */
 .table tbody tr {
     transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
 .table tbody tr:hover {
-    /* Eleva um pouco a linha da tabela */
     transform: translateY(-3px);
-    /* Adiciona uma sombra sutil para dar profundidade */
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.07);
-    /* O cursor ajuda a indicar que a linha pode ser interativa */
     cursor: pointer;
 }
 
-/* --- SUGESTÃO: Animação de Hover nos Ícones da Sidebar --- */
 .tab-btn .tab-icon {
-    /* A transição já existente é ótima, apenas garantimos a do transform */
     transition: all 0.2s ease-in-out, transform 0.2s ease-in-out;
 }
 
-/* Aplica o efeito apenas nos ícones que NÃO estão ativos */
 .tab-btn:not(.active):hover .tab-icon {
-    /* Gira levemente e aumenta de tamanho */
     transform: scale(1.15) rotate(-8deg);
+}
+
+/* NOVO: Estilos para o modal de atalhos */
+.shortcuts-modal-content {
+    text-align: left;
+}
+
+.shortcuts-modal-content p {
+    font-size: 1rem;
+    color: var(--muted);
+    margin-bottom: 24px;
+}
+
+.shortcuts-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideInFromLeft 0.5s ease-out forwards;
+}
+.shortcut-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.shortcut-item .keys {
+    display: flex;
+    gap: 6px;
+}
+
+.key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--fg);
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-bottom-width: 3px;
+    border-radius: 6px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    animation: keypress-out 0.3s ease-out;
+}
+
+.shortcut-item.animate-keys .key {
+    animation: keypress 1.5s ease-in-out;
+}
+
+.shortcut-item .description {
+    font-size: 0.95rem;
+    color: var(--fg);
+}
+
+/* NOVO: Estilos para a lista de escalas salvas em formato de card */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.escala-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.escala-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+    border-color: var(--brand);
+}
+
+.escala-card h3 {
+    margin-top: 0;
+    margin-bottom: 4px;
+    font-size: 1.1rem;
+}
+
+.escala-card .muted {
+    font-size: 0.9rem;
+}
+
+.escala-card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
 }

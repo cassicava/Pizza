@@ -164,8 +164,7 @@ async function gerarEscala() {
             });
         });
 
-        const cargoNome = cargos.find(c => c.id === cargoId)?.nome || 'Cargo';
-        const nomeEscala = `Escala: ${cargoNome} (${new Date(inicio+'T12:00:00').toLocaleDateString()} a ${new Date(fim+'T12:00:00').toLocaleDateString()})`;
+        const nomeEscala = generateEscalaNome(cargo.nome, inicio, fim);
 
         currentEscala = { id: uid(), nome: nomeEscala, cargoId, inicio, fim, slots, historico, excecoes: JSON.parse(JSON.stringify(excecoes)), feriados: [...geradorState.feriados], cobertura };
 
