@@ -12,11 +12,155 @@ const editorState = {
     lastHoveredDate: null, 
     animationDirection: 'right',
     enforceRules: true, 
-    // NOVO: Coordenadas da célula focada pelo teclado
     selectedCellCoords: { row: -1, col: -1 }, 
+    allConflicts: [], // Armazena todos os conflitos atuais
 };
 
+// NOVO: Objeto para controlar o estado da caixa de ferramentas
+const toolboxState = {
+    isMinimized: false,
+    isDragging: false,
+    pos: { top: null, left: null },
+    offset: { x: 0, y: 0 },
+    ticking: false // Para o requestAnimationFrame
+};
+
+
 let lastEditedEmployeeId = null;
+
+
+// --- FUNÇÕES DE CONTROLE DA CAIXA DE FERRAMENTAS ---
+
+function saveToolboxState() {
+    sessionStorage.setItem('ge_toolbox_state', JSON.stringify({
+        isMinimized: toolboxState.isMinimized,
+        pos: toolboxState.pos
+    }));
+}
+
+function loadToolboxState() {
+    const savedState = JSON.parse(sessionStorage.getItem('ge_toolbox_state'));
+    const toolbox = $("#editor-toolbox");
+    if (!toolbox) return;
+
+    // Aplica o estado de minimização primeiro, pois afeta a altura
+    const btn = $('#toggle-toolbox-size-btn');
+    if (savedState?.isMinimized) {
+        toolboxState.isMinimized = true;
+        toolbox.classList.add('minimized');
+        btn.textContent = '＋';
+        btn.title = 'Maximizar';
+    } else {
+        toolboxState.isMinimized = false;
+        toolbox.classList.remove('minimized');
+        btn.textContent = '—';
+        btn.title = 'Minimizar';
+    }
+
+    if (savedState?.pos?.top !== null && savedState?.pos?.left !== null) {
+        toolboxState.pos = savedState.pos;
+        toolbox.style.right = 'auto';
+        toolbox.style.bottom = 'auto';
+
+        const boundaryPadding = 24;
+        const sidebarWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-collapsed'), 10);
+        const minHeight = toolboxState.isMinimized ? 48 : 300;
+        
+        let top = Math.max(boundaryPadding, Math.min(toolboxState.pos.top, window.innerHeight - minHeight - boundaryPadding));
+        let left = Math.max(sidebarWidth + boundaryPadding, Math.min(toolboxState.pos.left, window.innerWidth - toolbox.offsetWidth - boundaryPadding));
+
+        toolbox.style.top = `${top}px`;
+        toolbox.style.left = `${left}px`;
+    } else {
+        // Usa posicionamento padrão via CSS (bottom/right)
+        toolbox.style.top = null;
+        toolbox.style.left = null;
+        toolbox.style.right = '24px';
+        toolbox.style.bottom = '24px';
+    }
+}
+
+
+function toggleToolboxSize() {
+    toolboxState.isMinimized = !toolboxState.isMinimized;
+    const toolbox = $("#editor-toolbox");
+    const btn = $('#toggle-toolbox-size-btn');
+    
+    toolbox.classList.toggle('minimized', toolboxState.isMinimized);
+
+    if(toolboxState.isMinimized) {
+        btn.textContent = '＋';
+        btn.title = 'Maximizar';
+    } else {
+        btn.textContent = '—';
+        btn.title = 'Minimizar';
+    }
+    saveToolboxState();
+}
+
+function dragMouseDown(e) {
+    e.preventDefault();
+    const toolbox = $("#editor-toolbox");
+    
+    // Calcula o offset do mouse em relação ao canto superior esquerdo da caixa
+    toolboxState.offset.x = e.clientX - toolbox.offsetLeft;
+    toolboxState.offset.y = e.clientY - toolbox.offsetTop;
+
+    // Remove posicionamento via bottom/right para controle total via JS
+    if(toolbox.style.bottom || toolbox.style.right) {
+        const rect = toolbox.getBoundingClientRect();
+        toolbox.style.top = `${rect.top}px`;
+        toolbox.style.left = `${rect.left}px`;
+        toolbox.style.right = 'auto';
+        toolbox.style.bottom = 'auto';
+    }
+
+    document.addEventListener('mousemove', elementDrag);
+    document.addEventListener('mouseup', closeDragElement, { once: true });
+    toolbox.classList.add('dragging');
+}
+
+function elementDrag(e) {
+    e.preventDefault();
+    
+    toolboxState.pos.left = e.clientX - toolboxState.offset.x;
+    toolboxState.pos.top = e.clientY - toolboxState.offset.y;
+
+    if (!toolboxState.ticking) {
+        window.requestAnimationFrame(() => {
+            const toolbox = $("#editor-toolbox");
+            const boundaryPadding = 24;
+            const sidebarWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-collapsed'), 10);
+            
+            const leftBoundary = sidebarWidth + boundaryPadding;
+            const topBoundary = boundaryPadding;
+            const rightBoundary = window.innerWidth - toolbox.offsetWidth - boundaryPadding;
+            const bottomBoundary = window.innerHeight - toolbox.offsetHeight - boundaryPadding;
+
+            let newLeft = Math.max(leftBoundary, Math.min(toolboxState.pos.left, rightBoundary));
+            let newTop = Math.max(topBoundary, Math.min(toolboxState.pos.top, bottomBoundary));
+
+            toolbox.style.left = `${newLeft}px`;
+            toolbox.style.top = `${newTop}px`;
+            
+            toolboxState.ticking = false;
+        });
+        toolboxState.ticking = true;
+    }
+}
+
+function closeDragElement() {
+    const toolbox = $("#editor-toolbox");
+    toolbox.classList.remove('dragging');
+    
+    // Salva a posição final
+    toolboxState.pos.top = toolbox.offsetTop;
+    toolboxState.pos.left = toolbox.offsetLeft;
+    
+    document.removeEventListener('mousemove', elementDrag);
+    saveToolboxState();
+}
+
 
 // --- FUNÇÕES AUXILIARES E DE VALIDAÇÃO ---
 
@@ -28,7 +172,6 @@ function checkPotentialConflicts(employeeId, turnoId, date, escala) {
 
     const maxDias = geradorState.maxDiasConsecutivos || 6;
     
-    // Simula a adição do turno para a verificação
     const slotsSimulados = [...escala.slots];
     if (!slotsSimulados.some(s => s.assigned === employeeId && s.date === date)) {
         slotsSimulados.push({ assigned: employeeId, date: date, turnoId: turnoId });
@@ -68,16 +211,24 @@ function initEditor() {
         focusedEmployeeIndex: -1, alphabetizedFuncs: [],
         selectedShiftBrush: null, lastHoveredDate: null,
         enforceRules: true,
-        selectedCellCoords: { row: -1, col: -1 } // Reseta as coordenadas
+        selectedCellCoords: { row: -1, col: -1 },
+        allConflicts: [],
     });
     const toolbox = $("#editor-toolbox");
     if(!toolbox) return;
     
     toolbox.classList.remove('override-active');
-
     toolbox.classList.remove("hidden");
+    
+    loadToolboxState();
+
     $$(".toolbox-mode-btn").forEach(btn => btn.onclick = () => setEditMode(btn.dataset.mode));
     
+    $('#toolbox-drag-handle').onmousedown = dragMouseDown;
+    $('#toggle-toolbox-size-btn').onclick = toggleToolboxSize;
+    $('#show-shortcuts-btn').onclick = exibirAtalhosDeTeclado;
+
+
     const tableWrap = $("#escalaTabelaWrap");
     tableWrap.removeEventListener('dragstart', handleDragStart);
     tableWrap.addEventListener('dragstart', handleDragStart);
@@ -97,8 +248,6 @@ function initEditor() {
     toolboxContent.removeEventListener('click', handleToolboxClick);
     toolboxContent.addEventListener('click', handleToolboxClick);
 
-    $("#conflict-panel-container").addEventListener('click', handleConflictPanelClick);
-
     document.removeEventListener('keydown', handleKeyboardNav);
     document.addEventListener('keydown', handleKeyboardNav);
 
@@ -107,7 +256,7 @@ function initEditor() {
 
 function setEditMode(mode) {
     editorState.editMode = mode;
-    clearCellFocus(); // Limpa o foco ao trocar de modo
+    clearCellFocus();
     
     if (mode === 'employee') {
         const { funcionarios } = store.getState();
@@ -150,10 +299,9 @@ function handleTableClick(event) {
     const cell = event.target.closest('.editable-cell');
     if (!cell) return;
 
-    // Foca na célula clicada para navegação pelo teclado
     const allRows = $$('#escalaTabelaWrap tbody tr[data-employee-row-id]');
     const rowIndex = allRows.findIndex(row => row.contains(cell));
-    const colIndex = Array.from(cell.parentElement.children).indexOf(cell) - 1; // -1 para ignorar a célula do nome
+    const colIndex = Array.from(cell.parentElement.children).indexOf(cell) - 1;
     focusCell(rowIndex, colIndex);
 
     if (editorState.editMode === 'employee') handleEmployeePaint(cell);
@@ -281,7 +429,6 @@ function handleEraseClick(cell) {
 
 // --- NAVEGAÇÃO E ATUALIZAÇÃO DA VIEW ---
 
-// NOVO: Função central de navegação e ações por teclado
 function handleKeyboardNav(event){
     const toolbox = $("#editor-toolbox");
     if(!toolbox || toolbox.classList.contains('hidden')) return;
@@ -290,7 +437,6 @@ function handleKeyboardNav(event){
     const key = event.key;
     let { row, col } = editorState.selectedCellCoords;
 
-    // Mudar funcionário com Q e E
     if (key.toLowerCase() === 'q') {
         event.preventDefault();
         showPrevEmployee(true);
@@ -302,7 +448,6 @@ function handleKeyboardNav(event){
         return;
     }
     
-    // Selecionar pincel com números 1-9
     if (!isNaN(key) && key >= 1 && key <= 9) {
         event.preventDefault();
         const brushes = $$('.shift-brush');
@@ -313,7 +458,6 @@ function handleKeyboardNav(event){
         return;
     }
 
-    // Ações na célula (apagar/pintar)
     const focusedCell = getCellByCoords(row, col);
     if (focusedCell) {
         if (key === 'Delete' || key === 'Backspace') {
@@ -322,25 +466,24 @@ function handleKeyboardNav(event){
                 handleRemoveShiftClick(focusedCell.dataset.slotId);
             }
         }
-        if (key === 'Enter') { // Pintar com Enter
+        if (key === 'Enter') {
             event.preventDefault();
             handleEmployeePaint(focusedCell);
         }
     }
     
-    // Navegação com setas
     if (key.startsWith('Arrow')) {
         event.preventDefault();
         const allRows = $$('#escalaTabelaWrap tbody tr[data-employee-row-id]');
         if (allRows.length === 0) return;
         
-        if (row === -1) { // Se nenhuma célula estiver focada, foca na primeira
+        if (row === -1) {
             focusCell(0, 0);
             return;
         }
 
         const maxRows = allRows.length - 1;
-        const maxCols = allRows[0].children.length - 2; // -1 da célula nome, -1 do índice 0
+        const maxCols = allRows[0].children.length - 2;
 
         switch(key) {
             case 'ArrowUp': row = Math.max(0, row - 1); break;
@@ -359,7 +502,9 @@ function handleToolboxClick(event) {
     const navArrow = target.closest('.nav-arrow');
     const employeeCard = target.closest('.employee-card');
     const toggleBtn = target.closest('.toggle-btn');
+    const conflictItem = event.target.closest('.conflict-list-item');
 
+    if(conflictItem) handleConflictPanelClick(event);
     if (shiftBrush) handleSelectShiftBrush(shiftBrush.dataset.turnoId);
     if (navArrow) {
         if(navArrow.id === 'next-employee-btn') showNextEmployee(true);
@@ -407,23 +552,27 @@ function updateFocusedEmployee(animate = false){
 
 function updateToolboxView() {
     const { editMode } = editorState;
-    const toolbox = $("#editor-toolbox");
-    const headerEl = $(".toolbox-header", toolbox);
-    const contentEl = $(".toolbox-content", toolbox);
-    headerEl.innerHTML = '';
-    contentEl.innerHTML = '';
+    const contentEl = $(".toolbox-content");
+    
+    const subtitle = $('#toolbox-dynamic-subtitle');
+    const title = $('#toolbox-dynamic-title');
 
     if (editMode === 'employee') {
-        headerEl.innerHTML = `<h3 class="toolbox-title">🎨 Editar por Funcionário</h3>
-                            <p class="toolbox-subtitle">Use os pincéis de turno ou arraste os turnos na grade.</p>`;
+        title.textContent = 'Editar por Funcionário';
+        subtitle.textContent = 'Use os pincéis de turno ou arraste os turnos na grade.';
         contentEl.innerHTML = renderFocusedEmployeeView(true);
     } else if (editMode === 'eraser') {
-        headerEl.innerHTML = `<h3 class="toolbox-title">🗑️ Modo Borracha</h3>
-                            <p class="toolbox-subtitle">Clique em um turno na escala para apagá-lo.</p>`;
-    } 
+        title.textContent = 'Modo Borracha';
+        subtitle.textContent = 'Clique em um turno na escala para apagá-lo.';
+        contentEl.innerHTML = '';
+    } else if (editMode === 'conflicts') {
+        title.textContent = 'Conflitos e Avisos';
+        subtitle.textContent = 'Lista de regras violadas na escala atual.';
+        contentEl.innerHTML = renderConflictsView();
+    }
     else if (editMode === 'settings') {
-        headerEl.innerHTML = `<h3 class="toolbox-title">⚙️ Regras do Editor</h3>
-                            <p class="toolbox-subtitle">Controle como o editor lida com as regras da escala.</p>`;
+        title.textContent = 'Regras do Editor';
+        subtitle.textContent = 'Controle como o editor lida com as regras da escala.';
         contentEl.innerHTML = renderToolboxForSettings();
     }
 }
@@ -510,7 +659,6 @@ function surgicallyUpdateCell(employeeId, date, turno, slotId) {
     const cell = $(`td[data-employee-id="${employeeId}"][data-date="${date}"]`);
     if (!cell) return;
 
-    // Limpa o estado anterior
     cell.style.backgroundColor = '';
     cell.style.color = '';
     cell.textContent = '';
@@ -519,7 +667,6 @@ function surgicallyUpdateCell(employeeId, date, turno, slotId) {
     cell.draggable = !!turno;
 
     if (turno) {
-        // Aplica o novo estado
         cell.style.backgroundColor = turno.cor;
         cell.style.color = getContrastingTextColor(turno.cor);
         cell.textContent = turno.sigla;
@@ -586,11 +733,10 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
 
     if (!currentEscala.historico[employeeId]) currentEscala.historico[employeeId] = { horasTrabalhadas: 0 };
     currentEscala.historico[employeeId].horasTrabalhadas += turno.cargaMin;
-    lastEditedEmployeeId = employeeId;
-
-    runAllValidations();
+    
+    runSurgicalValidation([employeeId]);
     updateAllIndicators();
-    renderResumoDetalhado(currentEscala);
+    renderResumoDetalhado(currentEscala, [employeeId]);
 }
 
 function handleRemoveShiftClick(slotId) {
@@ -599,7 +745,6 @@ function handleRemoveShiftClick(slotId) {
     const turno = store.getState().turnos.find(t => t.id === slot.turnoId);
     const employeeId = slot.assigned;
 
-    lastEditedEmployeeId = employeeId;
     currentEscala.historico[employeeId].horasTrabalhadas -= turno.cargaMin;
     
     const coberturaNecessaria = currentEscala.cobertura[slot.turnoId] || 0;
@@ -617,10 +762,9 @@ function handleRemoveShiftClick(slotId) {
         surgicallyUpdateCell(employeeId, slot.date, null, null);
     }
     
-    runAllValidations();
-    
+    runSurgicalValidation([employeeId]);
     updateAllIndicators();
-    renderResumoDetalhado(currentEscala);
+    renderResumoDetalhado(currentEscala, [employeeId]);
 }
 
 function highlightEmployeeRow(employeeId) {
@@ -633,72 +777,111 @@ function highlightEmployeeRow(employeeId) {
 
 
 // --- MOTOR DE VALIDAÇÃO E PAINEL DE CONFLITOS ---
-function runAllValidations() {
-    // Limpa marcadores antigos
-    $$('.editable-cell.has-conflict').forEach(cell => {
-        cell.classList.remove('has-conflict');
-        const marker = $('.conflict-marker', cell);
-        if (marker) marker.remove();
-        const tooltip = $('.conflict-marker-tooltip', cell);
-        if (tooltip) tooltip.remove();
-    });
 
+function runSurgicalValidation(employeeIdsToUpdate) {
     const { funcionarios } = store.getState();
-    const funcsDaEscala = funcionarios.filter(f => currentEscala.historico && currentEscala.historico[f.id]);
-    const allConflicts = [];
+    const existingConflicts = editorState.allConflicts.filter(c => !employeeIdsToUpdate.includes(c.employeeId));
+    let newConflicts = [];
 
-    funcsDaEscala.forEach(func => {
-        const conflitosDoFunc = validateEmployeeSchedule(func.id, currentEscala);
+    employeeIdsToUpdate.forEach(funcId => {
+        // Limpa marcadores visuais antigos para este funcionário
+        $$(`.editable-cell.has-conflict[data-employee-id="${funcId}"]`).forEach(cell => {
+            cell.classList.remove('has-conflict');
+            $('.conflict-marker', cell)?.remove();
+            $('.conflict-marker-tooltip', cell)?.remove();
+        });
+
+        const conflitosDoFunc = validateEmployeeSchedule(funcId, currentEscala);
         conflitosDoFunc.forEach(conflito => {
-            allConflicts.push({ ...conflito, employeeName: func.nome });
-            const cell = $(`td[data-employee-id="${func.id}"][data-date="${conflito.date}"]`);
-            if (cell) {
-                cell.classList.add('has-conflict');
-                if (!$('.conflict-marker', cell)) {
-                    const marker = document.createElement('div');
-                    marker.className = 'conflict-marker';
-                    const tooltip = document.createElement('div');
-                    tooltip.className = 'conflict-marker-tooltip';
-                    tooltip.textContent = conflito.message;
-                    cell.appendChild(marker);
-                    cell.appendChild(tooltip);
-                } else {
-                    const tooltip = $('.conflict-marker-tooltip', cell);
-                    tooltip.textContent += `\n${conflito.message}`;
-                }
-            }
+            const func = funcionarios.find(f => f.id === funcId);
+            newConflicts.push({ ...conflito, employeeName: func?.nome || 'Desconhecido' });
         });
     });
+
+    editorState.allConflicts = [...existingConflicts, ...newConflicts].sort((a,b) => a.date.localeCompare(b.date));
     
-    renderConflictPanel(allConflicts);
+    // Atualiza apenas os marcadores visuais para os novos conflitos
+    newConflicts.forEach(conflito => {
+        const cell = $(`td[data-employee-id="${conflito.employeeId}"][data-date="${conflito.date}"]`);
+        if (cell) {
+            cell.classList.add('has-conflict');
+            if (!$('.conflict-marker', cell)) {
+                const marker = document.createElement('div');
+                marker.className = 'conflict-marker';
+                const tooltip = document.createElement('div');
+                tooltip.className = 'conflict-marker-tooltip';
+                tooltip.textContent = conflito.message;
+                cell.appendChild(marker);
+                cell.appendChild(tooltip);
+            } else {
+                const tooltip = $('.conflict-marker-tooltip', cell);
+                tooltip.textContent += `\n${conflito.message}`;
+            }
+        }
+    });
+
+    updateConflictTabBadge();
+    if (editorState.editMode === 'conflicts') {
+        updateToolboxView();
+    }
 }
 
-function renderConflictPanel(conflicts) {
-    const container = $("#conflict-panel-container");
-    const list = $("#conflict-list");
-    if (!container || !list) return;
+function runAllValidations() {
+    const { funcionarios } = store.getState();
+    const funcsDaEscala = funcionarios.filter(f => currentEscala.historico && currentEscala.historico[f.id]);
+    runSurgicalValidation(funcsDaEscala.map(f => f.id));
+}
 
-    list.innerHTML = '';
+function updateConflictTabBadge() {
+    const conflictBtn = $('.toolbox-mode-btn[data-mode="conflicts"]');
+    if (!conflictBtn) return;
+    
+    let badge = $('.conflict-count-badge', conflictBtn);
+    if(badge) badge.remove();
+
+    const count = editorState.allConflicts.length;
+    if (count > 0) {
+        badge = document.createElement('span');
+        badge.className = 'conflict-count-badge';
+        badge.textContent = count;
+        conflictBtn.appendChild(badge);
+    }
+}
+
+function renderConflictsView() {
+    const conflicts = editorState.allConflicts;
     if (conflicts.length === 0) {
-        container.classList.add('hidden');
-        return;
+        return `<div class="conflicts-view-container"><p class="muted" style="padding: 16px; text-align:center;">Nenhum conflito encontrado. Bom trabalho!</p></div>`;
     }
 
-    container.classList.remove('hidden');
-    conflicts.sort((a,b) => a.date.localeCompare(b.date));
+    const groupedByEmployee = conflicts.reduce((acc, conflict) => {
+        if (!acc[conflict.employeeId]) {
+            acc[conflict.employeeId] = { name: conflict.employeeName, conflicts: [] };
+        }
+        acc[conflict.employeeId].conflicts.push(conflict);
+        return acc;
+    }, {});
 
-    conflicts.forEach(conflict => {
-        const item = document.createElement('div');
-        item.className = 'conflict-item';
-        item.dataset.employeeId = conflict.employeeId;
-        item.dataset.date = conflict.date;
-        item.innerHTML = `<strong>${conflict.employeeName}</strong> (${new Date(conflict.date + 'T12:00:00').toLocaleDateString()}): ${conflict.message}`;
-        list.appendChild(item);
-    });
+    let html = '<div class="conflicts-view-container">';
+    for(const employeeId in groupedByEmployee) {
+        const group = groupedByEmployee[employeeId];
+        html += `<div class="conflict-group">
+                    <div class="conflict-group-employee">${group.name}</div>`;
+        group.conflicts.forEach(conflict => {
+            html += `<div class="conflict-list-item" data-employee-id="${conflict.employeeId}" data-date="${conflict.date}">
+                        <strong>${new Date(conflict.date + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}:</strong> ${conflict.message}
+                     </div>`;
+        });
+        html += `</div>`;
+    }
+    html += '</div>';
+
+    return html;
 }
 
+
 function handleConflictPanelClick(event) {
-    const item = event.target.closest('.conflict-item');
+    const item = event.target.closest('.conflict-list-item');
     if (!item) return;
 
     const { employeeId, date } = item.dataset;
@@ -707,7 +890,7 @@ function handleConflictPanelClick(event) {
     if (cell) {
         cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         cell.classList.remove('cell-highlight-animation');
-        void cell.offsetWidth; // Trigger reflow
+        void cell.offsetWidth;
         cell.classList.add('cell-highlight-animation');
     }
 }
@@ -722,7 +905,6 @@ function validateEmployeeSchedule(employeeId, escala) {
         .filter(s => s.assigned === employeeId)
         .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Validação de Descanso
     for (let i = 1; i < turnosDoFunc.length; i++) {
         const turnoAtual = turnosDoFunc[i];
         const turnoAnterior = turnosDoFunc[i - 1];
@@ -745,7 +927,6 @@ function validateEmployeeSchedule(employeeId, escala) {
         }
     }
 
-    // Validação de Dias Consecutivos
     turnosDoFunc.forEach(turno => {
         const dias = calculateConsecutiveWorkDays(employeeId, escala.slots, turno.date, turnosMap);
         if (dias > maxDias) {
@@ -762,13 +943,12 @@ function validateEmployeeSchedule(employeeId, escala) {
     return conflitos;
 }
 
-// --- NOVO: Funções para controle de foco por teclado ---
+// --- FUNÇÕES DE FOCO POR TECLADO ---
 function getCellByCoords(row, col) {
     if (row < 0 || col < 0) return null;
     const allRows = $$('#escalaTabelaWrap tbody tr[data-employee-row-id]');
     const targetRow = allRows[row];
     if (!targetRow) return null;
-    // +1 para pular a célula do nome do funcionário
     return targetRow.children[col + 1];
 }
 
@@ -789,7 +969,7 @@ function clearCellFocus() {
 }
 
 
-// --- NOVO: LÓGICA DE ARRASTAR E SOLTAR (DRAG AND DROP) ---
+// --- LÓGICA DE ARRASTAR E SOLTAR (DRAG AND DROP) ---
 function handleDragStart(e) {
     const cell = e.target.closest('.editable-cell[draggable="true"]');
     if (!cell) return;
@@ -836,11 +1016,9 @@ async function handleDrop(e) {
 
     if (sourceData.slotId === targetData.slotId) return;
 
-    // Ação de troca (swap)
     if (targetData.slotId) {
         await handleSwapShiftClick(sourceData.slotId, targetData.slotId);
     } 
-    // Ação de mover ou reatribuir para uma célula vazia
     else {
         const sourceSlot = currentEscala.slots.find(s => s.id === sourceData.slotId);
         if (!sourceSlot) return;
@@ -851,7 +1029,6 @@ async function handleDrop(e) {
             return;
         }
 
-        // Atualiza o estado
         const oldEmployeeId = sourceSlot.assigned;
         const newEmployeeId = targetData.employeeId;
         const turno = store.getState().turnos.find(t => t.id === sourceSlot.turnoId);
@@ -863,13 +1040,10 @@ async function handleDrop(e) {
         sourceSlot.assigned = newEmployeeId;
         sourceSlot.date = targetData.date;
 
-        lastEditedEmployeeId = newEmployeeId;
         renderEscalaTable(currentEscala);
-        runAllValidations();
-        setTimeout(() => { 
-            lastEditedEmployeeId = oldEmployeeId; 
-            renderResumoDetalhado(currentEscala); 
-        }, 1);
+        runSurgicalValidation([oldEmployeeId, newEmployeeId]);
+        updateAllIndicators();
+        renderResumoDetalhado(currentEscala, [oldEmployeeId, newEmployeeId]);
     }
 }
 
@@ -878,7 +1052,6 @@ async function handleSwapShiftClick(slot1Id, slot2Id) {
     const slot2 = currentEscala.slots.find(s => s.id === slot2Id);
     if (!slot1 || !slot2) return;
 
-    // Validação cruzada de conflitos
     const conflitosParaFunc1 = checkPotentialConflicts(slot1.assigned, slot2.turnoId, slot1.date, currentEscala);
     const conflitosParaFunc2 = checkPotentialConflicts(slot2.assigned, slot1.turnoId, slot2.date, currentEscala);
     const todosConflitos = [...new Set([...conflitosParaFunc1, ...conflitosParaFunc2])];
@@ -888,7 +1061,6 @@ async function handleSwapShiftClick(slot1Id, slot2Id) {
         return;
     }
     
-    // Atualiza o estado
     const { turnos } = store.getState();
     const turno1 = turnos.find(t => t.id === slot1.turnoId);
     const turno2 = turnos.find(t => t.id === slot2.turnoId);
@@ -901,12 +1073,8 @@ async function handleSwapShiftClick(slot1Id, slot2Id) {
     slot1.assigned = func2Id;
     slot2.assigned = func1Id;
 
-    // Atualiza a UI
-    lastEditedEmployeeId = func1Id;
     renderEscalaTable(currentEscala);
-    runAllValidations();
-    setTimeout(() => { 
-        lastEditedEmployeeId = func2Id; 
-        renderResumoDetalhado(currentEscala); 
-    }, 1);
+    runSurgicalValidation([func1Id, func2Id]);
+    updateAllIndicators();
+    renderResumoDetalhado(currentEscala, [func1Id, func2Id]);
 }

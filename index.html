@@ -879,23 +879,26 @@
         </section>
 
         <aside id="editor-toolbox" class="hidden">
+            <div class="toolbox-title-bar" id="toolbox-drag-handle">
+                <span class="drag-icon">⠿</span>
+                <h3 class="toolbox-main-title">Caixa de Ferramentas</h3>
+                <button id="toggle-toolbox-size-btn" class="toolbox-action-btn" title="Minimizar">—</button>
+            </div>
             <div class="toolbox-mode-selector">
+                <button id="show-shortcuts-btn" class="toolbox-action-btn" title="Dicas e Atalhos">🖱️</button>
                 <label class="toolbox-mode-label">Editar com:</label>
                 <div class="toolbox-mode-buttons">
                     <button class="toolbox-mode-btn active" data-mode="employee">🎨 Funcionário</button>
                     <button class="toolbox-mode-btn" data-mode="eraser">🗑️ Apagar</button>
-                    <button class="toolbox-mode-btn" data-mode="settings">⚙️ Regras</button>
+                    <button class="toolbox-mode-btn" data-mode="conflicts">🚨 Avisos</button>
+                    <button class="toolbox-mode-btn" data-mode="settings">⚙️</button>
                 </div>
             </div>
-            <div class="toolbox-header">
-                <h3 class="toolbox-title">Caixa de Ferramentas</h3>
-                <p class="toolbox-subtitle">Selecione uma célula para editar</p>
+            <div class="toolbox-content-header">
+                <h3 id="toolbox-dynamic-title" class="toolbox-title"></h3>
+                <p id="toolbox-dynamic-subtitle" class="toolbox-subtitle"></p>
             </div>
             <div class="toolbox-content">
-                <div class="focused-employee-view">
-                    </div>
-                <div class="employee-progress-indicator">
-                    </div>
             </div>
             <div id="conflict-panel-container" class="hidden">
                 <h4>🚨 Conflitos e Avisos</h4>

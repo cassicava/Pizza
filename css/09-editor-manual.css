@@ -4,6 +4,7 @@
 
 #editor-toolbox {
     position: fixed;
+    /* ALTERADO: Posição padrão agora é no canto inferior direito via bottom/right */
     bottom: 24px;
     right: 24px;
     width: 600px;
@@ -12,13 +13,15 @@
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 80px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* ALTERADO: Animação de altura adicionada para o efeito de minimizar/maximizar */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s ease-in-out;
     background: rgba(255, 255, 255, 0.5);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid transparent;
     background-clip: padding-box;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    overflow: hidden; /* Garante que o conteúdo não vaze durante a animação */
 }
 
 #editor-toolbox::before {
@@ -48,14 +51,69 @@ html[data-theme="dark"] #editor-toolbox::before {
     pointer-events: none;
 }
 
-/* --- Seletor de Modo --- */
+/* NOVO: Estilo para o estado "arrastando" */
+#editor-toolbox.dragging {
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    cursor: grabbing;
+}
+
+/* NOVO: Estilos para o estado minimizado */
+#editor-toolbox.minimized {
+    height: 48px; /* Altura apenas da barra de título */
+    max-height: 48px;
+    overflow: hidden;
+}
+
+#editor-toolbox.minimized .toolbox-mode-selector,
+#editor-toolbox.minimized .toolbox-content-header,
+#editor-toolbox.minimized .toolbox-content,
+#editor-toolbox.minimized #conflict-panel-container {
+    display: none;
+}
+
+
+/* --- Barra de Título e Seletor de Modo --- */
+
+/* NOVO: Container da barra de título (primeira linha) */
+.toolbox-title-bar {
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 16px;
+    height: 48px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+    cursor: grab;
+    user-select: none;
+}
+.toolbox-title-bar:active {
+    cursor: grabbing;
+}
+
+
+/* NOVO: Ícone de arraste (pontinhos) */
+.drag-icon {
+    font-size: 1.5rem;
+    color: var(--muted);
+    padding-right: 12px;
+    line-height: 1;
+}
+
+/* NOVO: Título principal estático na barra */
+.toolbox-main-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--fg);
+    margin-right: auto; /* Empurra o botão de minimizar para a direita */
+}
+
+
 .toolbox-mode-selector {
     padding: 12px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
+    flex-shrink: 0;
 }
 
 .toolbox-mode-label {
@@ -71,6 +129,7 @@ html[data-theme="dark"] #editor-toolbox::before {
     border: 1px solid var(--border);
     border-radius: 999px;
     padding: 4px;
+    margin-left: auto; /* Empurra os botões para a direita */
 }
 
 .toolbox-mode-btn {
@@ -94,8 +153,8 @@ html[data-theme="dark"] #editor-toolbox::before {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
-/* --- Cabeçalho e Tipografia --- */
-.toolbox-header {
+/* --- Cabeçalho de Conteúdo (título dinâmico) --- */
+.toolbox-content-header {
     padding: 20px 24px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     position: relative;
@@ -119,20 +178,28 @@ html[data-theme="dark"] #editor-toolbox::before {
     margin: 0;
 }
 
-.toolbox-back-btn {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    background: none;
+/* Botão de minimizar/maximizar e botão de dicas */
+.toolbox-action-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 50%;
     border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
+    background-color: rgba(0,0,0,0.05);
     color: var(--muted);
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
 }
-
-.toolbox-back-btn:hover {
+.toolbox-action-btn:hover {
+    background-color: rgba(0,0,0,0.1);
     color: var(--fg);
 }
+
 
 /* --- Conteúdo Principal --- */
 .toolbox-content {
@@ -328,7 +395,6 @@ html[data-theme="dark"] .employee-card:hover {
     box-shadow: inset 0 0 0 2px var(--brand), 0 0 12px var(--brand);
 }
 
-/* NOVO: Estilo para a célula focada pelo teclado */
 .escala-final-table .editable-cell.cell-focused {
     box-shadow: inset 0 0 0 3px var(--brand);
 }
@@ -519,53 +585,65 @@ html[data-theme="dark"] .employee-card:hover {
     opacity: 1;
 }
 
-
-/* --- NOVO: Estilos do Painel de Conflitos --- */
-#conflict-panel-container {
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 12px 16px;
-    flex-shrink: 0; /* Impede que o painel seja esmagado */
-}
-#conflict-panel-container.hidden {
-    display: none;
-}
-#conflict-panel-container h4 {
-    margin: 0 0 8px 0;
-    font-size: 1rem;
-    font-weight: 600;
-}
-#conflict-list {
-    max-height: 150px;
-    overflow-y: auto;
+/* --- Aba de Conflitos --- */
+.conflicts-view-container {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 12px;
 }
-.conflict-item {
+
+.conflict-group-employee {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--fg);
     padding: 8px;
-    background-color: rgba(239, 68, 68, 0.1);
-    border: 1px solid var(--danger);
-    border-radius: 8px;
-    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.conflict-list-item {
+    font-size: 0.9rem;
+    padding: 8px 12px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    border-radius: 8px;
+    transition: background-color 0.2s ease-out;
+    background-color: rgba(239, 68, 68, 0.05);
+    border-left: 3px solid var(--danger);
 }
-.conflict-item:hover {
-    background-color: rgba(239, 68, 68, 0.2);
+.conflict-list-item:hover {
+    background-color: rgba(239, 68, 68, 0.1);
 }
-.conflict-item strong {
-    color: var(--danger-2);
-}
-html[data-theme="dark"] .conflict-item strong {
-    color: #fca5a5;
+
+.conflict-list-item strong {
+    color: var(--danger);
 }
 
 
-/* --- NOVO: Estilos para Arrastar e Soltar (Drag and Drop) --- */
+/* --- Estilos para Arrastar e Soltar (Drag and Drop) --- */
 .editable-cell.dragging {
     opacity: 0.4;
     transform: scale(0.9);
 }
 .editable-cell.drop-target {
     box-shadow: inset 0 0 0 3px var(--brand);
+}
+
+/* Badge de contagem na aba de conflitos */
+.toolbox-mode-btn {
+    position: relative;
+}
+.conflict-count-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: var(--danger);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 999px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(40%, -40%);
 }
