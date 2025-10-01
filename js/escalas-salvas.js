@@ -116,12 +116,16 @@ function verEscalaSalva(id) {
         $("#escalaSalvaResumo").innerHTML = `<strong>Resumo:</strong> ${turnosVagos > 0 ? `<span style="color:red;">${turnosVagos} turnos vagos.</span>` : 'Todos os turnos foram preenchidos.'}`;
         $("#escalaSalvaViewTitle").textContent = escala.nome || 'Visualização da Escala';
 
-        $('#lista-escalas-container').classList.add('hidden');
+        // CORREÇÃO: Usando o ID correto do contêiner da lista
+        $('#listaEscalasContainer').classList.add('hidden');
         $('#escalaSalvaView').classList.remove('hidden');
 
         const btnExport = $("#btnExportarPDF");
-        if (btnExport) {
-            btnExport.addEventListener('click', () => showExportModal(escala));
+        // Remove o listener antigo para evitar duplicação
+        const newBtnExport = btnExport.cloneNode(true);
+        btnExport.parentNode.replaceChild(newBtnExport, btnExport);
+        if (newBtnExport) {
+            newBtnExport.addEventListener('click', () => showExportModal(escala));
         }
     }
 }
@@ -149,10 +153,10 @@ function handleEscalasSalvasContainerClick(event) {
 }
 
 function initEscalasSalvasPage() {
-    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
+    // CORREÇÃO: Usando o ID correto do contêiner da lista
     $("#btnVoltarParaLista").addEventListener('click', () => {
         $('#escalaSalvaView').classList.add('hidden');
-        $('#lista-escalas-container').classList.remove('hidden');
+        $('#listaEscalasContainer').classList.remove('hidden');
     });
 
     const filtroCargoSelect = $("#filtroEscalasCargo");

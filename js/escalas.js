@@ -93,22 +93,29 @@ function updateHolidaySectionState() {
     const fim = $("#escFim").value;
 
     if (inicio && fim && fim >= inicio) {
-        feriadosFieldset.disabled = false;
-        feriadoDataInput.min = inicio;
-        feriadoDataInput.max = fim;
+        if (feriadosFieldset) feriadosFieldset.disabled = false;
+        if (feriadoDataInput) {
+            feriadoDataInput.min = inicio;
+            feriadoDataInput.max = fim;
+        }
     } else {
-        feriadosFieldset.disabled = true;
-        feriadoDataInput.min = '';
-        feriadoDataInput.max = '';
+        if (feriadosFieldset) feriadosFieldset.disabled = true;
+        if (feriadoDataInput) {
+            feriadoDataInput.min = '';
+            feriadoDataInput.max = '';
+        }
     }
 }
 
 function resetHolidays() {
     geradorState.feriados = [];
     renderFeriadosTags();
-    $('#feriado-data-input').value = '';
-    $('#feriado-nome-input').value = '';
-    $('#feriado-horas-desconto').value = '';
+    const feriadoDataInput = $('#feriado-data-input');
+    if (feriadoDataInput) feriadoDataInput.value = '';
+    const feriadoNomeInput = $('#feriado-nome-input');
+    if (feriadoNomeInput) feriadoNomeInput.value = '';
+    const feriadoHorasInput = $('#feriado-horas-desconto');
+    if (feriadoHorasInput) feriadoHorasInput.value = '';
     setDescontarHorasToggleState('nao');
     saveGeradorState();
 }
@@ -117,103 +124,151 @@ function setDescontarHorasToggleState(value) {
     const feriadoDescontarToggle = $('#feriado-descontar-toggle');
     const feriadoHorasDescontoContainer = $('#feriado-horas-desconto-container');
     
-    $$('.toggle-btn', feriadoDescontarToggle).forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.value === value);
-    });
+    if (feriadoDescontarToggle) {
+        $$('.toggle-btn', feriadoDescontarToggle).forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === value);
+        });
+    }
     
-    const showHorasInput = value === 'sim';
-    feriadoHorasDescontoContainer.style.display = showHorasInput ? 'flex' : 'none';
+    if (feriadoHorasDescontoContainer) {
+        feriadoHorasDescontoContainer.style.display = (value === 'sim') ? 'flex' : 'none';
+    }
 }
 
 function setTrabalhaToggleState(value) {
     const feriadoTrabalhaToggle = $('#feriado-trabalha-toggle');
-     $$('.toggle-btn', feriadoTrabalhaToggle).forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.value === value);
-    });
+    if (feriadoTrabalhaToggle) {
+        $$('.toggle-btn', feriadoTrabalhaToggle).forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === value);
+        });
+    }
 }
 
 
 // Funções de inicialização e eventos
 function setupEscalas() {
+    // CORREÇÃO: Adicionadas verificações (if (elemento)) antes de cada addEventListener
+    // para evitar o erro "Cannot read properties of null".
+
     const escCargoInput = $("#escCargo");
-    const escIniInput = $("#escIni");
-    const escFimInput = $("#escFim");
-
-    escIniInput.addEventListener('click', () => escIniInput.showPicker());
-    escFimInput.addEventListener('click', () => escFimInput.showPicker());
-    $('#feriado-data-input').addEventListener('click', () => $('#feriado-data-input').showPicker());
-
-    $("#btn-goto-passo2").addEventListener('click', () => handleGoToPasso2());
-    $("#btn-back-passo1").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo1-selecao', 'backward'));
-    $("#btn-goto-passo3").addEventListener('click', () => handleGoToPasso3());
-    $("#btn-back-passo2").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo2-cobertura', 'backward'));
-    $("#btn-back-passo3").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo3-excecoes', 'backward'));
-    
-    $("#btnGerarEscala").addEventListener('click', async () => await gerarEscala());
-
-    $("#btnVoltarPasso3").addEventListener('click', () => {
-        $("#escalaView").classList.add('hidden');
-        $("#gerador-container").classList.remove('hidden');
-        navigateWizardWithAnimation('#gerador-container', 'passo3-excecoes', 'backward');
-        const toolbox = $("#editor-toolbox");
-        if(toolbox) toolbox.classList.add("hidden");
-    });
-
-    escCargoInput.addEventListener('change', (e) => {
-        escCargoInput.classList.remove('invalid');
-        geradorState.cargoId = e.target.value;
-        if(e.target.value) escIniInput.showPicker();
-        saveGeradorState();
-    });
-
-    escIniInput.addEventListener('change', () => {
-        escIniInput.classList.remove('invalid');
-        geradorState.inicio = escIniInput.value;
-        if (escIniInput.value) {
-            escFimInput.disabled = false;
-            escFimInput.min = escIniInput.value;
-            escFimInput.showPicker();
-        } else {
-            escFimInput.disabled = true;
-            escFimInput.value = '';
-            geradorState.fim = null;
-        }
-        if (escFimInput.value && escFimInput.value < escIniInput.value) {
-            escFimInput.value = '';
-            geradorState.fim = null;
-        }
-        updateEscalaResumoDias();
-        resetHolidays();
-        updateHolidaySectionState();
-        saveGeradorState();
-    });
-
-    escFimInput.addEventListener('change', () => {
-        escFimInput.classList.remove('invalid');
-        geradorState.fim = escFimInput.value;
-        updateEscalaResumoDias();
-        resetHolidays();
-        updateHolidaySectionState();
-        saveGeradorState();
-    });
-
-    $('#btn-add-feriado').addEventListener('click', () => addFeriado());
-
-    $$('#feriado-trabalha-toggle .toggle-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            setTrabalhaToggleState(button.dataset.value);
+    if (escCargoInput) {
+        escCargoInput.addEventListener('change', (e) => {
+            escCargoInput.classList.remove('invalid');
+            geradorState.cargoId = e.target.value;
+            if (e.target.value) {
+                try { $("#escIni").showPicker(); } catch (err) { console.warn("showPicker() não suportado."); }
+            }
+            saveGeradorState();
         });
-    });
+    }
+
+    const escIniInput = $("#escIni");
+    if (escIniInput) {
+        escIniInput.addEventListener('change', () => {
+            const escFimInput = $("#escFim"); // Re-query para garantir
+            escIniInput.classList.remove('invalid');
+            const inicioValue = escIniInput.value;
+            geradorState.inicio = inicioValue;
+        
+            if (inicioValue) {
+                if (escFimInput) {
+                    escFimInput.disabled = false;
+                    escFimInput.min = inicioValue;
+                }
+            } else {
+                if (escFimInput) {
+                    escFimInput.disabled = true;
+                    escFimInput.value = '';
+                }
+                geradorState.fim = null;
+            }
+        
+            if (escFimInput && escFimInput.value && escFimInput.value < inicioValue) {
+                escFimInput.value = '';
+                geradorState.fim = null;
+            }
+            
+            updateEscalaResumoDias();
+            resetHolidays();
+            updateHolidaySectionState();
+            saveGeradorState();
+        });
+    }
+
+    const escFimInput = $("#escFim");
+    if (escFimInput) {
+        escFimInput.addEventListener('change', () => {
+            escFimInput.classList.remove('invalid');
+            geradorState.fim = escFimInput.value;
+            updateEscalaResumoDias();
+            resetHolidays();
+            updateHolidaySectionState();
+            saveGeradorState();
+        });
+    }
+
+    const feriadoDataInput = $('#feriado-data-input');
+    if (feriadoDataInput) {
+        feriadoDataInput.addEventListener('click', () => {
+            try { feriadoDataInput.showPicker(); } catch(e) { console.warn("showPicker() não suportado."); }
+        });
+    }
+
+    const btnGotoPasso2 = $("#btn-goto-passo2");
+    if (btnGotoPasso2) btnGotoPasso2.addEventListener('click', () => handleGoToPasso2());
+
+    const btnBackPasso1 = $("#btn-back-passo1");
+    if (btnBackPasso1) btnBackPasso1.addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo1-selecao', 'backward'));
+    
+    const btnGotoPasso3 = $("#btn-goto-passo3");
+    if (btnGotoPasso3) btnGotoPasso3.addEventListener('click', () => handleGoToPasso3());
+    
+    const btnBackPasso2 = $("#btn-back-passo2");
+    if (btnBackPasso2) btnBackPasso2.addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo2-cobertura', 'backward'));
+
+    const btnBackPasso3 = $("#btn-back-passo3");
+    if (btnBackPasso3) btnBackPasso3.addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo3-excecoes', 'backward'));
+    
+    const btnGerarEscala = $("#btnGerarEscala");
+    if (btnGerarEscala) btnGerarEscala.addEventListener('click', async () => await gerarEscala());
+
+    const btnVoltarPasso3 = $("#btnVoltarPasso3");
+    if(btnVoltarPasso3) {
+        btnVoltarPasso3.addEventListener('click', () => {
+            $("#escalaView").classList.add('hidden');
+            $("#gerador-container").classList.remove('hidden');
+            navigateWizardWithAnimation('#gerador-container', 'passo3-excecoes', 'backward');
+            const toolbox = $("#editor-toolbox");
+            if(toolbox) toolbox.classList.add("hidden");
+        });
+    }
+    
+    const btnAddFeriado = $('#btn-add-feriado');
+    if (btnAddFeriado) btnAddFeriado.addEventListener('click', () => addFeriado());
+
+    const feriadoTrabalhaToggle = $('#feriado-trabalha-toggle');
+    if (feriadoTrabalhaToggle) {
+        $$('.toggle-btn', feriadoTrabalhaToggle).forEach(button => {
+            button.addEventListener('click', () => {
+                setTrabalhaToggleState(button.dataset.value);
+            });
+        });
+    }
 
     const feriadoDescontarToggle = $('#feriado-descontar-toggle');
-    $$('.toggle-btn', feriadoDescontarToggle).forEach(button => {
-        button.addEventListener('click', () => {
-            setDescontarHorasToggleState(button.dataset.value);
+    if (feriadoDescontarToggle) {
+        $$('.toggle-btn', feriadoDescontarToggle).forEach(button => {
+            button.addEventListener('click', () => {
+                setDescontarHorasToggleState(button.dataset.value);
+            });
         });
-    });
+    }
 
-    $("#btnSalvarEscala").addEventListener('click', () => salvarEscalaAtual());
-    $("#btnExcluirEscala").addEventListener('click', () => resetGeradorEscala());
+    const btnSalvarEscala = $("#btnSalvarEscala");
+    if (btnSalvarEscala) btnSalvarEscala.addEventListener('click', () => salvarEscalaAtual());
+
+    const btnExcluirEscala = $("#btnExcluirEscala");
+    if (btnExcluirEscala) btnExcluirEscala.addEventListener('click', () => resetGeradorEscala());
 
     renderEscCargoSelect();
     loadAndApplyGeradorState();

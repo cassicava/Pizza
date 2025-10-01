@@ -217,9 +217,9 @@ function handleMontarExcecaoToggle(event, funcId) {
 
     $(`#montar-excecoes-funcionarios-container [data-dates-container="${tipo}"][data-func-id="${funcId}"]`).classList.toggle('hidden', value === 'nao');
     if (value === 'nao') {
-        const iniInput = $(`#montar-excecoes-funcionarios-container [data-date-ini="${tipo}"][data-func-id="${func.id}"]`);
+        const iniInput = $(`#montar-excecoes-funcionarios-container [data-date-ini="${tipo}"][data-func-id="${funcId}"]`);
         iniInput.value = '';
-        $(`#montar-excecoes-funcionarios-container [data-date-fim="${tipo}"][data-func-id="${func.id}"]`).value = '';
+        $(`#montar-excecoes-funcionarios-container [data-date-fim="${tipo}"][data-func-id="${funcId}"]`).value = '';
         iniInput.dispatchEvent(new Event('change'));
     }
 }
@@ -285,21 +285,36 @@ function iniciarEdicaoManual() {
         slots: [], historico,
         excecoes: JSON.parse(JSON.stringify(excecoes)),
         feriados: [...feriados], cobertura: {},
-        isManual: true // Flag para identificar a escala como manual
+        isManual: true
     };
     
-    $('#page-montar-escala').classList.remove('active');
-    $('#montador-container').classList.add('hidden');
-    $('#page-gerar-escala').classList.add('active');
-    $('#gerador-escala-titulo').textContent = '✍️ Editor Manual de Escala';
+    // CORREÇÃO: Lógica de transição de tela
+    const paginaAtual = $('#page-montar-escala');
+    const paginaDestino = $('#page-gerar-escala');
+
+    // Esconde a página de setup manual
+    paginaAtual.classList.remove('active');
+    paginaAtual.style.display = 'none';
+
+    // Mostra a página que contém o editor
+    paginaDestino.style.display = 'flex';
+    requestAnimationFrame(() => {
+        paginaDestino.classList.add('active');
+    });
+
+    // Esconde o wizard da geração automática e mostra a visualização da escala
     $('#gerador-container').classList.add('hidden');
     $('#escalaView').classList.remove('hidden');
 
+    // Atualiza o título e a aba da sidebar
+    $('#page-title').textContent = PAGE_TITLES['montar-escala'];
     $$(".tab-btn").forEach(b => b.classList.remove("active"));
     $(`.tab-btn[data-page="montar-escala"]`).classList.add('active');
-
+    
+    // Renderiza a tabela de edição
     renderEscalaTable(currentEscala);
 
+    // Reconfigura o botão de "Voltar"
     const btnVoltar = $("#btnVoltarPasso3");
     btnVoltar.textContent = "< Descartar e Voltar";
     
