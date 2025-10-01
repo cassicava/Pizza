@@ -113,7 +113,7 @@ function renderMontarFeriadosTags() {
         return `<span class="tag">${new Date(f.date+'T12:00:00').toLocaleDateString()} - ${f.nome}${trabalhaText}${descontoText}<button data-remove-feriado-montar="${f.date}">x</button></span>`
     }).join('');
     $$('[data-remove-feriado-montar]').forEach(btn => {
-        btn.onclick = () => removeMontarFeriado(btn.dataset.removeFeriadoMontar);
+        btn.addEventListener('click', () => removeMontarFeriado(btn.dataset.removeFeriadoMontar));
     });
 }
 
@@ -182,10 +182,10 @@ function renderMontarExcecoes(cargoId) {
         container.appendChild(div);
         
         $$(`#montar-excecoes-funcionarios-container [data-toggle-container][data-func-id="${func.id}"] .toggle-btn`).forEach(btn => {
-            btn.onclick = (e) => handleMontarExcecaoToggle(e, func.id);
+            btn.addEventListener('click', (e) => handleMontarExcecaoToggle(e, func.id));
         });
         $$(`#montar-excecoes-funcionarios-container [data-date-ini][data-func-id="${func.id}"], #montar-excecoes-funcionarios-container [data-date-fim][data-func-id="${func.id}"]`).forEach(input => {
-            input.onchange = (e) => {
+            input.addEventListener('change', (e) => {
                 updateMontarExcecaoDates(e, input.dataset.dateIni || input.dataset.dateFim, func.id);
                 
                 const tipo = input.dataset.dateIni;
@@ -201,9 +201,9 @@ function renderMontarExcecoes(cargoId) {
                         fimInput.showPicker();
                     }
                 }
-            };
+            });
         });
-        div.querySelector(`[data-add-folga="${func.id}"]`).onclick = () => addMontarFolga(func.id);
+        div.querySelector(`[data-add-folga="${func.id}"]`).addEventListener('click', () => addMontarFolga(func.id));
     });
 }
 
@@ -262,7 +262,7 @@ function renderMontarFolgas(funcId) {
     }).join('');
 
     $$(`#montar-excecoes-funcionarios-container [data-remove-montar-folga="${funcId}"]`).forEach(btn => {
-        btn.onclick = () => removeMontarFolga(funcId, btn.dataset.date);
+        btn.addEventListener('click', () => removeMontarFolga(funcId, btn.dataset.date));
     });
 }
 
@@ -303,7 +303,7 @@ function iniciarEdicaoManual() {
 
     const btnVoltar = $("#btnVoltarPasso3");
     btnVoltar.textContent = "< Descartar e Voltar";
-    btnVoltar.onclick = () => go('montar-escala');
+    btnVoltar.addEventListener('click', () => go('montar-escala'));
 }
 
 function initMontarEscalaPage() {
@@ -312,11 +312,11 @@ function initMontarEscalaPage() {
     const iniInput = $("#montarIni");
     const fimInput = $("#montarFim");
     
-    // ALTERAÇÃO: Adiciona o .onclick para abrir o calendário
-    if (iniInput) iniInput.onclick = () => iniInput.showPicker();
-    if (fimInput) fimInput.onclick = () => fimInput.showPicker();
+    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
+    if (iniInput) iniInput.addEventListener('click', () => iniInput.showPicker());
+    if (fimInput) fimInput.addEventListener('click', () => fimInput.showPicker());
 
-    iniInput.onchange = (e) => {
+    iniInput.addEventListener('change', (e) => {
         if (e.target.value) {
             fimInput.disabled = false;
             fimInput.min = e.target.value;
@@ -327,35 +327,35 @@ function initMontarEscalaPage() {
         }
         updateMontarResumoDias();
         $('#montar-feriados-fieldset').disabled = !e.target.value;
-    };
-    fimInput.onchange = updateMontarResumoDias;
+    });
+    fimInput.addEventListener('change', updateMontarResumoDias);
 
-    $("#btn-montar-goto-passo2").onclick = handleMontarGoToPasso2;
-    $("#btn-add-montar-feriado").onclick = addMontarFeriado;
+    $("#btn-montar-goto-passo2").addEventListener('click', handleMontarGoToPasso2);
+    $("#btn-add-montar-feriado").addEventListener('click', addMontarFeriado);
     
     $$('#montar-feriado-trabalha-toggle .toggle-btn').forEach(button => {
-        button.onclick = () => {
+        button.addEventListener('click', () => {
             $$('#montar-feriado-trabalha-toggle .toggle-btn').forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-        };
+        });
     });
     const trabalhaToggleDefault = $('#montar-feriado-trabalha-toggle .toggle-btn[data-value="sim"]');
     if(trabalhaToggleDefault) trabalhaToggleDefault.click();
 
     const descontarToggle = $('#montar-feriado-descontar-toggle');
     $$('.toggle-btn', descontarToggle).forEach(button => {
-        button.onclick = () => {
+        button.addEventListener('click', () => {
              $$('.toggle-btn', descontarToggle).forEach(btn => btn.classList.remove('active'));
              button.classList.add('active');
              $('#montar-feriado-horas-desconto-container').style.display = button.dataset.value === 'sim' ? 'flex' : 'none';
-        }
+        });
     });
      const descontarToggleDefault = $('#montar-feriado-descontar-toggle .toggle-btn[data-value="nao"]');
      if(descontarToggleDefault) descontarToggleDefault.click();
 
 
-    $("#btn-montar-back-passo1").onclick = () => navigateWizardWithAnimation('#montador-container', 'montar-passo1', 'backward');
-    $("#btnIniciarEdicaoManual").onclick = iniciarEdicaoManual;
+    $("#btn-montar-back-passo1").addEventListener('click', () => navigateWizardWithAnimation('#montador-container', 'montar-passo1', 'backward'));
+    $("#btnIniciarEdicaoManual").addEventListener('click', iniciarEdicaoManual);
     
     $$("#montador-container .wizard-step").forEach(step => step.classList.remove('active'));
     $(`#montar-passo1`).classList.add('active');

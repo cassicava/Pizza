@@ -569,16 +569,34 @@ html[data-theme="dark"] .tab-btn:hover {
     transition: all 0.2s ease-in-out;
 }
 
-.turno-disponibilidade-dias .dia-selecionavel.selecionado-dia,
+.turno-disponibilidade-dias .dia-selecionavel.dia-disponivel,
 .dia-label:has(.dia-checkbox:checked) {
     border-color: var(--brand);
     background-color: transparent !important;
     border-width: 2px;
 }
 
-.turno-disponibilidade-dias .dia-selecionavel.selecionado-dia,
+.turno-disponibilidade-dias .dia-selecionavel.dia-disponivel .dia-abrev,
 .dia-label:has(.dia-checkbox:checked) .dia-abrev {
     color: var(--brand);
+    font-weight: bold;
+}
+
+.turno-disponibilidade-dias .dia-selecionavel.dia-preferencial {
+    border-color: var(--brand-2);
+    background-color: var(--brand-2);
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 4px,
+        rgba(0, 0, 0, 0.2) 4px,
+        rgba(0, 0, 0, 0.2) 8px
+    );
+    border-width: 2px;
+}
+
+.turno-disponibilidade-dias .dia-selecionavel.dia-preferencial .dia-abrev {
+    color: #fff !important;
     font-weight: bold;
 }
 
@@ -604,6 +622,28 @@ html[data-theme="dark"] .tab-btn:hover {
     pointer-events: none;
     cursor: not-allowed;
 }
+
+.badge-explanation.dia-disponivel {
+    border: 2px solid var(--brand);
+    color: var(--brand);
+    font-weight: bold;
+    background-color: transparent;
+}
+
+.badge-explanation.dia-preferencial {
+    border: 2px solid var(--brand-2);
+    background-color: var(--brand-2);
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 4px,
+        rgba(0, 0, 0, 0.2) 4px,
+        rgba(0, 0, 0, 0.2) 8px
+    );
+    color: white;
+    font-weight: bold;
+}
+
 
 .turno-placeholder {
     border: 2px dashed var(--border);
@@ -888,7 +928,6 @@ html[data-theme="dark"] .tab-btn:hover {
     overflow: hidden;
 }
 
-/* ALTERAÇÃO: Efeito "Glint" (faísca) adicionado */
 .explanation-box::before {
     content: '';
     position: absolute;
@@ -896,15 +935,13 @@ html[data-theme="dark"] .tab-btn:hover {
     z-index: -2;
     margin: -1px;
     border-radius: inherit;
-    /* Camada 1: Faísca (glint) */
     background: 
         linear-gradient(
             110deg, 
             transparent 40%, 
-            rgba(255,255,255,0.5), /* Faísca mais visível */
+            rgba(255,255,255,0.5), 
             transparent 60%
         ),
-    /* Camada 2: Brilho de fundo (glow) */
         linear-gradient(to right, var(--border), var(--muted), var(--border));
     
     background-size: 250% 100%, 200% 200%;
@@ -912,9 +949,9 @@ html[data-theme="dark"] .tab-btn:hover {
     background-position: -150% 0, 0 0;
 
     animation: 
-        animated-glint 6s linear infinite, /* Animação da faísca */
-        animated-border-glow 5s ease-in-out infinite; /* Animação do brilho */
-    animation-delay: 0s, 1s; /* Delay para não começarem juntas */
+        animated-glint 6s linear infinite, 
+        animated-border-glow 5s ease-in-out infinite; 
+    animation-delay: 0s, 1s; 
 }
 
 .explanation-box::after {

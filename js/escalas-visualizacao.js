@@ -36,9 +36,21 @@ function renderEscalaLegend(escala, container) {
 
 function renderGenericEscalaTable(escala, container, options = {}) {
     const { isInteractive = false } = options;
-    const { funcionarios, turnos } = store.getState();
+    const { funcionarios, turnos, cargos } = store.getState();
 
-    const cobertura = escala.cobertura || {};
+    // CORREÇÃO: Popula a cobertura com todos os turnos do cargo se for manual e vazia.
+    let cobertura = escala.cobertura || {};
+    if (escala.isManual) {
+        const cargo = cargos.find(c => c.id === escala.cargoId);
+        if (cargo) {
+            cargo.turnosIds.forEach(turnoId => {
+                if (!cobertura[turnoId]) {
+                    cobertura[turnoId] = 0; // Define como 0 para que apareça no rodapé
+                }
+            });
+        }
+    }
+
 
     const allFuncsInvolved = new Set();
     escala.slots.forEach(s => { if(s.assigned) allFuncsInvolved.add(s.assigned) });
@@ -49,7 +61,7 @@ function renderGenericEscalaTable(escala, container, options = {}) {
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
-    const turnosDoCargo = turnos.filter(t => cobertura[t.id]).sort((a, b) => a.inicio.localeCompare(b.inicio));
+    const turnosDoCargo = turnos.filter(t => cobertura.hasOwnProperty(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio));
 
     let tableHTML = `<table class="escala-final-table"><thead><tr><th>Funcionário</th>`;
     dateRange.forEach(date => {
@@ -197,6 +209,11 @@ function renderEscalaTable(escala) {
     $("#escalaViewTitle").textContent = escala.nome;
     
     renderResumoDetalhado(escala);
+
+    // CORREÇÃO CENTRALIZADA: Inicializa o editor sempre que a tabela interativa é renderizada.
+    if (typeof initEditor === 'function') {
+        initEditor();
+    }
 }
 
 async function salvarEscalaAtual(){

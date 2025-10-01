@@ -90,7 +90,13 @@ async function gerarEscala() {
 
                 const candidatos = funcs.map(f => {
                     if (excecoesMap[f.id].has(slot.date)) return null;
-                    if (!f.disponibilidade[turno.id]?.includes(diaSemanaId)) return null;
+
+                    // ALTERAÇÃO: Lógica de disponibilidade agora usa as preferências
+                    const preferencia = f.disponibilidade?.[turno.id]?.[diaSemanaId];
+                    if (preferencia !== 'disponivel' && preferencia !== 'preferencial') {
+                        return null;
+                    }
+                    
                     if (slots.some(s => s.assigned === f.id && s.date === slot.date)) return null;
                     
                     const diasConsecutivosAnteriores = calculateConsecutiveWorkDays(f.id, slots, addDays(slot.date, -1), turnosMap);
@@ -120,12 +126,17 @@ async function gerarEscala() {
                         if (monthlyWorkCounts[f.id][month].workedSundays >= maxSundaysToWork) return null;
                     }
 
-                    // --- SCORING APRIMORADO ---
+                    // --- SCORING APRIMORADO COM PREFERÊNCIAS ---
                     let score = (historico[f.id].horasTrabalhadas / 60) / (maxHoras || 1) * 100;
                     score += (diasConsecutivosAnteriores / maxDiasConsecutivos) * 25;
                     if (d.getUTCDay() === 6) score += monthlyWorkCounts[f.id][month].workedSaturdays * 20;
                     if (d.getUTCDay() === 0) score += monthlyWorkCounts[f.id][month].workedSundays * 20;
                     if (otimizarFolgas && diasConsecutivosAnteriores > 0) score += 15;
+
+                    // ALTERAÇÃO: Adiciona um grande bônus (pontuação menor) para quem tem preferência
+                    if (preferencia === 'preferencial') {
+                        score -= 50;
+                    }
 
                     return { func: f, score };
                 }).filter(Boolean).sort((a, b) => {
@@ -172,9 +183,6 @@ async function gerarEscala() {
         await new Promise(res => setTimeout(res, 20));
         renderEscalaTable(currentEscala);
         
-        if (typeof initEditor === 'function') {
-            initEditor();
-        }
 
     } catch (error) {
         console.error("Ocorreu um erro ao gerar a escala:", error);

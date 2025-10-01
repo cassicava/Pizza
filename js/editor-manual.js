@@ -39,7 +39,17 @@ function saveToolboxState() {
 }
 
 function loadToolboxState() {
-    const savedState = JSON.parse(sessionStorage.getItem('ge_toolbox_state'));
+    let savedState = null;
+    try {
+        const savedStateJSON = sessionStorage.getItem('ge_toolbox_state');
+        if (savedStateJSON) {
+            savedState = JSON.parse(savedStateJSON);
+        }
+    } catch (e) {
+        console.error("Erro ao carregar o estado da caixa de ferramentas:", e);
+        sessionStorage.removeItem('ge_toolbox_state');
+    }
+
     const toolbox = $("#editor-toolbox");
     if (!toolbox) return;
 
@@ -57,7 +67,7 @@ function loadToolboxState() {
         btn.title = 'Minimizar';
     }
 
-    if (savedState?.pos?.top !== null && savedState?.pos?.left !== null) {
+    if (savedState && savedState.pos && savedState.pos.top !== null && savedState.pos.left !== null) {
         toolboxState.pos = savedState.pos;
         toolbox.style.right = 'auto';
         toolbox.style.bottom = 'auto';
@@ -222,11 +232,11 @@ function initEditor() {
     
     loadToolboxState();
 
-    $$(".toolbox-mode-btn").forEach(btn => btn.onclick = () => setEditMode(btn.dataset.mode));
+    $$(".toolbox-mode-btn").forEach(btn => btn.addEventListener('click', () => setEditMode(btn.dataset.mode)));
     
-    $('#toolbox-drag-handle').onmousedown = dragMouseDown;
-    $('#toggle-toolbox-size-btn').onclick = toggleToolboxSize;
-    $('#show-shortcuts-btn').onclick = exibirAtalhosDeTeclado;
+    $('#toolbox-drag-handle').addEventListener('mousedown', dragMouseDown);
+    $('#toggle-toolbox-size-btn').addEventListener('click', toggleToolboxSize);
+    $('#show-shortcuts-btn').addEventListener('click', exibirAtalhosDeTeclado);
 
 
     const tableWrap = $("#escalaTabelaWrap");
@@ -417,7 +427,8 @@ function handleEmployeePaint(cell) {
         showToast("Você só pode adicionar turnos na linha do funcionário selecionado.");
         return;
     }
-    handleAddShiftClick(editorState.focusedEmployeeId, editorState.selectedShiftBrush, date);
+    // ALTERAÇÃO: Chama a nova função principal de ação
+    handlePaintAction(editorState.focusedEmployeeId, editorState.selectedShiftBrush, date);
 }
 
 function handleEraseClick(cell) {
@@ -665,6 +676,7 @@ function surgicallyUpdateCell(employeeId, date, turno, slotId) {
     cell.title = '';
     cell.dataset.slotId = slotId || '';
     cell.draggable = !!turno;
+    cell.style.backgroundImage = ''; // Limpa o efeito listrado
 
     if (turno) {
         cell.style.backgroundColor = turno.cor;
@@ -672,6 +684,73 @@ function surgicallyUpdateCell(employeeId, date, turno, slotId) {
         cell.textContent = turno.sigla;
         cell.title = turno.nome;
     }
+}
+
+// NOVA FUNÇÃO: Lógica central para adicionar, remover ou trocar turnos.
+async function handlePaintAction(employeeId, newTurnoId, date) {
+    const { turnos } = store.getState();
+    const newTurno = turnos.find(t => t.id === newTurnoId);
+    if (!newTurno) return;
+
+    const existingSlot = currentEscala.slots.find(s => s.date === date && s.assigned === employeeId);
+
+    // CASO 1: A célula está vazia, ADICIONA o turno.
+    if (!existingSlot) {
+        const conflitos = checkPotentialConflicts(employeeId, newTurnoId, date, currentEscala);
+        if (conflitos.length > 0) {
+            if (editorState.enforceRules) {
+                showToast(`Ação bloqueada: ${conflitos.join(' ')}`);
+                return;
+            } else {
+                const confirmado = await showConfirm({
+                    title: "Confirmar Ação com Conflito?",
+                    message: `Atenção: Esta alocação viola a seguinte regra: <br><strong>${conflitos.join('; ')}</strong>.<br><br> Deseja continuar e registrar esta exceção?`,
+                    confirmText: "Sim, Continuar",
+                    cancelText: "Cancelar"
+                });
+                if (!confirmado) return;
+            }
+        }
+        
+        const slotParaPreencher = { date, turnoId: newTurnoId, assigned: employeeId, id: uid() };
+        currentEscala.slots.push(slotParaPreencher);
+
+        if (!currentEscala.historico[employeeId]) currentEscala.historico[employeeId] = { horasTrabalhadas: 0 };
+        currentEscala.historico[employeeId].horasTrabalhadas += newTurno.cargaMin;
+        
+        surgicallyUpdateCell(employeeId, date, newTurno, slotParaPreencher.id);
+    
+    // CASO 2: A célula NÃO está vazia.
+    } else {
+        // SUB-CASO 2A: O turno é o MESMO, então REMOVE (toggle).
+        if (existingSlot.turnoId === newTurnoId) {
+            handleRemoveShiftClick(existingSlot.id);
+            return; // A função de remover já atualiza tudo, então paramos aqui.
+        } 
+        
+        // SUB-CASO 2B: O turno é DIFERENTE, então pergunta se quer TROCAR.
+        else {
+            const oldTurno = turnos.find(t => t.id === existingSlot.turnoId);
+            const confirmado = await showConfirm({
+                title: "Trocar Turno?",
+                message: `Deseja substituir o turno "${oldTurno.nome}" pelo turno "${newTurno.nome}" neste dia?`
+            });
+
+            if (!confirmado) return;
+
+            // Lógica da troca
+            currentEscala.historico[employeeId].horasTrabalhadas -= oldTurno.cargaMin;
+            currentEscala.historico[employeeId].horasTrabalhadas += newTurno.cargaMin;
+            existingSlot.turnoId = newTurnoId;
+
+            surgicallyUpdateCell(employeeId, date, newTurno, existingSlot.id);
+        }
+    }
+
+    // Atualizações que rodam para ADIÇÃO e TROCA
+    runSurgicalValidation([employeeId]);
+    updateAllIndicators();
+    renderResumoDetalhado(currentEscala);
 }
 
 
@@ -698,73 +777,24 @@ function handleSelectShiftBrush(turnoId) {
     $(".toolbox-content").innerHTML = cardContent;
 }
 
-async function handleAddShiftClick(employeeId, turnoId, date) {
-    const conflitos = checkPotentialConflicts(employeeId, turnoId, date, currentEscala);
-    if (conflitos.length > 0) {
-        if (editorState.enforceRules) {
-            showToast(`Ação bloqueada: ${conflitos.join(' ')}`);
-            return;
-        } else {
-            const confirmado = await showConfirm({
-                title: "Confirmar Ação com Conflito?",
-                message: `Atenção: Esta alocação para ${store.getState().funcionarios.find(f=>f.id === employeeId).nome} viola a seguinte regra: <br><strong>${conflitos.join('; ')}</strong>.<br><br> Deseja continuar e registrar esta exceção?`,
-                confirmText: "Sim, Continuar",
-                cancelText: "Cancelar"
-            });
-            if (!confirmado) return;
-        }
-    }
-
-    const turno = store.getState().turnos.find(t => t.id === turnoId);
-    if (currentEscala.slots.some(s => s.date === date && s.assigned === employeeId)) {
-        showToast("Este funcionário já possui um turno neste dia.");
-        return;
-    }
-    
-    let slotParaPreencher = currentEscala.slots.find(s => s.date === date && s.turnoId === turnoId && !s.assigned);
-    if (slotParaPreencher) {
-         slotParaPreencher.assigned = employeeId;
-         renderEscalaTable(currentEscala);
-    } else {
-        slotParaPreencher = { date, turnoId, assigned: employeeId, id: uid() };
-        currentEscala.slots.push(slotParaPreencher);
-        surgicallyUpdateCell(employeeId, date, turno, slotParaPreencher.id);
-    }
-
-    if (!currentEscala.historico[employeeId]) currentEscala.historico[employeeId] = { horasTrabalhadas: 0 };
-    currentEscala.historico[employeeId].horasTrabalhadas += turno.cargaMin;
-    
-    runSurgicalValidation([employeeId]);
-    updateAllIndicators();
-    renderResumoDetalhado(currentEscala, [employeeId]);
-}
-
 function handleRemoveShiftClick(slotId) {
-    const slot = currentEscala.slots.find(s => s.id === slotId);
+    const slotIndex = currentEscala.slots.findIndex(s => s.id === slotId);
+    if (slotIndex === -1) return;
+    
+    const slot = currentEscala.slots[slotIndex];
     if (!slot || !slot.assigned) return;
+
     const turno = store.getState().turnos.find(t => t.id === slot.turnoId);
     const employeeId = slot.assigned;
 
     currentEscala.historico[employeeId].horasTrabalhadas -= turno.cargaMin;
     
-    const coberturaNecessaria = currentEscala.cobertura[slot.turnoId] || 0;
-    const isVagaNecessaria = currentEscala.slots.filter(s => s.turnoId === slot.turnoId && s.date === slot.date).length < coberturaNecessaria;
-
-    if (isVagaNecessaria || coberturaNecessaria > 0) {
-        slot.assigned = null;
-    } else {
-        currentEscala.slots = currentEscala.slots.filter(s => s.id !== slotId);
-    }
-
-    if (coberturaNecessaria > 0) {
-        renderEscalaTable(currentEscala);
-    } else {
-        surgicallyUpdateCell(employeeId, slot.date, null, null);
-    }
+    currentEscala.slots.splice(slotIndex, 1);
+    surgicallyUpdateCell(employeeId, slot.date, null, null);
     
     runSurgicalValidation([employeeId]);
     updateAllIndicators();
-    renderResumoDetalhado(currentEscala, [employeeId]);
+    renderResumoDetalhado(currentEscala);
 }
 
 function highlightEmployeeRow(employeeId) {

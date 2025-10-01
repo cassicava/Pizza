@@ -321,9 +321,10 @@ function generateRelatorioDiarioPDF(escala) {
 
 // Lógica para os botões do modal
 async function initPdfExport() {
-    $('#btnExportCancelar').onclick = hideExportModal;
+    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
+    $('#btnExportCancelar').addEventListener('click', hideExportModal);
 
-    $('#btnExportVisaoGeral').onclick = async () => {
+    $('#btnExportVisaoGeral').addEventListener('click', async () => {
         if (!currentEscalaToExport) return;
         showLoader('Gerando PDF da Escala Completa...');
         await new Promise(res => setTimeout(res, 50));
@@ -337,9 +338,9 @@ async function initPdfExport() {
             hideLoader();
             hideExportModal();
         }
-    };
+    });
     
-    $('#btnExportVisaoDiaria').onclick = async () => {
+    $('#btnExportVisaoDiaria').addEventListener('click', async () => {
         if (!currentEscalaToExport) return;
         showLoader('Gerando Relatório Diário...');
         await new Promise(res => setTimeout(res, 50));
@@ -353,9 +354,9 @@ async function initPdfExport() {
             hideLoader();
             hideExportModal();
         }
-    };
+    });
 
-    $('#btnExportAmbos').onclick = async () => {
+    $('#btnExportAmbos').addEventListener('click', async () => {
         if (!currentEscalaToExport) return;
         showLoader('Gerando arquivos...');
         await new Promise(res => setTimeout(res, 50));
@@ -383,7 +384,7 @@ async function initPdfExport() {
             hideLoader();
             hideExportModal();
         }
-    };
+    });
 }
 
 document.addEventListener('DOMContentLoaded', initPdfExport);

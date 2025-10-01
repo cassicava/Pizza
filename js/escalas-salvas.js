@@ -121,7 +121,7 @@ function verEscalaSalva(id) {
 
         const btnExport = $("#btnExportarPDF");
         if (btnExport) {
-            btnExport.onclick = () => showExportModal(escala);
+            btnExport.addEventListener('click', () => showExportModal(escala));
         }
     }
 }
@@ -148,12 +148,13 @@ function handleEscalasSalvasContainerClick(event) {
     }
 }
 
-$("#btnVoltarParaLista").onclick = () => {
-    $('#escalaSalvaView').classList.add('hidden');
-    $('#lista-escalas-container').classList.remove('hidden');
-};
-
 function initEscalasSalvasPage() {
+    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
+    $("#btnVoltarParaLista").addEventListener('click', () => {
+        $('#escalaSalvaView').classList.add('hidden');
+        $('#lista-escalas-container').classList.remove('hidden');
+    });
+
     const filtroCargoSelect = $("#filtroEscalasCargo");
     if (filtroCargoSelect) {
         filtroCargoSelect.addEventListener('change', () => {

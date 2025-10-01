@@ -146,34 +146,35 @@ function setupEscalas() {
     const escIniInput = $("#escIni");
     const escFimInput = $("#escFim");
 
-    escIniInput.onclick = () => escIniInput.showPicker();
-    escFimInput.onclick = () => escFimInput.showPicker();
-    $('#feriado-data-input').onclick = () => $('#feriado-data-input').showPicker();
+    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
+    escIniInput.addEventListener('click', () => escIniInput.showPicker());
+    escFimInput.addEventListener('click', () => escFimInput.showPicker());
+    $('#feriado-data-input').addEventListener('click', () => $('#feriado-data-input').showPicker());
 
-    $("#btn-goto-passo2").onclick = () => handleGoToPasso2();
-    $("#btn-back-passo1").onclick = () => navigateWizardWithAnimation('#gerador-container', 'passo1-selecao', 'backward');
-    $("#btn-goto-passo3").onclick = () => handleGoToPasso3();
-    $("#btn-back-passo2").onclick = () => navigateWizardWithAnimation('#gerador-container', 'passo2-cobertura', 'backward');
+    $("#btn-goto-passo2").addEventListener('click', () => handleGoToPasso2());
+    $("#btn-back-passo1").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo1-selecao', 'backward'));
+    $("#btn-goto-passo3").addEventListener('click', () => handleGoToPasso3());
+    $("#btn-back-passo2").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo2-cobertura', 'backward'));
 
-    $("#btnGerarEscala").onclick = async () => {
+    $("#btnGerarEscala").addEventListener('click', async () => {
         await gerarEscala();
-    };
+    });
 
-    $("#btnVoltarPasso3").onclick = () => {
+    $("#btnVoltarPasso3").addEventListener('click', () => {
         $("#escalaView").classList.add('hidden');
         $("#gerador-container").classList.remove('hidden');
         navigateWizardWithAnimation('#gerador-container', 'passo3-excecoes', 'backward');
         const toolbox = $("#editor-toolbox");
         if(toolbox) toolbox.classList.add("hidden");
-    };
+    });
 
-    $("#escCargo").onchange = (e) => {
+    $("#escCargo").addEventListener('change', (e) => {
         $("#escCargo").classList.remove('invalid');
         geradorState.cargoId = e.target.value;
         saveGeradorState();
-    };
+    });
 
-    escIniInput.onchange = () => {
+    escIniInput.addEventListener('change', () => {
         escIniInput.classList.remove('invalid');
         geradorState.inicio = escIniInput.value;
         if (escIniInput.value) {
@@ -193,33 +194,33 @@ function setupEscalas() {
         resetHolidays();
         updateHolidaySectionState();
         saveGeradorState();
-    };
-    escFimInput.onchange = () => {
+    });
+    escFimInput.addEventListener('change', () => {
         escFimInput.classList.remove('invalid');
         geradorState.fim = escFimInput.value;
         updateEscalaResumoDias();
         resetHolidays();
         updateHolidaySectionState();
         saveGeradorState();
-    };
+    });
 
-    $('#btn-add-feriado').onclick = () => addFeriado();
+    $('#btn-add-feriado').addEventListener('click', () => addFeriado());
 
     $$('#feriado-trabalha-toggle .toggle-btn').forEach(button => {
-        button.onclick = () => {
+        button.addEventListener('click', () => {
             setTrabalhaToggleState(button.dataset.value);
-        };
+        });
     });
 
     const feriadoDescontarToggle = $('#feriado-descontar-toggle');
     $$('.toggle-btn', feriadoDescontarToggle).forEach(button => {
-        button.onclick = () => {
+        button.addEventListener('click', () => {
             setDescontarHorasToggleState(button.dataset.value);
-        };
+        });
     });
 
-    $("#btnSalvarEscala").onclick = () => salvarEscalaAtual();
-    $("#btnExcluirEscala").onclick = () => resetGeradorEscala();
+    $("#btnSalvarEscala").addEventListener('click', () => salvarEscalaAtual());
+    $("#btnExcluirEscala").addEventListener('click', () => resetGeradorEscala());
 
     renderEscCargoSelect();
     loadAndApplyGeradorState();

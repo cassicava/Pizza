@@ -71,28 +71,31 @@ function renderFuncTurnosForCargo() {
     const turnosDoCargo = turnos.filter(t => cargo.turnosIds.includes(t.id))
         .sort((a, b) => a.nome.localeCompare(b.nome));
 
-    const diasParaRender = DIAS_SEMANA;
-
     turnosDoCargo.forEach(t => {
-        const isTurnoSelecionado = !!funcDisponibilidadeTemporaria[t.id];
+        const isTurnoAtivo = !!funcDisponibilidadeTemporaria[t.id];
 
         const item = document.createElement('div');
         item.className = 'turno-disponibilidade-item';
         item.dataset.turnoId = t.id;
-        item.classList.toggle('selecionado', isTurnoSelecionado);
+        item.classList.toggle('selecionado', isTurnoAtivo);
 
-        const diasHtml = diasParaRender.map(d => {
-            const isDiaSelecionado = isTurnoSelecionado && (funcDisponibilidadeTemporaria[t.id] || []).includes(d.id);
+        // CORREÇÃO: O texto do dia (d.abrev) foi envolvido por um <span class="dia-abrev">
+        const diasHtml = DIAS_SEMANA.map(d => {
+            const preferencia = isTurnoAtivo ? (funcDisponibilidadeTemporaria[t.id][d.id] || 'indisponivel') : 'indisponivel';
+            let diaClass = '';
+            if (preferencia === 'disponivel') diaClass = 'dia-disponivel';
+            if (preferencia === 'preferencial') diaClass = 'dia-preferencial';
+            
             return `
-                <span class="dia-selecionavel ${isDiaSelecionado ? 'selecionado-dia' : ''}" data-dia-id="${d.id}" title="${d.nome}">
-                    ${d.abrev}
+                <span class="dia-selecionavel ${diaClass}" data-dia-id="${d.id}" title="${d.nome}">
+                    <span class="dia-abrev">${d.abrev}</span>
                 </span>
             `;
         }).join('');
 
         item.innerHTML = `
             <div class="turno-disponibilidade-header">
-                <input type="checkbox" name="turnoPrincipal" value="${t.id}" ${isTurnoSelecionado ? 'checked' : ''}>
+                <input type="checkbox" name="turnoPrincipal" value="${t.id}" ${isTurnoAtivo ? 'checked' : ''}>
                 <span class="color-dot" style="background-color: ${t.cor || '#e2e8f0'}"></span>
                 <div class="turno-info">
                     <strong>${t.nome}</strong> (${t.inicio}-${t.fim})
@@ -105,7 +108,6 @@ function renderFuncTurnosForCargo() {
         funcTurnosContainer.appendChild(item);
     });
 }
-
 
 // --- Funções de CRUD ---
 [funcNomeInput, funcCargaHorariaInput, funcDocumentoInput].forEach(input => {
@@ -167,7 +169,7 @@ function renderFuncs() {
     tblFuncionariosBody.innerHTML = "";
 
     const funcsFiltrados = funcionarios.filter(f => f.nome.toLowerCase().includes(filtro));
-    const colspan = 6; // Revertido para 6 colunas
+    const colspan = 6;
 
     if (funcsFiltrados.length === 0) {
         const emptyRow = document.createElement('tr');
@@ -265,9 +267,14 @@ function saveFuncFromForm() {
         return showToast("O número do documento já está em uso por outro funcionário.");
     }
 
-    const disponibilidade = Object.entries(funcDisponibilidadeTemporaria)
-        .filter(([, dias]) => dias && dias.length > 0)
-        .reduce((acc, [turnoId, dias]) => ({ ...acc, [turnoId]: dias }), {});
+    // Limpa objetos de turno que não têm nenhum dia selecionado
+    const disponibilidadeFinal = {};
+    for (const turnoId in funcDisponibilidadeTemporaria) {
+        const dias = funcDisponibilidadeTemporaria[turnoId];
+        if (dias && Object.keys(dias).length > 0) {
+            disponibilidadeFinal[turnoId] = dias;
+        }
+    }
 
     const funcData = {
         id: editingFuncId || uid(),
@@ -278,7 +285,7 @@ function saveFuncFromForm() {
         periodoHoras: funcPeriodoHorasInput.value,
         fazHoraExtra: funcHoraExtraInput.value === 'sim',
         documento,
-        disponibilidade,
+        disponibilidade: disponibilidadeFinal,
     };
 
     if (!editingFuncId) {
@@ -381,7 +388,6 @@ function handleFuncionariosTableClick(event) {
     }
 }
 
-// OTIMIZAÇÃO: Delegação de eventos para a grade de disponibilidade
 function handleDisponibilidadeGridClick(event) {
     const header = event.target.closest('.turno-disponibilidade-header');
     const diaSpan = event.target.closest('.dia-selecionavel');
@@ -390,7 +396,6 @@ function handleDisponibilidadeGridClick(event) {
         const item = header.closest('.turno-disponibilidade-item');
         const turnoId = item.dataset.turnoId;
         const chkPrincipal = header.querySelector('input[name="turnoPrincipal"]');
-        const spansDias = $$('.dia-selecionavel', item);
         
         if (event.target.tagName !== 'INPUT') {
             chkPrincipal.checked = !chkPrincipal.checked;
@@ -400,39 +405,48 @@ function handleDisponibilidadeGridClick(event) {
         item.classList.toggle('selecionado', isChecked);
 
         if (isChecked) {
-            if (!funcDisponibilidadeTemporaria[turnoId] || funcDisponibilidadeTemporaria[turnoId].length === 0) {
-                funcDisponibilidadeTemporaria[turnoId] = DIAS_SEMANA.map(d => d.id);
+            // Se está ativando e não existe, cria com todos os dias como 'disponivel'
+            if (!funcDisponibilidadeTemporaria[turnoId]) {
+                funcDisponibilidadeTemporaria[turnoId] = {};
+                DIAS_SEMANA.forEach(d => {
+                    funcDisponibilidadeTemporaria[turnoId][d.id] = 'disponivel';
+                });
             }
-            spansDias.forEach(spanDia => {
-                const diaId = spanDia.dataset.diaId;
-                spanDia.classList.toggle('selecionado-dia', (funcDisponibilidadeTemporaria[turnoId] || []).includes(diaId));
-            });
         } else {
+            // Se está desativando, remove o turno do objeto
             delete funcDisponibilidadeTemporaria[turnoId];
-            spansDias.forEach(spanDia => spanDia.classList.remove('selecionado-dia'));
         }
+        // Re-renderiza para atualizar visualmente todos os dias
+        renderFuncTurnosForCargo(); 
         setFuncFormDirty(true);
     }
 
     if (diaSpan) {
         const item = diaSpan.closest('.turno-disponibilidade-item');
-        const chkPrincipal = item.querySelector('input[name="turnoPrincipal"]');
-        if (chkPrincipal.checked) {
-            const turnoId = item.dataset.turnoId;
-            const diaId = diaSpan.dataset.diaId;
-            let diasDoTurno = funcDisponibilidadeTemporaria[turnoId] || [];
-            
-            diaSpan.classList.toggle('selecionado-dia');
+        if (!item.classList.contains('selecionado')) return; // Só permite alterar dias se o turno estiver ativo
 
-            if (diaSpan.classList.contains('selecionado-dia')) {
-                if (!diasDoTurno.includes(diaId)) diasDoTurno.push(diaId);
-            } else {
-                const index = diasDoTurno.indexOf(diaId);
-                if (index > -1) diasDoTurno.splice(index, 1);
-            }
-            funcDisponibilidadeTemporaria[turnoId] = diasDoTurno;
-            setFuncFormDirty(true);
+        const turnoId = item.dataset.turnoId;
+        const diaId = diaSpan.dataset.diaId;
+
+        const estados = ['indisponivel', 'disponivel', 'preferencial'];
+        const estadoAtual = funcDisponibilidadeTemporaria[turnoId]?.[diaId] || 'indisponivel';
+        
+        const proximoIndex = (estados.indexOf(estadoAtual) + 1) % estados.length;
+        const proximoEstado = estados[proximoIndex];
+
+        // Atualiza o estado
+        if (proximoEstado === 'indisponivel') {
+            delete funcDisponibilidadeTemporaria[turnoId][diaId];
+        } else {
+            funcDisponibilidadeTemporaria[turnoId][diaId] = proximoEstado;
         }
+
+        // Atualiza a classe visual
+        diaSpan.classList.remove('dia-disponivel', 'dia-preferencial');
+        if (proximoEstado === 'disponivel') diaSpan.classList.add('dia-disponivel');
+        if (proximoEstado === 'preferencial') diaSpan.classList.add('dia-preferencial');
+
+        setFuncFormDirty(true);
     }
 }
 
