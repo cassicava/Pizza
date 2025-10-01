@@ -215,7 +215,7 @@ function handleMontarExcecaoToggle(event, funcId) {
     container.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
 
-    $(`#montar-excecoes-funcionarios-container [data-dates-container="${tipo}"][data-func-id="${func.id}"]`).classList.toggle('hidden', value === 'nao');
+    $(`#montar-excecoes-funcionarios-container [data-dates-container="${tipo}"][data-func-id="${funcId}"]`).classList.toggle('hidden', value === 'nao');
     if (value === 'nao') {
         const iniInput = $(`#montar-excecoes-funcionarios-container [data-date-ini="${tipo}"][data-func-id="${func.id}"]`);
         iniInput.value = '';
@@ -225,8 +225,8 @@ function handleMontarExcecaoToggle(event, funcId) {
 }
 
 function updateMontarExcecaoDates(event, tipo, funcId) {
-    const inicio = $(`#montar-excecoes-funcionarios-container [data-date-ini="${tipo}"][data-func-id="${func.id}"]`).value;
-    const fim = $(`#montar-excecoes-funcionarios-container [data-date-fim="${tipo}"][data-func-id="${func.id}"]`).value;
+    const inicio = $(`#montar-excecoes-funcionarios-container [data-date-ini="${tipo}"][data-func-id="${funcId}"]`).value;
+    const fim = $(`#montar-excecoes-funcionarios-container [data-date-fim="${tipo}"][data-func-id="${funcId}"]`).value;
     
     if (inicio && fim && fim >= inicio) {
         montadorState.excecoes[funcId][tipo].dates = dateRangeInclusive(inicio, fim);
@@ -237,7 +237,7 @@ function updateMontarExcecaoDates(event, tipo, funcId) {
 
 function addMontarFolga(funcId) {
     const input = $(`#montar-excecoes-funcionarios-container [data-folga-input="${funcId}"]`);
-    const tipoSelect = $(`#montar-excecoes-funcionarios-container [data-folga-tipo="${func.id}"]`);
+    const tipoSelect = $(`#montar-excecoes-funcionarios-container [data-folga-tipo="${funcId}"]`);
     const date = input.value;
     const tipo = tipoSelect.value;
 
@@ -255,7 +255,7 @@ function removeMontarFolga(funcId, date) {
 }
 
 function renderMontarFolgas(funcId) {
-    const container = $(`#montar-excecoes-funcionarios-container [data-folgas-tags="${func.id}"]`);
+    const container = $(`#montar-excecoes-funcionarios-container [data-folgas-tags="${funcId}"]`);
     container.innerHTML = montadorState.excecoes[funcId].folgas.map(f => {
         const sigla = TIPOS_FOLGA.find(tf => tf.nome === f.tipo)?.sigla || 'F';
         return `<span class="tag" data-tipo-folga="${f.tipo}">${new Date(f.date+'T12:00:00').toLocaleDateString()} (${sigla})<button data-remove-montar-folga="${funcId}" data-date="${f.date}">x</button></span>`
@@ -299,22 +299,28 @@ function iniciarEdicaoManual() {
     $(`.tab-btn[data-page="montar-escala"]`).classList.add('active');
 
     renderEscalaTable(currentEscala);
-    initEditor();
 
     const btnVoltar = $("#btnVoltarPasso3");
     btnVoltar.textContent = "< Descartar e Voltar";
-    btnVoltar.addEventListener('click', () => go('montar-escala'));
+    
+    const novoBtnVoltar = btnVoltar.cloneNode(true);
+    btnVoltar.parentNode.replaceChild(novoBtnVoltar, btnVoltar);
+    novoBtnVoltar.addEventListener('click', () => go('montar-escala'));
 }
 
 function initMontarEscalaPage() {
     renderMontarCargoSelect();
 
+    const cargoInput = $("#montarCargo");
     const iniInput = $("#montarIni");
     const fimInput = $("#montarFim");
     
-    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
     if (iniInput) iniInput.addEventListener('click', () => iniInput.showPicker());
     if (fimInput) fimInput.addEventListener('click', () => fimInput.showPicker());
+
+    cargoInput.addEventListener('change', (e) => {
+        if(e.target.value) iniInput.showPicker();
+    });
 
     iniInput.addEventListener('change', (e) => {
         if (e.target.value) {

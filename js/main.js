@@ -2,23 +2,39 @@
  * 🚀 Inicialização e Navegação
  **************************************/
 
-// Objeto para controlar o estado "sujo" (dirty) dos formulários
 const dirtyForms = {
     turnos: false,
     cargos: false,
     funcionarios: false,
+    equipes: false,
+};
+
+const PAGE_TITLES = {
+    'home': 'Início',
+    'turnos': '🕒 Turnos',
+    'cargos': '🏥 Cargos',
+    'funcionarios': '👨‍⚕️ Funcionários',
+    'equipes': '🤝 Equipes',
+    'gerar-escala': '📅 Geração Automática',
+    'montar-escala': '✍️ Criação Manual',
+    'escalas-salvas': '🗂️ Escalas Salvas',
+    'relatorios': '📊 Relatórios',
+    'configuracoes': '⚙️ Configurações',
 };
 
 function updateWelcomeMessage() {
-    const welcomeEl = $("#welcomeTitle");
-    if (!welcomeEl) return;
+    const headerWelcomeEl = $("#welcomeTitle");
+    const homeSubtitleEl = $("#welcome-subtitle-personal");
 
     const { config } = store.getState();
     const nome = config.nome;
+
     if (nome && nome.trim() !== '') {
-        welcomeEl.textContent = `Olá, ${nome}!`;
+        if(headerWelcomeEl) headerWelcomeEl.textContent = `Olá, ${nome}!`;
+        if(homeSubtitleEl) homeSubtitleEl.textContent = 'Selecione uma das opções abaixo para começar.';
     } else {
-        welcomeEl.textContent = `Bem-vindo ao Gestor de Escalas!`;
+        if(headerWelcomeEl) headerWelcomeEl.textContent = `Bem-vindo(a)!`;
+        if(homeSubtitleEl) homeSubtitleEl.textContent = 'Para começar, configure os passos de cadastro ou inicie a criação de uma escala.';
     }
 }
 
@@ -30,106 +46,78 @@ async function go(page) {
     const currentPageEl = $('.page.active');
     const currentPageId = currentPageEl ? currentPageEl.id.replace('page-', '') : null;
     
-    if (page === 'gerar-escala' && currentPageId === 'gerar-escala') {
-        const isViewingScale = !$('#escalaView').classList.contains('hidden');
-        if (isViewingScale) {
-            const confirmed = await showConfirm({
-                title: "Descartar Escala Atual?",
-                message: "Você tem uma escala em andamento. Deseja descartá-la e iniciar uma nova geração?",
-                confirmText: "Sim, Descartar"
-            });
-            if (confirmed) {
-                resetGeradorEscala();
-            }
-        }
-        return;
-    }
-    
     if (currentPageId === page) return;
 
+    // Lógica de confirmação para sair com formulários sujos
     if (dirtyForms[currentPageId]) {
         const confirmado = await showConfirm({
             title: "Descartar Alterações?",
-            message: "Você tem alterações não salvas nesta página. Tem certeza de que deseja sair e perdê-las?",
-            confirmText: "Sim, Sair",
-            cancelText: "Não, Ficar"
+            message: "Você tem alterações não salvas. Deseja sair e perdê-las?",
+            confirmText: "Sim, Sair"
         });
         if (!confirmado) {
+            $$(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.page === currentPageId));
             return;
         }
     }
-
-    if (currentPageId === 'gerar-escala' && geradorState.cargoId && !$('#escalaView').classList.contains('hidden')) {
-        const confirmado = await showConfirm({
-            title: "Sair da Geração de Escala?",
-            message: "Você tem certeza que deseja sair? O progresso da escala atual será perdido.",
-            confirmText: "Sim, Sair",
-            cancelText: "Não, Ficar"
-        });
-        if (!confirmado) {
-            return;
-        }
-    }
-    if (currentPageId === 'montar-escala' && montadorState.cargoId) {
-        const confirmado = await showConfirm({
-            title: "Sair da Criação Manual?",
-            message: "Você tem certeza que deseja sair? As configurações da escala manual serão perdidas.",
-            confirmText: "Sim, Sair",
-            cancelText: "Não, Ficar"
-        });
-        if (!confirmado) {
-            return;
-        }
-    }
-
-
-    // Limpa e reseta os formulários ao sair da página
+    
+    // Reset dos formulários e estados ao sair da página
     switch (currentPageId) {
-        case 'turnos':
-            cancelEditTurno();
-            break;
-        case 'cargos':
-            cancelEditCargo();
-            break;
-        case 'funcionarios':
-            cancelEditFunc();
-            break;
-        case 'gerar-escala':
-            resetGeradorEscala();
-            $('#gerador-escala-titulo').innerHTML = '📅 Geração Automática de Escala ✨';
-            break;
+        case 'turnos': cancelEditTurno(); break;
+        case 'cargos': cancelEditCargo(); break;
+        case 'funcionarios': cancelEditFunc(); break;
+        case 'equipes': cancelEditEquipe(); break;
+        case 'gerar-escala': 
         case 'montar-escala':
+            const isViewingScale = !$('#escalaView').classList.contains('hidden');
+            if(isViewingScale){
+                 const confirmado = await showConfirm({
+                    title: "Descartar Escala?",
+                    message: "Você tem uma escala em andamento. Deseja sair e descartá-la?",
+                    confirmText: "Sim, Descartar"
+                });
+                if(!confirmado) {
+                    $$(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.page === currentPageId));
+                    return;
+                }
+            }
+            resetGeradorEscala(); 
             resetMontadorState();
             break;
     }
 
     window.scrollTo(0, 0);
-    $$(".page").forEach(p => p.classList.toggle("active", p.id === `page-${page}`));
-    $$(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.page === page));
+    const nextPageEl = $(`#page-${page}`);
 
-    // Garante que a página de destino seja inicializada corretamente
-    switch (page) {
-        case 'gerar-escala':
-            resetGeradorEscala();
-            break;
-        case 'montar-escala':
-            resetMontadorState();
-            break;
-        case 'home':
-            updateWelcomeMessage();
-            break;
-        // ADICIONADO: Renderiza a página de relatórios ao navegar para ela
-        case 'relatorios':
-            renderRelatoriosPage();
-            break;
+    // Fade out da página atual
+    if (currentPageEl) {
+        currentPageEl.classList.remove('active');
+        setTimeout(() => {
+            currentPageEl.style.display = 'none';
+        }, 300); // Duração da animação de saída
     }
+
+    // Fade in da próxima página
+    if (nextPageEl) {
+        nextPageEl.style.display = 'flex'; 
+        
+        requestAnimationFrame(() => {
+            nextPageEl.classList.add('active');
+        });
+    }
+    
+    $$(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.page === page));
+    
+    // Atualiza o título no cabeçalho, exceto para a home
+    const pageTitleEl = $("#page-title");
+    if (pageTitleEl) {
+        pageTitleEl.textContent = (page === 'home') ? '' : PAGE_TITLES[page] || "Página";
+    }
+
+    if (page === 'home') updateWelcomeMessage();
+    if (page === 'relatorios') renderRelatoriosPage();
 }
 
-/**
- * Roteador de Renderização. Chamado pelo store sempre que o estado muda.
- * Decide quais partes da UI precisam ser atualizadas com base na ação despachada.
- * @param {string} actionName - O nome da ação que causou a atualização do estado.
- */
 function renderRouter(actionName) {
     console.log(`Estado atualizado via ação: ${actionName}. Re-renderizando componentes...`);
 
@@ -137,15 +125,18 @@ function renderRouter(actionName) {
     const turnoActions = ['SAVE_TURNO', 'DELETE_TURNO'];
     const cargoActions = ['SAVE_CARGO', 'DELETE_CARGO', 'DELETE_TURNO'];
     const funcionarioActions = ['SAVE_FUNCIONARIO', 'DELETE_FUNCIONARIO', 'SAVE_CARGO', 'DELETE_CARGO'];
+    const equipeActions = ['SAVE_EQUIPE', 'DELETE_EQUIPE', 'DELETE_CARGO', 'DELETE_TURNO', 'DELETE_FUNCIONARIO'];
     const escalaActions = ['SAVE_ESCALA', 'DELETE_ESCALA_SALVA', 'DELETE_CARGO', 'DELETE_FUNCIONARIO'];
 
     if (fullRenderActions.includes(actionName)) {
         renderTurnos();
         renderCargos();
         renderFuncs();
+        renderEquipes();
         renderEscalasList();
         renderTurnosSelects();
         renderFuncCargoSelect();
+        renderEquipeCargoSelect();
         renderEscCargoSelect();
         renderMontarCargoSelect(); 
         loadConfigForm();
@@ -153,7 +144,6 @@ function renderRouter(actionName) {
         return;
     }
 
-    // Renderizações direcionadas
     if (turnoActions.includes(actionName)) {
         renderTurnos();
         renderTurnosSelects(); 
@@ -161,11 +151,15 @@ function renderRouter(actionName) {
     if (cargoActions.includes(actionName)) {
         renderCargos();
         renderFuncCargoSelect(); 
+        renderEquipeCargoSelect();
         renderEscCargoSelect(); 
         renderMontarCargoSelect(); 
     }
     if (funcionarioActions.includes(actionName)) {
         renderFuncs();
+    }
+    if (equipeActions.includes(actionName)) {
+        renderEquipes();
     }
     if (escalaActions.includes(actionName)) {
         renderEscalasList();
@@ -184,14 +178,19 @@ function initMainApp() {
     const { config } = store.getState();
     applyTheme(config.theme || 'light');
 
+    const homePage = $('#page-home');
+    homePage.style.display = 'flex';
+    homePage.classList.add('active');
+    $("#page-title").textContent = ''; // Título inicial é vazio
+
     renderRouter('LOAD_STATE');
-    go("home"); // Inicia na página home
 
     $$(".tab-btn").forEach(b => b.addEventListener('click', () => go(b.dataset.page)));
     $$(".home-card").forEach(c => c.addEventListener('click', (e) => {
         e.preventDefault();
         go(c.dataset.goto)
     }));
+    $('#header-settings-btn').addEventListener('click', () => go('configuracoes'));
 }
 
 

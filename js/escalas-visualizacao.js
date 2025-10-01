@@ -36,32 +36,58 @@ function renderEscalaLegend(escala, container) {
 
 function renderGenericEscalaTable(escala, container, options = {}) {
     const { isInteractive = false } = options;
-    const { funcionarios, turnos, cargos } = store.getState();
+    const { funcionarios, turnos, cargos, equipes } = store.getState();
 
-    // CORREÇÃO: Popula a cobertura com todos os turnos do cargo se for manual e vazia.
-    let cobertura = escala.cobertura || {};
-    if (escala.isManual) {
-        const cargo = cargos.find(c => c.id === escala.cargoId);
-        if (cargo) {
-            cargo.turnosIds.forEach(turnoId => {
-                if (!cobertura[turnoId]) {
-                    cobertura[turnoId] = 0; // Define como 0 para que apareça no rodapé
-                }
-            });
+    const cobertura = escala.cobertura || {};
+
+    const allFuncsInvolvedIds = new Set();
+    escala.slots.forEach(s => { if(s.assigned) allFuncsInvolvedIds.add(s.assigned) });
+    Object.keys(escala.excecoes || {}).forEach(funcId => allFuncsInvolvedIds.add(funcId));
+    Object.keys(escala.historico || {}).forEach(funcId => allFuncsInvolvedIds.add(funcId));
+
+    const allFuncsInvolved = [...allFuncsInvolvedIds].map(id => funcionarios.find(f => f.id === id)).filter(Boolean);
+
+    // NOVA LÓGICA DE ORDENAÇÃO: Agrupa por equipes
+    const funcsPorEquipe = {};
+    const funcsIndividuais = [];
+    const equipesNaEscala = equipes.filter(e => e.cargoId === escala.cargoId);
+    
+    equipesNaEscala.forEach(e => funcsPorEquipe[e.id] = []);
+
+    allFuncsInvolved.forEach(func => {
+        const equipeDoFunc = equipesNaEscala.find(e => e.membros.includes(func.id));
+        if (equipeDoFunc) {
+            funcsPorEquipe[equipeDoFunc.id].push(func);
+        } else {
+            funcsIndividuais.push(func);
         }
-    }
+    });
 
-
-    const allFuncsInvolved = new Set();
-    escala.slots.forEach(s => { if(s.assigned) allFuncsInvolved.add(s.assigned) });
-    Object.keys(escala.excecoes).forEach(funcId => allFuncsInvolved.add(funcId));
-    Object.keys(escala.historico || {}).forEach(funcId => allFuncsInvolved.add(funcId));
-
-    const funcsDaEscala = [...allFuncsInvolved].map(funcId => funcionarios.find(f => f.id === funcId)).filter(Boolean).sort((a, b) => a.nome.localeCompare(b.nome));
+    let funcsDaEscala = [];
+    equipesNaEscala.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(equipe => {
+        const membros = funcsPorEquipe[equipe.id];
+        if (membros && membros.length > 0) {
+            membros.sort((a, b) => a.nome.localeCompare(b.nome));
+            funcsDaEscala.push(...membros);
+        }
+    });
+    
+    funcsIndividuais.sort((a, b) => a.nome.localeCompare(b.nome));
+    funcsDaEscala.push(...funcsIndividuais);
+    // FIM DA NOVA LÓGICA DE ORDENAÇÃO
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
-    const turnosDoCargo = turnos.filter(t => cobertura.hasOwnProperty(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio));
+    
+    let turnosDoCargoIds = [];
+    if (escala.isManual) {
+        const cargo = cargos.find(c => c.id === escala.cargoId);
+        turnosDoCargoIds = cargo ? cargo.turnosIds : [];
+    } else {
+        turnosDoCargoIds = Object.keys(cobertura);
+    }
+    const turnosDoCargo = turnos.filter(t => turnosDoCargoIds.includes(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio));
+
 
     let tableHTML = `<table class="escala-final-table"><thead><tr><th>Funcionário</th>`;
     dateRange.forEach(date => {
@@ -130,7 +156,7 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             let hasVagas = false;
             let rowVagasHTML = `<tr class="vagas-row"><td><strong>Vagas ${turno.sigla}</strong></td>`;
             dateRange.forEach(date => {
-                const coberturaNecessaria = cobertura[turno.id] || 0;
+                const coberturaNecessaria = (cobertura[turno.id]?.mode === 'individual') ? (cobertura[turno.id].count || 0) : 0;
                 const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
                 if (coberturaAtual < coberturaNecessaria) {
                     hasVagas = true;
@@ -210,7 +236,6 @@ function renderEscalaTable(escala) {
     
     renderResumoDetalhado(escala);
 
-    // CORREÇÃO CENTRALIZADA: Inicializa o editor sempre que a tabela interativa é renderizada.
     if (typeof initEditor === 'function') {
         initEditor();
     }

@@ -8,21 +8,17 @@
     padding: 0 16px;
 }
 
-/* CORREÇÃO: Adiciona posicionamento relativo para conter as animações dos passos */
 #gerador-container,
 #montador-container {
     position: relative;
     display: grid;
 }
 
-/* CORREÇÃO: Força todos os passos a ocuparem a mesma célula do grid para sobreposição */
 #gerador-container > .wizard-step,
 #montador-container > .wizard-step {
     grid-area: 1 / 1;
 }
 
-
-/* ALTERAÇÃO: Regra agora se aplica a AMBAS as páginas de criação de escala */
 #page-gerar-escala .wizard-step,
 #page-montar-escala .wizard-step {
     display: none;
@@ -30,20 +26,17 @@
     gap: 12px;
 }
 
-/* ALTERAÇÃO: Regra agora se aplica a AMBAS as páginas de criação de escala */
 #page-gerar-escala .wizard-step.active,
 #page-montar-escala .wizard-step.active {
     display: flex;
 }
 
-/* Garante que os inputs de data nos feriados sejam pequenos */
 #feriado-data-input, #montar-feriado-data-input {
     flex-grow: 0;
     width: auto;
     min-width: 140px;
 }
 
-/* NOVO: Ajusta o tamanho dos inputs de data e outros nos formulários de exceções */
 .excecao-body input[type="date"],
 .excecao-body select {
     flex-grow: 0;
@@ -57,13 +50,12 @@
 
 
 #page-gerar-escala .cobertura-item {
-    padding: 8px;
+    padding: 16px;
     border-bottom: 1px solid var(--border);
 }
-
-#page-gerar-escala .cobertura-item label {
-    flex-grow: 1;
-    font-weight: 500;
+#page-gerar-escala .cobertura-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 #page-gerar-escala .input-sm {
@@ -81,7 +73,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: 380px;
+    max-height: 450px;
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -103,7 +95,6 @@
     padding: 12px;
     display: flex;
     flex-direction: column;
-    /* ALTERADO: Espaçamento vertical entre os fieldsets reduzido */
     gap: 8px;
 }
 
@@ -289,7 +280,6 @@ html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
 }
 
-/* NOVOS ESTILOS PARA CÉLULAS DE AUSÊNCIA */
 .celula-ferias, .celula-afastamento, .celula-excecao {
     font-style: italic;
     font-weight: 500;
@@ -297,7 +287,7 @@ html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
 }
 
 .celula-ferias {
-    background-color: #f0fdf4; /* Verde claro */
+    background-color: #f0fdf4;
     color: #15803d;
 }
 html[data-theme="dark"] .celula-ferias {
@@ -306,7 +296,7 @@ html[data-theme="dark"] .celula-ferias {
 }
 
 .celula-afastamento {
-    background-color: #fef2f2; /* Vermelho claro */
+    background-color: #fef2f2;
     color: #b91c1c;
 }
 html[data-theme="dark"] .celula-afastamento {
@@ -316,7 +306,7 @@ html[data-theme="dark"] .celula-afastamento {
 
 .celula-excecao[data-tipo-folga="Folga Normal"],
 .celula-excecao[data-tipo-folga="Folga Abonada"] {
-    background-color: #eef2ff; /* Azul/Roxo claro */
+    background-color: #eef2ff;
     color: #3730a3;
 }
 html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Normal"],
@@ -326,7 +316,7 @@ html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Abonada"] {
 }
 
 .celula-excecao[data-tipo-folga="Atestado Médico"] {
-    background-color: #fffbeb; /* Amarelo claro */
+    background-color: #fffbeb;
     color: #b45309;
 }
 html[data-theme="dark"] .celula-excecao[data-tipo-folga="Atestado Médico"] {
@@ -335,7 +325,7 @@ html[data-theme="dark"] .celula-excecao[data-tipo-folga="Atestado Médico"] {
 }
 
 .celula-excecao[data-tipo-folga="Folga Aniversário"] {
-    background-color: #f3e8ff; /* Roxo claro */
+    background-color: #f3e8ff;
     color: #7e22ce;
 }
 html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Aniversário"] {
@@ -380,6 +370,8 @@ html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Aniversário"] {
     margin-top: 12px;
     background-color: var(--bg);
     height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .regras-fieldset legend {
@@ -392,7 +384,7 @@ html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Aniversário"] {
 .passo1-grid,
 .passo2-grid {
     display: grid;
-    grid-template-columns: 1fr 1.2fr;
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
     align-items: start;
     margin: 16px 0;
@@ -437,4 +429,49 @@ html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Aniversário"] {
 
 .legenda-item strong {
     color: var(--brand);
+}
+
+/* NOVOS ESTILOS PARA O PASSO 2 COMPACTO */
+#cobertura-turnos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cobertura-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.cobertura-item-header > strong {
+    font-size: 0.95rem;
+}
+.cobertura-item-header .toggle-group {
+    flex-shrink: 0;
+}
+
+.cobertura-equipe-options-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+    margin-top: 12px;
+}
+
+.cobertura-equipe-options-compact .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.cobertura-equipe-options-compact .form-group label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.cobertura-equipe-options-compact select {
+    font-size: 0.9rem;
+    padding: 6px;
+    width: 100%;
 }

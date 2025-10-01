@@ -202,8 +202,37 @@ fieldset legend,
     padding: 0 8px;
     margin-left: 8px;
     transition: color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
+/* NOVO: Estilos para o tooltip */
+.tooltip-trigger {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: help;
+}
+
+#equipePadraoExplicacao.explanation-box {
+    position: absolute;
+    z-index: 10;
+    width: 300px;
+    right: 0;
+    transform: translateX(105%);
+    bottom: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
 
 .form-row-aligned {
     display: flex;
@@ -1270,6 +1299,17 @@ html[data-theme="dark"] .tab-btn:hover {
     cursor: pointer;
 }
 
+.equipe-card {
+    cursor: default;
+    border-width: 2px;
+}
+
+.equipe-card:hover {
+    transform: none;
+    box-shadow: var(--shadow);
+}
+
+
 .escala-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow);
@@ -1293,4 +1333,32 @@ html[data-theme="dark"] .tab-btn:hover {
     margin-top: 16px;
     padding-top: 12px;
     border-top: 1px solid var(--border);
+}
+
+/* NOVO: Estilos para o seletor de modo de cobertura */
+.cobertura-modo-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cobertura-equipe-options {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 8px;
+    background-color: var(--bg);
+}
+
+.cobertura-equipe-row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 16px;
+    align-items: center;
+}
+.cobertura-equipe-row:not(:last-child) {
+    margin-bottom: 12px;
+}
+.cobertura-equipe-row label {
+    font-weight: 500;
 }

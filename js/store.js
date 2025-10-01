@@ -10,7 +10,8 @@ const KEYS = {
     cargos: "ge_cargos",
     funcs: "ge_funcionarios",
     escalas: "ge_escalas",
-    config: "ge_config"
+    config: "ge_config",
+    equipes: "ge_equipes"
 };
 
 const store = {
@@ -21,6 +22,7 @@ const store = {
         funcionarios: [],
         escalas: [],
         config: { nome: '', theme: 'light' },
+        equipes: [],
     },
 
     // 2. LISTENERS: Funções que serão chamadas quando o estado mudar.
@@ -56,6 +58,7 @@ const store = {
             state.funcionarios = loadJSON(KEYS.funcs, []);
             state.escalas = loadJSON(KEYS.escalas, []);
             state.config = loadJSON(KEYS.config, { nome: '', theme: 'light' });
+            state.equipes = loadJSON(KEYS.equipes, []);
         },
 
         SAVE_TURNO(state, turno) {
@@ -77,9 +80,15 @@ const store = {
                     delete func.disponibilidade[turnoId];
                 }
             });
+            state.equipes.forEach(equipe => {
+                if (equipe.turnoId === turnoId) {
+                    equipe.turnoId = null; // Ou alguma outra lógica de invalidação
+                }
+            });
             saveJSON(KEYS.turnos, state.turnos);
             saveJSON(KEYS.cargos, state.cargos);
             saveJSON(KEYS.funcs, state.funcionarios);
+            saveJSON(KEYS.equipes, state.equipes);
         },
 
         SAVE_CARGO(state, cargo) {
@@ -105,10 +114,12 @@ const store = {
             state.cargos = state.cargos.filter(c => c.id !== cargoId);
             state.funcionarios.forEach(f => { if (f.cargoId === cargoId) f.cargoId = null; });
             state.escalas = state.escalas.filter(e => e.cargoId !== cargoId);
+            state.equipes = state.equipes.filter(eq => eq.cargoId !== cargoId);
 
             saveJSON(KEYS.cargos, state.cargos);
             saveJSON(KEYS.funcs, state.funcionarios);
             saveJSON(KEYS.escalas, state.escalas);
+            saveJSON(KEYS.equipes, state.equipes);
         },
 
         SAVE_FUNCIONARIO(state, func) {
@@ -122,7 +133,26 @@ const store = {
         },
         DELETE_FUNCIONARIO(state, funcId) {
             state.funcionarios = state.funcionarios.filter(f => f.id !== funcId);
+            // Remove o funcionário de qualquer equipe que ele possa pertencer
+            state.equipes.forEach(equipe => {
+                equipe.membros = equipe.membros.filter(mId => mId !== funcId);
+            });
             saveJSON(KEYS.funcs, state.funcionarios);
+            saveJSON(KEYS.equipes, state.equipes);
+        },
+
+        SAVE_EQUIPE(state, equipe) {
+            const index = state.equipes.findIndex(e => e.id === equipe.id);
+            if (index > -1) {
+                state.equipes[index] = { ...state.equipes[index], ...equipe };
+            } else {
+                state.equipes.push(equipe);
+            }
+            saveJSON(KEYS.equipes, state.equipes);
+        },
+        DELETE_EQUIPE(state, equipeId) {
+            state.equipes = state.equipes.filter(e => e.id !== equipeId);
+            saveJSON(KEYS.equipes, state.equipes);
         },
 
         SAVE_ESCALA(state, escala) {

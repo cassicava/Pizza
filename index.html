@@ -132,6 +132,9 @@
             <button class="tab-btn" data-page="funcionarios">
                 <span class="tab-icon">👨‍⚕️</span> <span class="tab-text">Funcionários</span>
             </button>
+            <button class="tab-btn" data-page="equipes">
+                <span class="tab-icon">🤝</span> <span class="tab-text">Equipes</span>
+            </button>
             <button class="tab-btn" data-page="gerar-escala">
                 <span class="tab-icon">📅</span>
                 <span class="tab-text">Geração Automática</span>
@@ -157,75 +160,88 @@
     </nav>
 
     <main class="container">
+        <header id="main-header">
+            <h1 id="page-title"></h1>
+            <div class="header-user-info">
+                <h2 id="welcomeTitle" class="welcome-title"></h2>
+                <button id="header-settings-btn" class="header-action-btn" title="Configurações">⚙️</button>
+            </div>
+        </header>
+
         <section id="page-home" class="page active">
             <div class="welcome-container">
-                <h2 id="welcomeTitle" class="welcome-title"></h2>
-                <p class="welcome-subtitle">Para começar, configure os <strong>3 passos</strong> principais ou inicie a criação de uma escala.</p>
+                <h2 class="welcome-title" style="font-size: 2.5rem;">Bem-vindo ao <span class="animated-brand-text" style="font-size: inherit;">Escala Fácil</span>!</h2>
+                <p id="welcome-subtitle-personal" class="welcome-subtitle"></p>
             </div>
 
-            <div class="home-grid-principal">
+            <h2 class="home-section-title">Comece por Aqui: Cadastros do Sistema</h2>
+            <div class="home-grid-principal" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
                 <a class="card home-card" data-goto="turnos"><span class="card-step">Passo 1</span>
                     <h3>🕒 Turnos</h3>
-                    <p>Primeiro, crie os horários de trabalho, como 'Manhã' ou 'Noturno'.</p>
+                    <p>Crie os horários de trabalho da sua operação.</p>
                 </a>
                 <a class="card home-card" data-goto="cargos"><span class="card-step">Passo 2</span>
                     <h3>🏥 Cargos</h3>
-                    <p>Depois, crie os cargos e associe os turnos que cada um pode cumprir.</p>
+                    <p>Defina os cargos e associe os turnos que podem cumprir.</p>
                 </a>
                 <a class="card home-card" data-goto="funcionarios"><span class="card-step">Passo 3</span>
                     <h3>👨‍⚕️ Funcionários</h3>
-                    <p>Por fim, adicione seus funcionários, definindo seus cargos e disponibilidade.</p>
+                    <p>Adicione seus funcionários, cargos e disponibilidade.</p>
+                </a>
+                <a class="card home-card" data-goto="equipes"><span class="card-step">Opcional</span>
+                    <h3>🤝 Equipes</h3>
+                    <p>Crie equipes fixas para escalas com padrões repetitivos.</p>
                 </a>
             </div>
-            <div class="home-grid-secundario">
+
+            <h2 class="home-section-title">Crie e Gerencie suas Escalas</h2>
+            <div class="grid-2-col" style="margin-bottom: 24px;">
                 <a class="card home-card card-animated-border" data-goto="gerar-escala">
                     <h3>📅 Geração Automática ✨</h3>
-                    <p>Utilize o algoritmo para criar uma escala otimizada com base nas regras e na disponibilidade da equipe.</p>
+                    <p>Crie uma escala otimizada com base nas suas regras.</p>
                 </a>
                 <a class="card home-card" data-goto="montar-escala">
                     <h3>✍️ Criação Manual</h3>
-                    <p>Comece com uma grade em branco e tenha total liberdade para montar a escala como preferir.</p>
-                </a>
-                <a class="card home-card" data-goto="escalas-salvas">
-                    <h3>🗂️ Escalas Salvas</h3>
-                    <p>Acesse e gerencie as escalas que você já salvou anteriormente.</p>
+                    <p>Comece com uma grade em branco e monte a escala como preferir.</p>
                 </a>
             </div>
-            <div class="home-grid-terciario" style="grid-template-columns: 1fr 1fr;">
+
+            <div class="grid-2-col">
+                <a class="card home-card" data-goto="escalas-salvas">
+                    <h3>🗂️ Escalas Salvas</h3>
+                    <p>Acesse e gerencie as escalas que você já salvou.</p>
+                </a>
                 <a class="card home-card" data-goto="relatorios">
                     <h3>📊 Relatórios</h3>
                     <p>Analise métricas e a distribuição de horas das suas escalas.</p>
-                </a>
-                <a class="card home-card" data-goto="configuracoes">
-                    <h3>⚙️ Configurações</h3>
-                    <p>Personalize a aparência e gerencie os dados da aplicação.</p>
                 </a>
             </div>
         </section>
 
         <section id="page-turnos" class="page">
-            <h1>🕒 Turnos</h1>
             <div class="card">
                 <h2>Criar / Editar</h2>
                 
-                <div class="grid-3-col" style="align-items: end;">
-                    <div class="animated-field" style="grid-column: 1;">
-                        <input id="turnoNome" type="text" placeholder=" " />
-                        <label for="turnoNome">Nome</label>
-                    </div>
-                </div>
-
                 <fieldset class="fieldset-wrapper">
-                    <legend>Ícone</legend>
+                    <legend>Identificação</legend>
                     <div class="grid-3-col" style="align-items: end; gap: 24px;">
                         <div class="animated-field" style="grid-column: 1;">
-                            <input id="turnoSigla" type="text" placeholder=" " maxlength="2" />
-                            <label for="turnoSigla">Sigla</label>
+                            <input id="turnoNome" type="text" placeholder=" " />
+                            <label for="turnoNome">Nome do Turno</label>
                         </div>
                         <div id="turnoCorContainer" style="grid-column: 2 / 4;">
+                             <label class="form-label" style="margin-bottom: 4px;">Cor de Identificação</label>
                             <div id="turnoCorPalette" class="color-palette"></div>
                             <input type="hidden" id="turnoCorHidden" value="#e2e8f0">
                         </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="fieldset-wrapper">
+                    <legend>Ícone (Opcional)</legend>
+                     <div class="animated-field" style="max-width: 150px;">
+                        <input id="turnoSigla" type="text" placeholder=" " maxlength="3" />
+                        <label for="turnoSigla">Sigla (até 3 letras)</label>
                     </div>
                 </fieldset>
 
@@ -311,7 +327,6 @@
         </section>
 
         <section id="page-cargos" class="page">
-            <h1>🏥 Cargos</h1>
             <div class="card">
                 <h2>Criar / Editar Cargo</h2>
                 
@@ -382,7 +397,6 @@
         </section>
 
         <section id="page-funcionarios" class="page">
-            <h1>👨‍⚕️ Funcionários</h1>
             <div class="card">
                 <h2>Criar / Editar</h2>
                 
@@ -488,8 +502,67 @@
             </div>
         </section>
 
+        <section id="page-equipes" class="page">
+            <div class="explanation-box" style="margin-bottom: 24px;">
+                <p style="margin-top: 0;">O cadastro de equipes é <strong>opcional</strong> e serve para automatizar a alocação de grupos fixos de trabalho que seguem um padrão (ex: 12x36).</p>
+                <p style="margin-bottom: 0;">Funcionários que <strong>não</strong> pertencem a uma equipe serão distribuídos individualmente pelo algoritmo para preencher as vagas restantes, seguindo as regras de carga horária e dias consecutivos.</p>
+            </div>
+            <div class="card">
+                <h2>Criar / Editar Equipe</h2>
+                <fieldset class="fieldset-wrapper">
+                    <legend>Identificação</legend>
+                     <div class="grid-3-col" style="align-items: end;">
+                        <div class="animated-field" style="grid-column: 1;">
+                            <input id="equipeNome" type="text" placeholder=" " />
+                            <label for="equipeNome">Nome da Equipe</label>
+                        </div>
+                        <div style="grid-column: 2 / 4;">
+                             <label class="form-label" style="margin-bottom: 4px;">Cor de Identificação</label>
+                            <div id="equipeCorPalette" class="color-palette"></div>
+                            <input type="hidden" id="equipeCorHidden">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="fieldset-wrapper">
+                    <legend>Membros da Equipe</legend>
+                    <div class="explanation-box">
+                        Selecione primeiro um cargo e um turno base. O sistema listará apenas os funcionários disponíveis que podem cumprir esse turno. Um funcionário só pode pertencer a uma equipe.
+                    </div>
+                    <div class="grid-2-col" style="margin-top: 16px; margin-bottom: 0;">
+                        <select id="equipeCargoSelect"></select>
+                        <select id="equipeTurnoSelect" disabled></select>
+                    </div>
+                    <div id="equipeMembrosContainer" class="check-container" style="margin-top: 16px;"></div>
+                </fieldset>
+                 <fieldset>
+                    <legend>
+                        Padrão de Trabalho
+                        <span class="tooltip-trigger" data-tooltip-id="padrao-trabalho-tooltip">?</span>
+                    </legend>
+                     <div class="grid-2-col-uneven">
+                        <select id="equipePadraoSelect">
+                            <option value="DSDN">Dia Sim, Dia Não (12x36)</option>
+                            <option value="DSDD">Dia Sim, Dois Dias Não (12x48)</option>
+                            <option value="DDDD">Dois Dias Sim, Dois Dias Não (2x2)</option>
+                        </select>
+                        <div id="equipePadraoExplicacao" class="explanation-box"></div>
+                    </div>
+                </fieldset>
+
+                <div class="form-row">
+                    <button id="btnSalvarEquipe" class="primary">💾 Salvar Equipe</button>
+                    <button id="btnCancelarEdEquipe" class="secondary hidden">Cancelar Edição</button>
+                    <button id="btnLimparEquipe" class="secondary ml-auto">🗑️ Limpar</button>
+                </div>
+            </div>
+            <div class="card card-lista">
+                <h2>Equipes Salvas</h2>
+                <div id="listaEquipes" class="card-grid"></div>
+            </div>
+        </section>
+
         <section id="page-gerar-escala" class="page">
-            <h1 id="gerador-escala-titulo">📅 Geração Automática de Escala ✨</h1>
             <div id="gerador-container">
                 <div id="passo1-selecao" class="wizard-step active card card-animated-border">
                     <h3>Passo 1: Selecione o Período e Feriados</h3>
@@ -558,59 +631,58 @@
                 </div>
 
                 <div id="passo2-cobertura" class="wizard-step card card-animated-border">
-                    <button id="btn-back-passo1" class="secondary button-voltar">
-                        < Voltar</button>
-                            <h3>Passo 2: Defina Cobertura e Regras Gerais</h3>
-                            <div class="passo2-grid">
-                                <fieldset class="regras-fieldset">
-                                    <legend>Cobertura de Turnos</legend>
-                                    <div id="cobertura-manual-container">
-                                        <div id="cobertura-turnos-container"></div>
-                                        <div class="explanation-box" style="margin-top: 12px;">
-                                            Defina o número <strong>mínimo</strong> de funcionários necessários para
-                                            cobrir cada turno em seus respectivos dias de operação. O algoritmo
-                                            tentará preencher esta demanda.
-                                        </div>
-                                    </div>
-                                </fieldset>
-                                <fieldset class="regras-fieldset">
-                                    <legend>Regras da Escala</legend>
-                                    <div class="regra-item">
-                                        <div class="animated-field">
-                                            <input type="number" id="maxDiasConsecutivos" value="6" min="1" placeholder=" " />
-                                            <label for="maxDiasConsecutivos">Máximo de dias de trabalho consecutivos</label>
-                                        </div>
-                                    </div>
-                                    <div class="regra-item">
-                                        <div class="animated-field">
-                                            <input type="number" id="minFolgasSabados" value="1" min="0" placeholder=" " />
-                                            <label for="minFolgasSabados">Mínimo de Sábados de folga por mês</label>
-                                        </div>
-                                    </div>
-                                    <div class="regra-item">
-                                        <div class="animated-field">
-                                            <input type="number" id="minFolgasDomingos" value="1" min="0" placeholder=" " />
-                                            <label for="minFolgasDomingos">Mínimo de Domingos de folga por mês</label>
-                                        </div>
-                                    </div>
-                                </fieldset>
+                    <button id="btn-back-passo1" class="secondary button-voltar">< Voltar</button>
+                    <h3>Passo 2: Defina a Cobertura de Turnos</h3>
+                    <div class="passo2-grid">
+                        <fieldset class="regras-fieldset">
+                            <legend>Cobertura de Turnos</legend>
+                            <div id="cobertura-turnos-container"></div>
+                        </fieldset>
+                        <fieldset class="regras-fieldset">
+                            <legend>Regras para Funcionários Individuais</legend>
+                            <div class="explanation-box" style="margin-bottom: 16px;">
+                                Estas regras se aplicam apenas aos funcionários que <strong>não</strong> pertencem a uma equipe fixa nesta escala.
                             </div>
-                            <div class="form-row">
-                                <button id="btn-goto-passo3" class="primary ml-auto">Próximo Passo ></button>
+                            <div class="regra-item">
+                                <div class="animated-field">
+                                    <input type="number" id="maxDiasConsecutivos" value="6" min="1" placeholder=" " />
+                                    <label for="maxDiasConsecutivos">Máx. dias de trabalho consecutivos</label>
+                                </div>
                             </div>
+                            <div class="regra-item">
+                                <div class="animated-field">
+                                    <input type="number" id="minFolgasSabados" value="1" min="0" placeholder=" " />
+                                    <label for="minFolgasSabados">Mín. Sábados de folga por mês</label>
+                                </div>
+                            </div>
+                            <div class="regra-item">
+                                <div class="animated-field">
+                                    <input type="number" id="minFolgasDomingos" value="1" min="0" placeholder=" " />
+                                    <label for="minFolgasDomingos">Mín. Domingos de folga por mês</label>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div class="form-row">
+                        <button id="btn-goto-passo3" class="primary ml-auto">Próximo Passo ></button>
+                    </div>
                 </div>
                 <div id="passo3-excecoes" class="wizard-step card card-animated-border">
                     <button id="btn-back-passo2" class="secondary button-voltar">
                         < Voltar</button>
-                            <h3>Passo 3: Configure Férias e Folgas para a Equipe</h3>
-                            <p class="muted">Marque os dias em que funcionários específicos não devem ser escalados.</p>
+                            <h3>Passo 3: Configure Férias e Folgas</h3>
+                            <p class="muted">Marque os dias em que funcionários específicos (individuais ou de equipes) não devem ser escalados.</p>
                             <div id="excecoes-funcionarios-container"></div>
                             <div class="explanation-box" style="margin-top: 12px;">
-                                O gerador de escalas respeitará os períodos de férias ou afastamentos, não alocando turnos para o funcionário nesses dias.
+                                O gerador respeitará estas exceções, não alocando turnos para o funcionário nestes dias.
                             </div>
                             <div class="form-row">
-                                <button id="btnGerarEscala" class="primary ml-auto">✨ Gerar Escala ✨</button>
+                                 <button id="btnGerarEscala" class="primary ml-auto">✨ Gerar Escala ✨</button>
                             </div>
+                </div>
+
+                <div id="passo4-equipes" class="wizard-step card card-animated-border hidden">
+                    
                 </div>
             </div>
 
@@ -641,7 +713,6 @@
         </section>
 
         <section id="page-montar-escala" class="page">
-            <h1>✍️ Criação Manual de Escala</h1>
             <div id="montador-container">
                 <div id="montar-passo1" class="wizard-step card">
                     <h3>Passo 1: Selecione o Cargo, Período e Feriados</h3>
@@ -723,8 +794,7 @@
         </section>
         
         <section id="page-escalas-salvas" class="page">
-            <h1>Escalas Salvas</h1>
-            <div id="lista-escalas-container" class="card">
+            <div class="card card-lista">
                 <h2>Lista de Escalas</h2>
                 <div class="form-row" style="margin-top:0; align-items: flex-end;">
                     <label style="flex-grow: 0; flex-basis: 300px;">Filtrar por Cargo:
@@ -759,7 +829,6 @@
         </section>
 
         <section id="page-relatorios" class="page">
-            <h1>📊 Relatórios e Métricas</h1>
             <div class="card">
                 <div class="form-row" style="align-items: flex-end;">
                     <label style="flex-grow: 0; flex-basis: 300px;">Selecione o Cargo:
@@ -831,7 +900,6 @@
         </section>
 
         <section id="page-configuracoes" class="page">
-            <h1>Configurações</h1>
             <div class="config-grid">
                 <div class="card">
                     <h2>Preferências</h2>
@@ -956,6 +1024,7 @@
     <script src="js/turnos.js"></script>
     <script src="js/cargos.js"></script>
     <script src="js/funcionarios.js"></script>
+    <script src="js/equipes.js"></script>
     <script src="js/escalas-gerador.js"></script>
     <script src="js/escalas-interface.js"></script>
     <script src="js/escalas-visualizacao.js"></script>

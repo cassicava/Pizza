@@ -2,12 +2,6 @@
  * 📅 Lógica da Interface do Gerador
  **************************************/
 
-/**
- * NOVO: Função centralizada para navegar nos assistentes com animação de slide.
- * @param {string} containerSelector - O seletor do container do assistente (ex: '#gerador-container').
- * @param {string} targetStepId - O ID do passo de destino (ex: 'passo2-cobertura').
- * @param {string} direction - A direção da animação ('forward' ou 'backward').
- */
 function navigateWizardWithAnimation(containerSelector, targetStepId, direction = 'forward') {
     const container = $(containerSelector);
     if (!container) return;
@@ -66,30 +60,85 @@ function updateEscalaResumoDias() {
     }
 }
 
-function renderPasso2_Regras(cargoId) {
-    const { cargos, turnos } = store.getState();
+function renderPasso2_Cobertura(cargoId) {
+    const { cargos, turnos, equipes } = store.getState();
     const cargo = cargos.find(c => c.id === cargoId);
     const container = $("#cobertura-turnos-container");
     container.innerHTML = "";
+
     if (!cargo || !cargo.turnosIds || cargo.turnosIds.length === 0) {
         container.innerHTML = `<p class="muted">Este cargo não possui turnos associados. Volte e edite o cargo primeiro.</p>`;
         return;
     }
+
     const turnosDoCargo = turnos.filter(t => cargo.turnosIds.includes(t.id)).sort((a, b) => a.nome.localeCompare(b.nome));
+
     turnosDoCargo.forEach(turno => {
         const div = document.createElement('div');
-        div.className = 'form-row-aligned cobertura-item';
-        
+        div.className = 'cobertura-item';
+        div.dataset.turnoId = turno.id;
+
         div.innerHTML = `
-            <span style="flex-grow: 1;">${turno.nome} (${turno.inicio} - ${turno.fim})</span>
-            <div class="animated-field" style="max-width: 150px;">
-                <input type="number" id="cobertura-${turno.id}" data-turno-id="${turno.id}" value="1" min="0" placeholder=" " />
-                <label for="cobertura-${turno.id}">Nº de funcionários</label>
+            <div class="cobertura-item-header">
+                <strong>${turno.nome} <span class="muted">(${turno.inicio}-${turno.fim})</span></strong>
+                <div class="toggle-group" data-cobertura-modo-toggle>
+                    <button type="button" class="toggle-btn active" data-value="individual">Individuais</button>
+                    <button type="button" class="toggle-btn" data-value="equipe">Equipe</button>
+                </div>
+            </div>
+
+            <div class="cobertura-options" style="margin-top: 12px;">
+                <div data-cobertura-modo="individual">
+                    <div class="animated-field" style="max-width: 180px;">
+                        <input type="number" data-cobertura-individual-count value="1" min="0" placeholder=" " />
+                        <label>Nº de funcionários</label>
+                    </div>
+                </div>
+                <div data-cobertura-modo="equipe" class="hidden">
+                    <div class="cobertura-equipe-options-compact">
+                        <div class="form-group">
+                            <label>Dias Ímpares:</label>
+                            <select data-cobertura-equipe-impar class="select-sm"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Dias Pares:</label>
+                            <select data-cobertura-equipe-par class="select-sm"></select>
+                        </div>
+                    </div>
+                    <small class="muted" style="margin-top: 8px; display: block;">O dia 1 da escala é ímpar, o dia 2 é par, etc.</small>
+                </div>
             </div>
         `;
         container.appendChild(div);
     });
+
+    $$('[data-cobertura-modo-toggle]').forEach(toggle => {
+        const coberturaItem = toggle.closest('.cobertura-item');
+        const turnoId = coberturaItem.dataset.turnoId;
+        const equipesCompativeis = equipes.filter(e => e.cargoId === cargoId && e.turnoId === turnoId);
+
+        $$('.toggle-btn', toggle).forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modo = btn.dataset.value;
+                $$('.toggle-btn', toggle).forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                coberturaItem.querySelector('[data-cobertura-modo="individual"]').classList.toggle('hidden', modo !== 'individual');
+                coberturaItem.querySelector('[data-cobertura-modo="equipe"]').classList.toggle('hidden', modo !== 'equipe');
+
+                if (modo === 'equipe') {
+                    const selectImpar = $('[data-cobertura-equipe-impar]', coberturaItem);
+                    const selectPar = $('[data-cobertura-equipe-par]', coberturaItem);
+                    
+                    const optionsHTML = '<option value="">Nenhuma</option>' + equipesCompativeis.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+                    selectImpar.innerHTML = optionsHTML;
+                    selectPar.innerHTML = optionsHTML;
+                }
+            });
+        });
+    });
 }
+
 
 function addFeriado() {
     const dataInput = $('#feriado-data-input');
@@ -267,12 +316,12 @@ function handleExcecaoToggle(event, funcId) {
 
     $(`[data-dates-container="${tipo}"][data-func-id="${funcId}"]`).classList.toggle('hidden', value === 'nao');
     if (value === 'nao') {
-        const iniInput = $(`[data-date-ini="${tipo}"][data-func-id="${funcId}"]`);
-        const fimInput = $(`[data-date-fim="${tipo}"][data-func-id="${funcId}"]`);
+        const iniInput = $(`[data-date-ini="${tipo}"][data-func-id="${func.id}"]`);
+        const fimInput = $(`[data-date-fim="${tipo}"][data-func-id="${func.id}"]`);
         iniInput.value = '';
         fimInput.value = '';
-        if ($(`[data-motivo="${tipo}"][data-func-id="${funcId}"]`)) {
-            $(`[data-motivo="${tipo}"][data-func-id="${funcId}"]`).value = '';
+        if ($(`[data-motivo="${tipo}"][data-func-id="${func.id}"]`)) {
+            $(`[data-motivo="${tipo}"][data-func-id="${func.id}"]`).value = '';
         }
         iniInput.dispatchEvent(new Event('change'));
     }
@@ -303,15 +352,29 @@ function handleGoToPasso2() {
     $('#feriado-data-input').min = inicio;
     $('#feriado-data-input').max = fim;
 
-    renderPasso2_Regras(cargoId);
+    renderPasso2_Cobertura(cargoId);
     navigateWizardWithAnimation('#gerador-container', 'passo2-cobertura', 'forward');
     saveGeradorState();
 }
 
 function handleGoToPasso3() {
     geradorState.cobertura = {};
-    $$('#cobertura-turnos-container input').forEach(input => {
-        geradorState.cobertura[input.dataset.turnoId] = parseInt(input.value, 10) || 0;
+    $$('#cobertura-turnos-container .cobertura-item').forEach(item => {
+        const turnoId = item.dataset.turnoId;
+        const modoAtivo = $('.toggle-btn.active', item).dataset.value;
+
+        if (modoAtivo === 'individual') {
+            geradorState.cobertura[turnoId] = {
+                mode: 'individual',
+                count: parseInt($('[data-cobertura-individual-count]', item).value, 10) || 0,
+            };
+        } else {
+            geradorState.cobertura[turnoId] = {
+                mode: 'equipe',
+                imparId: $('[data-cobertura-equipe-impar]', item).value || null,
+                parId: $('[data-cobertura-equipe-par]', item).value || null,
+            };
+        }
     });
 
     geradorState.maxDiasConsecutivos = parseInt($('#maxDiasConsecutivos').value, 10) || 6;

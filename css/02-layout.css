@@ -1,7 +1,7 @@
 /* LARGURAS DA SIDEBAR - Variáveis para fácil manutenção */
 :root {
   --sidebar-width-collapsed: 72px;
-  --sidebar-width-expanded: 250px; /* ALTERADO: Aumentado de 220px para 250px */
+  --sidebar-width-expanded: 250px;
 }
 
 /* NOVO LAYOUT PRINCIPAL COM FLEXBOX */
@@ -19,12 +19,10 @@ body {
   flex-direction: column;
   padding: 8px; 
   
-  /* --- EFEITO VIDRO LÍQUIDO (MAIS TRANSPARENTE) --- */
   background-color: rgba(255, 255, 255, 0.75); 
   -webkit-backdrop-filter: blur(10px); 
   backdrop-filter: blur(10px); 
   border-right: 1px solid rgba(255, 255, 255, 0.2);
-  /* --- FIM DO EFEITO --- */
 
   box-shadow: 0 4px 12px rgba(0,0,0,.05);
   transition: width 0.3s ease-in-out;
@@ -48,7 +46,6 @@ body {
   position: relative;
 }
 
-/* --- LÓGICA DE ANIMAÇÃO DA LOGO REESCRITA E CORRIGIDA --- */
 .logo-compact, .logo-full {
   position: absolute;
   top: 8px;
@@ -64,31 +61,24 @@ body {
   font-size: 1.8rem; 
   color: var(--brand);
   opacity: 1;
-  /* Transição para QUANDO RECOLHE: Aparece suavemente */
   transition: opacity 0.2s ease-in-out 0.1s;
 } 
 
 .logo-full { 
   opacity: 0;
-  /* Transição para QUANDO RECOLHE: Some rápido */
   transition: opacity 0.1s ease-in-out;
 }
 
 #sidebar:hover .logo-full { 
   opacity: 1;
-  /* ALTERAÇÃO: Delay ajustado para 0.2 segundos. */
   transition: opacity 0.3s ease-in-out 0.2s; 
 }
 
 #sidebar:hover .logo-compact { 
   opacity: 0;
-  /* Transição para QUANDO EXPANDE: Some rápido */
   transition: opacity 0.1s ease-in-out;
 }
-/* --- FIM DA LÓGICA DA LOGO --- */
 
-
-/* LÓGICA DE CENTRALIZAÇÃO DOS ÍCONES */
 .sidebar-links {
   display: flex;
   flex-direction: column;
@@ -97,70 +87,101 @@ body {
   justify-content: center; 
 }
 
-/* Posiciona o botão de configurações no final */
 #sidebar > .tab-btn[data-page="configuracoes"] {
   margin-top: auto;
 }
 
-/* Conteúdo principal agora tem margem fixa para não ficar atrás da sidebar */
 main.container {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   position: relative;
   flex-grow: 1; 
   margin-left: var(--sidebar-width-collapsed); 
   max-width: 1800px;
-  padding: 24px;
+  padding: 0; 
 }
 
-/* --- LÓGICA DE TRANSIÇÃO DE PÁGINAS (sem alterações) --- */
-.page, .page.active {
-    grid-area: 1 / 1;
+#main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 24px 16px 24px;
+    margin-bottom: 0; /* Espaçamento removido */
+    border-bottom: 1px solid var(--border);
 }
 
+#page-title {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.header-user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: auto; 
+}
+
+.header-user-info .welcome-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.2s ease-in-out;
+}
+
+.header-user-info .welcome-title:hover {
+    animation: animated-gradient-text 6s linear infinite;
+    background: linear-gradient( to right, var(--gradient-start), var(--gradient-mid), var(--gradient-end), var(--gradient-mid), var(--gradient-start) );
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transform: scale(1.03);
+}
+
+.header-action-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.6rem;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+}
+.header-action-btn:hover {
+    background-color: var(--bg);
+    color: var(--fg);
+    transform: scale(1.1) rotate(-8deg);
+}
+
+/* --- LÓGICA DE TRANSIÇÃO E TAMANHO DE PÁGINAS CORRIGIDA --- */
 .page {
+  display: none;
+  flex-direction: column;
+  gap: 24px;
+  
   opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
   transform: translateY(15px);
-  transition: opacity 0.2s ease-in, transform 0.2s ease-in, visibility 0.2s;
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+
+  padding: 24px 24px 12px 24px; 
 }
 
 .page.active {
   opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
   transform: translateY(0);
-  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-  transition-delay: 0.15s;
 }
 
-/* --- GRIDS DA HOME (sem alterações) --- */
-.home-grid-principal, .home-grid-secundario, .home-grid-terciario {
-    display: grid;
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
-.home-grid-principal {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.home-grid-secundario {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.home-grid-terciario {
-    grid-template-columns: 1fr;
-}
-
-/* --- TÍTULO DE BOAS-VINDAS --- */
-.welcome-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    margin: 24px auto 48px;
-    max-width: 700px;
+/* --- TELA DE INÍCIO --- */
+#page-home .welcome-container {
+    margin: 0 auto; /* Margem superior zerada */
 }
 
 .welcome-title {
@@ -175,4 +196,39 @@ main.container {
     color: var(--muted);
     line-height: 1.6;
     margin: 0;
+}
+
+.home-section-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 32px 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+#page-home .home-section-title:first-of-type {
+    margin-top: 0;
+}
+#page-home .welcome-container + .home-section-title {
+    margin-top: 16px; /* Espaçamento reduzido */
+}
+
+/* GRIDS DA HOME */
+.grid-2-col, .grid-3-col, .home-grid-principal {
+    display: grid;
+    gap: 24px;
+}
+
+.home-grid-principal {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.grid-3-col {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-2-col {
+    grid-template-columns: 1fr 1fr;
 }

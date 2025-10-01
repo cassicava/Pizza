@@ -28,7 +28,6 @@ function loadAndApplyGeradorState() {
     if (savedState) {
         geradorState = JSON.parse(savedState);
         
-        // Aplica o estado salvo à UI do Passo 1
         if (geradorState.cargoId) $("#escCargo").value = geradorState.cargoId;
         if (geradorState.inicio) $("#escIni").value = geradorState.inicio;
         if (geradorState.fim) {
@@ -39,17 +38,11 @@ function loadAndApplyGeradorState() {
         updateHolidaySectionState();
         renderFeriadosTags();
         
-        // Aplica o estado salvo à UI do Passo 2 (se já tiver sido preenchido)
         if(geradorState.maxDiasConsecutivos) $("#maxDiasConsecutivos").value = geradorState.maxDiasConsecutivos;
         if(geradorState.minFolgasSabados) $("#minFolgasSabados").value = geradorState.minFolgasSabados;
         if(geradorState.minFolgasDomingos) $("#minFolgasDomingos").value = geradorState.minFolgasDomingos;
         
-        // Como a cobertura agora é sempre manual, renderizamos e preenchemos os valores
-        renderPasso2_Regras(geradorState.cargoId);
-        for(const turnoId in geradorState.cobertura){
-            const input = $(`#cobertura-${turnoId}`);
-            if(input) input.value = geradorState.cobertura[turnoId];
-        }
+        renderPasso2_Cobertura(geradorState.cargoId);
     }
 }
 
@@ -69,7 +62,6 @@ function resetGeradorEscala() {
 
     $("#escalaView").classList.add('hidden');
     $("#gerador-container").classList.remove('hidden');
-    // Garante que só o primeiro passo esteja visível ao resetar
     $$("#gerador-container .wizard-step").forEach(step => step.classList.remove('active'));
     $("#passo1-selecao").classList.add('active');
 
@@ -143,10 +135,10 @@ function setTrabalhaToggleState(value) {
 
 // Funções de inicialização e eventos
 function setupEscalas() {
+    const escCargoInput = $("#escCargo");
     const escIniInput = $("#escIni");
     const escFimInput = $("#escFim");
 
-    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
     escIniInput.addEventListener('click', () => escIniInput.showPicker());
     escFimInput.addEventListener('click', () => escFimInput.showPicker());
     $('#feriado-data-input').addEventListener('click', () => $('#feriado-data-input').showPicker());
@@ -155,10 +147,9 @@ function setupEscalas() {
     $("#btn-back-passo1").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo1-selecao', 'backward'));
     $("#btn-goto-passo3").addEventListener('click', () => handleGoToPasso3());
     $("#btn-back-passo2").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo2-cobertura', 'backward'));
-
-    $("#btnGerarEscala").addEventListener('click', async () => {
-        await gerarEscala();
-    });
+    $("#btn-back-passo3").addEventListener('click', () => navigateWizardWithAnimation('#gerador-container', 'passo3-excecoes', 'backward'));
+    
+    $("#btnGerarEscala").addEventListener('click', async () => await gerarEscala());
 
     $("#btnVoltarPasso3").addEventListener('click', () => {
         $("#escalaView").classList.add('hidden');
@@ -168,9 +159,10 @@ function setupEscalas() {
         if(toolbox) toolbox.classList.add("hidden");
     });
 
-    $("#escCargo").addEventListener('change', (e) => {
-        $("#escCargo").classList.remove('invalid');
+    escCargoInput.addEventListener('change', (e) => {
+        escCargoInput.classList.remove('invalid');
         geradorState.cargoId = e.target.value;
+        if(e.target.value) escIniInput.showPicker();
         saveGeradorState();
     });
 
@@ -195,6 +187,7 @@ function setupEscalas() {
         updateHolidaySectionState();
         saveGeradorState();
     });
+
     escFimInput.addEventListener('change', () => {
         escFimInput.classList.remove('invalid');
         geradorState.fim = escFimInput.value;
