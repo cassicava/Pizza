@@ -1,0 +1,343 @@
+/**************************************
+ * ✨ Tela de Boas-Vindas (Onboarding)
+ **************************************/
+
+#welcome-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg);
+    z-index: 200;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in-out, visibility 0.5s;
+}
+
+#welcome-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.welcome-card {
+    background-color: var(--card);
+    border-radius: var(--radius);
+    padding: 32px 48px 64px 48px;
+    box-shadow: var(--shadow);
+    width: 90%;
+    max-width: 600px;
+    text-align: center;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+.welcome-step {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+
+.welcome-step.active {
+    display: flex;
+}
+
+/* Animações de transição foram movidas para 10-animations.css */
+
+.welcome-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--fg);
+    margin: 0;
+}
+
+.welcome-subtitle {
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin: 8px 0 24px 0;
+    max-width: 450px;
+}
+
+/* --- Botões --- */
+.welcome-btn {
+    padding: 10px 24px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 2px solid;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 0.2s ease-in-out;
+    background: transparent;
+}
+
+.welcome-btn-primary {
+    border-color: var(--brand);
+    color: var(--brand);
+}
+/* ADIÇÃO: Garante que o botão inicial tenha a cor correta */
+#welcome-start-btn {
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+.welcome-btn-primary:hover, #welcome-start-btn:hover {
+    background: var(--brand);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.welcome-btn-primary:disabled {
+    border-color: var(--border);
+    color: var(--muted);
+    background: transparent;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.welcome-btn-secondary {
+    border: none;
+    color: var(--muted);
+    padding: 4px 8px;
+    font-size: 0.9rem;
+    margin-top: 16px;
+}
+
+.welcome-btn-secondary:hover {
+    color: var(--fg);
+}
+
+/* --- Inputs e Forms --- */
+.welcome-form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.welcome-label {
+    font-size: 1rem;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.welcome-input {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 1rem;
+    text-align: center;
+    width: 80%;
+    max-width: 350px;
+}
+
+.welcome-input:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+/* --- Lista de Vantagens --- */
+.welcome-features-list {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 420px;
+}
+
+.welcome-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+.welcome-feature-item span {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+/* --- Estilos para os Cards de Termos (Welcome e Config) --- */
+.welcome-terms-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
+    margin: 24px 0;
+}
+
+.info-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: var(--bg);
+    font-weight: 500;
+}
+
+.info-card:hover {
+    border-color: var(--brand);
+    background-color: #eff6ff;
+}
+
+html[data-theme="dark"] .info-card:hover {
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+.info-card .icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    border: 2px solid var(--muted);
+    border-radius: 50%;
+    transition: all 0.2s ease-in-out;
+}
+
+.info-card.accepted {
+    border-color: #22c55e;
+    background-color: #f0fdf4;
+    color: #166534;
+}
+
+html[data-theme="dark"] .info-card.accepted {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #a7f3d0;
+}
+
+
+.info-card.accepted .icon {
+    border-color: #22c55e;
+    background-color: #22c55e;
+    color: white;
+    position: relative;
+}
+/* Checkmark icon */
+.info-card.accepted .icon::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* ALTERAÇÃO: Layout para a tela de Configurações */
+.config-terms-container {
+    display: flex;
+    flex-direction: column; /* Altera a direção para empilhar as linhas */
+    gap: 12px;
+    width: 100%;
+    margin-top: 16px;
+}
+
+.config-terms-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.config-terms-row .info-card {
+    flex: 1; /* Faz os cards na mesma linha dividirem o espaço */
+}
+
+.config-terms-container .info-card {
+    min-width: 200px;
+}
+
+/* ALTERAÇÃO: Remove o ícone de bolinha na tela de configurações */
+.config-terms-container .info-card .icon {
+    display: none;
+}
+/* --- Fim dos estilos dos cards --- */
+
+
+/* --- Indicador de Progresso --- */
+.welcome-progress-indicator {
+    position: absolute;
+    bottom: 32px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.progress-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--border);
+    transition: background-color 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.progress-dot.active {
+    background-color: var(--brand);
+    transform: scale(1.3);
+}
+
+/* --- SUGESTÃO: Animação de Entrada para a Lista de Vantagens --- */
+
+/* 1. Define a animação de "surgir de baixo" */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 2. Aplica a animação a cada item da lista */
+.welcome-feature-item {
+  /* Inicia invisível para a animação funcionar */
+  opacity: 0; 
+  /* Garante que o item permaneça visível após a animação */
+  animation-fill-mode: forwards; 
+}
+
+/* 3. Aplica a animação apenas quando o passo 3 estiver ativo */
+.welcome-step.active .welcome-feature-item {
+  animation-name: fadeInUp;
+  animation-duration: 0.6s;
+  animation-timing-function: ease-out;
+}
+
+/* 4. Cria o efeito cascata, com um atraso para cada item */
+.welcome-step.active .welcome-feature-item:nth-child(1) {
+  animation-delay: 0.2s;
+}
+.welcome-step.active .welcome-feature-item:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.welcome-step.active .welcome-feature-item:nth-child(3) {
+  animation-delay: 0.6s;
+}
+.welcome-step.active .welcome-feature-item:nth-child(4) {
+  animation-delay: 0.8s;
+}
