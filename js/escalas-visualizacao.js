@@ -109,10 +109,31 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     Object.keys(escala.excecoes).forEach(funcId => allFuncsInvolved.add(funcId));
     Object.keys(escala.historico || {}).forEach(funcId => allFuncsInvolved.add(funcId));
 
-    const funcsDaEscala = [...allFuncsInvolved].map(funcId => funcionarios.find(f => f.id === funcId)).filter(Boolean).sort((a, b) => a.nome.localeCompare(b.nome));
-
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
+
+    const funcsDaEscala = [...allFuncsInvolved]
+        .map(funcId => funcionarios.find(f => f.id === funcId))
+        .filter(Boolean)
+        .sort((a, b) => {
+            const primeiroDia = dateRange[0];
+            const slotA = escala.slots.find(s => s.assigned === a.id && s.date === primeiroDia);
+            const slotB = escala.slots.find(s => s.assigned === b.id && s.date === primeiroDia);
+            
+            const turnoA = slotA ? turnosMap[slotA.turnoId] : null;
+            const turnoB = slotB ? turnosMap[slotB.turnoId] : null;
+
+            if (turnoA && !turnoB) return -1;
+            if (!turnoA && turnoB) return 1;
+
+            if (turnoA && turnoB) {
+                const inicioComparison = turnoA.inicio.localeCompare(turnoB.inicio);
+                if (inicioComparison !== 0) return inicioComparison;
+            }
+
+            return a.nome.localeCompare(b.nome);
+        });
+
     const turnosDoCargo = turnos.filter(t => cobertura.hasOwnProperty(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio));
 
     let tableHTML = `<table class="escala-final-table"><thead><tr><th>Funcionário</th>`;
@@ -121,16 +142,37 @@ function renderGenericEscalaTable(escala, container, options = {}) {
         const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
         const dia = d.getDate();
         const feriado = escala.feriados.find(f => f.date === date);
-        const isFeriado = feriado && feriado.trabalha ? 'feriado' : '';
+        const isFeriado = feriado ? 'feriado' : '';
         const isWeekend = (d.getUTCDay() === 0 || d.getUTCDay() === 6) ? 'weekend' : '';
         tableHTML += `<th class="${isFeriado} ${isWeekend}" title="${feriado ? feriado.nome : ''}">${dia}<br>${diaSemana}</th>`;
     });
     tableHTML += `</tr></thead><tbody>`;
 
     funcsDaEscala.forEach(func => {
+        const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
+        const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
+        const percentual = metaHoras > 0 ? (horasTrabalhadas / metaHoras) * 100 : 0;
+        
+        // --- INÍCIO DA ALTERAÇÃO (LÓGICA DE CORES) ---
+        let indicatorClass = '';
+        let indicatorTitle = `Carga Horária: ${horasTrabalhadas.toFixed(1)}h de ${metaHoras.toFixed(1)}h (${percentual.toFixed(0)}%)`;
+        
+        if (percentual >= 100) {
+            indicatorClass = 'workload-ok'; // Verde
+        } else if (percentual >= 80) {
+            indicatorClass = 'workload-good'; // Azul (seguindo a lógica da barra)
+        } else if (percentual >= 40) {
+            indicatorClass = 'workload-warning'; // Amarelo
+        } else if (horasTrabalhadas > 0) {
+            indicatorClass = 'workload-danger'; // Vermelho
+        }
+        // --- FIM DA ALTERAÇÃO ---
+
+        const indicatorHTML = `<span class="workload-indicator ${indicatorClass}" title="${indicatorTitle}"></span>`;
+
         const nomeHtml = `
             <td>
-                ${func.nome}
+                ${indicatorHTML} ${func.nome}
                 <br>
                 <small class="muted">${func.documento || '---'}</small>
             </td>
@@ -149,10 +191,11 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             if (slot) {
                 const turno = turnosMap[slot.turnoId];
                 const slotAttr = isInteractive ? `data-slot-id="${slot.id}"` : '';
+                const equipeAttr = isInteractive && slot.equipeId ? `data-equipe-id="${slot.equipeId}"` : '';
                 const draggableAttr = isInteractive ? `draggable="true"` : '';
                 const textColor = getContrastingTextColor(turno.cor);
                 const extraClass = slot.isExtra ? 'celula-hora-extra' : '';
-                tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${draggableAttr} title="${turno.nome}">${turno.sigla}</td>`;
+                tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} ${draggableAttr} title="${turno.nome}">${turno.sigla}</td>`;
             } else if (afastado) {
                 const motivo = excecoesFunc.afastamento.motivo || "Afastado";
                 const sigla = TIPOS_AFASTAMENTO.find(a => a.nome === motivo)?.sigla || 'AF';
@@ -268,6 +311,7 @@ function renderPainelDaEscala(escala) {
             saldoLabel = fazHoraExtra ? 'H. Extra' : 'Acima da Meta';
         }
 
+        // Lógica de cores da barra de progresso
         let barColorClass = 'blue';
         if (progPrincipal < 40) barColorClass = 'red';
         else if (progPrincipal < 80) barColorClass = 'yellow';
@@ -328,7 +372,31 @@ function renderPainelDaEscala(escala) {
         <div class="painel-tab-content" data-tab-content="stats">${statsHTML}</div>
     `;
     
-    renderEscalaLegend(escala, $('.escala-legenda', painelContainer));
+    // --- INÍCIO DA ALTERAÇÃO (LEGENDA) ---
+    const legendaContainer = $('.escala-legenda', painelContainer);
+    renderEscalaLegend(escala, legendaContainer);
+
+    // Adiciona a legenda para os indicadores de carga horária
+    const legendaStatusHTML = `
+        <div class="legenda-item" title="Carga horária muito abaixo da meta (<40%)">
+            <span class="workload-indicator workload-danger"></span>
+            <span>Abaixo da Meta</span>
+        </div>
+        <div class="legenda-item" title="Carga horária se aproximando da meta (40% a 79%)">
+            <span class="workload-indicator workload-warning"></span>
+            <span>Em Progresso</span>
+        </div>
+        <div class="legenda-item" title="Carga horária adequada (80% a 99%)">
+            <span class="workload-indicator workload-good"></span>
+            <span>Meta Próxima</span>
+        </div>
+        <div class="legenda-item" title="Carga horária atingida ou excedida (≥100%)">
+            <span class="workload-indicator workload-ok"></span>
+            <span>Meta Atingida</span>
+        </div>
+    `;
+    legendaContainer.insertAdjacentHTML('beforeend', legendaStatusHTML);
+    // --- FIM DA ALTERAÇÃO ---
 
     $$('.painel-tab-btn', painelContainer).forEach(btn => {
         btn.onclick = () => {

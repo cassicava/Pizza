@@ -4,7 +4,6 @@
 
 const $ = (sel, el=document) => el.querySelector(sel);
 const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
-const uid = () => Math.random().toString(36).slice(2,10);
 
 function saveJSON(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
 function loadJSON(key, fallback){

@@ -395,13 +395,17 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
     }
 
     const turno = store.getState().turnos.find(t => t.id === turnoId);
+    if (!turno) return;
+
+    const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
     
     const existingSlotIndex = currentEscala.slots.findIndex(s => s.date === date && s.assigned === employeeId);
     if (existingSlotIndex > -1) {
         const slotAntigo = currentEscala.slots[existingSlotIndex];
         const turnoAntigo = store.getState().turnos.find(t => t.id === slotAntigo.turnoId);
         if (turnoAntigo) {
-            currentEscala.historico[employeeId].horasTrabalhadas -= turnoAntigo.cargaMin;
+            const cargaAntiga = calcCarga(turnoAntigo.inicio, turnoAntigo.fim, turnoAntigo.almocoMin, turnoAntigo.diasDeDiferenca);
+            currentEscala.historico[employeeId].horasTrabalhadas -= cargaAntiga;
         }
         currentEscala.slots.splice(existingSlotIndex, 1);
     }
@@ -410,7 +414,7 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
     currentEscala.slots.push(novoSlot);
 
     if (!currentEscala.historico[employeeId]) currentEscala.historico[employeeId] = { horasTrabalhadas: 0 };
-    currentEscala.historico[employeeId].horasTrabalhadas += turno.cargaMin;
+    currentEscala.historico[employeeId].horasTrabalhadas += cargaReal;
     
     surgicallyRerenderTable(currentEscala);
     updateAllIndicators();
@@ -428,7 +432,10 @@ function handleRemoveShiftClick(slotId) {
     const turno = store.getState().turnos.find(t => t.id === slot.turnoId);
     const employeeId = slot.assigned;
 
-    currentEscala.historico[employeeId].horasTrabalhadas -= turno.cargaMin;
+    if (turno) {
+        const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
+        currentEscala.historico[employeeId].horasTrabalhadas -= cargaReal;
+    }
     
     const isGeradaAutomaticamente = !currentEscala.isManual;
     const hasCoberturaDefinida = isGeradaAutomaticamente && (currentEscala.cobertura[slot.turnoId] || 0) > 0;
@@ -436,6 +443,7 @@ function handleRemoveShiftClick(slotId) {
 
     if (hasCoberturaDefinida && !isExtra) {
         slot.assigned = null;
+        delete slot.equipeId;
     } else {
         currentEscala.slots.splice(slotIndex, 1);
     }
@@ -446,7 +454,13 @@ function handleRemoveShiftClick(slotId) {
     highlightEmployeeRow(employeeId);
 }
 
+
 function handleEmployeePaint(cell) {
+    if (cell.dataset.equipeId) {
+        showToast("Turnos de equipe não podem ser modificados individualmente.");
+        return;
+    }
+
     if (!editorState.focusedEmployeeId || !editorState.selectedShiftBrush) {
         showToast("Selecione um turno para começar a pintar.");
         return;
@@ -459,10 +473,54 @@ function handleEmployeePaint(cell) {
     handleAddShiftClick(editorState.focusedEmployeeId, editorState.selectedShiftBrush, date);
 }
 
-function handleEraseClick(cell) {
-    const { slotId } = cell.dataset;
-    if (slotId) {
+async function handleEraseClick(cell) {
+    const { slotId, equipeId, date } = cell.dataset;
+
+    if (equipeId) {
+        const { equipes } = store.getState();
+        const equipe = equipes.find(e => e.id === equipeId);
+        const confirmado = await showConfirm({
+            title: "Remover Alocação de Equipe?",
+            message: `Este turno faz parte da equipe "${equipe.nome}". Deseja remover a equipe inteira apenas para este dia (${new Date(date+'T12:00:00').toLocaleDateString()})?`,
+            confirmText: "Sim, Remover Equipe do Dia"
+        });
+        if (confirmado) {
+            handleRemoveTeamFromDay(equipeId, date);
+        }
+    } else if (slotId) {
         handleRemoveShiftClick(slotId);
+    }
+}
+
+async function handleRemoveTeamFromDay(equipeId, date) {
+    const { equipes, turnos } = store.getState();
+    const equipe = equipes.find(e => e.id === equipeId);
+    if (!equipe) return;
+    
+    const affectedEmployeeIds = [];
+
+    equipe.funcionarioIds.forEach(funcId => {
+        const slotIndex = currentEscala.slots.findIndex(s => s.date === date && s.assigned === funcId && s.equipeId === equipeId);
+        if (slotIndex > -1) {
+            const slot = currentEscala.slots[slotIndex];
+            const turno = turnos.find(t => t.id === slot.turnoId);
+            
+            if (currentEscala.historico[funcId] && turno) {
+                const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
+                currentEscala.historico[funcId].horasTrabalhadas -= cargaReal;
+                affectedEmployeeIds.push(funcId);
+            }
+
+            slot.assigned = null;
+            delete slot.equipeId;
+        }
+    });
+
+    if (affectedEmployeeIds.length > 0) {
+        surgicallyRerenderTable(currentEscala);
+        updateAllIndicators();
+        runSurgicalValidation(affectedEmployeeIds);
+        showToast(`Equipe "${equipe.nome}" removida do dia ${new Date(date+'T12:00:00').toLocaleDateString()}.`);
     }
 }
 
@@ -491,7 +549,7 @@ function handleKeyboardNav(event){
     if (focusedCell) {
         if (key === 'Delete' || key === 'Backspace') {
             event.preventDefault();
-            if (focusedCell.dataset.slotId) handleRemoveShiftClick(focusedCell.dataset.slotId);
+            handleEraseClick(focusedCell);
         }
         if (key === 'Enter') {
             event.preventDefault();
@@ -609,7 +667,7 @@ function updateToolboxView() {
     } else if (editMode === 'eraser') {
         title.textContent = 'Modo Borracha';
         subtitle.textContent = 'Clique em um turno na escala para apagá-lo.';
-        contentEl.innerHTML = '<div class="explanation-box" style="margin: 16px;"><div>Clique em qualquer turno alocado na tabela para removê-lo.</div></div>';
+        contentEl.innerHTML = '<div class="explanation-box" style="margin: 16px;"><div>Clique em qualquer turno alocado na tabela para removê-lo. Turnos de equipe serão removidos por completo no dia selecionado.</div></div>';
     } else if (editMode === 'conflicts') {
         title.textContent = 'Conflitos e Avisos';
         subtitle.textContent = 'Lista de regras violadas na escala atual.';
@@ -668,6 +726,7 @@ async function handleClearAssignments() {
     } else {
         currentEscala.slots.forEach(slot => {
             slot.assigned = null;
+            delete slot.equipeId; 
         });
     }
 
@@ -806,9 +865,14 @@ function highlightEmployeeRow(employeeId) {
 }
 
 function applyAbsenceToCell(cell) {
-    const { employeeId, date } = cell.dataset;
+    const { employeeId, date, equipeId } = cell.dataset;
     if (!employeeId || !date) return;
     
+    if (equipeId) {
+        showToast("Não é possível adicionar uma ausência sobre um turno de equipe. Remova a equipe do dia primeiro.");
+        return;
+    }
+
     const { turnos } = store.getState();
     const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
 
@@ -826,7 +890,8 @@ function applyAbsenceToCell(cell) {
         if (existingSlotIndex > -1) {
             const turnoRemovido = turnosMap[currentEscala.slots[existingSlotIndex].turnoId];
             if (turnoRemovido) {
-                currentEscala.historico[employeeId].horasTrabalhadas -= turnoRemovido.cargaMin;
+                const cargaAntiga = calcCarga(turnoRemovido.inicio, turnoRemovido.fim, turnoRemovido.almocoMin, turnoRemovido.diasDeDiferenca);
+                currentEscala.historico[employeeId].horasTrabalhadas -= cargaAntiga;
             }
             if (currentEscala.isManual) {
                 currentEscala.slots.splice(existingSlotIndex, 1);
@@ -1116,6 +1181,13 @@ function clearCellFocus() {
 function handleDragStart(e) {
     const cell = e.target.closest('.editable-cell[draggable="true"]');
     if (!cell) return;
+
+    if (cell.dataset.equipeId) {
+        showToast("Turnos de equipe não podem ser movidos.");
+        e.preventDefault();
+        return;
+    }
+
     e.dataTransfer.effectAllowed = 'move';
     const sourceData = { slotId: cell.dataset.slotId };
     e.dataTransfer.setData('application/json', JSON.stringify(sourceData));
@@ -1141,6 +1213,11 @@ async function handleDrop(e) {
     targetCell.classList.remove('drop-target');
     $$('.dragging').forEach(el => el.classList.remove('dragging'));
 
+    if (targetCell.dataset.equipeId) {
+        showToast("Não é possível mover um turno para uma célula ocupada por uma equipe.");
+        return;
+    }
+
     const sourceData = JSON.parse(e.dataTransfer.getData('application/json'));
     const sourceSlot = currentEscala.slots.find(s => s.id === sourceData.slotId);
     if (!sourceSlot) return;
@@ -1163,9 +1240,12 @@ async function handleDrop(e) {
         const oldEmployeeId = sourceSlot.assigned;
         const turno = store.getState().turnos.find(t => t.id === sourceSlot.turnoId);
 
-        currentEscala.historico[oldEmployeeId].horasTrabalhadas -= turno.cargaMin;
-        if (!currentEscala.historico[targetEmployeeId]) currentEscala.historico[targetEmployeeId] = { horasTrabalhadas: 0 };
-        currentEscala.historico[targetEmployeeId].horasTrabalhadas += turno.cargaMin;
+        if (turno) {
+            const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
+            currentEscala.historico[oldEmployeeId].horasTrabalhadas -= cargaReal;
+            if (!currentEscala.historico[targetEmployeeId]) currentEscala.historico[targetEmployeeId] = { horasTrabalhadas: 0 };
+            currentEscala.historico[targetEmployeeId].horasTrabalhadas += cargaReal;
+        }
         
         sourceSlot.assigned = targetEmployeeId;
         sourceSlot.date = targetDate;
@@ -1186,6 +1266,7 @@ async function handleSwapShiftClick(slot1Id, slot2Id) {
     const func2Id = slot2.assigned;
     const turno1 = store.getState().turnos.find(t => t.id === slot1.turnoId);
     const turno2 = store.getState().turnos.find(t => t.id === slot2.turnoId);
+    if(!turno1 || !turno2) return;
 
     const tempEscala = JSON.parse(JSON.stringify(currentEscala));
     const tempSlot1 = tempEscala.slots.find(s => s.id === slot1Id);
@@ -1202,8 +1283,11 @@ async function handleSwapShiftClick(slot1Id, slot2Id) {
         return;
     }
     
-    currentEscala.historico[func1Id].horasTrabalhadas += (turno2.cargaMin - turno1.cargaMin);
-    currentEscala.historico[func2Id].horasTrabalhadas += (turno1.cargaMin - turno2.cargaMin);
+    const carga1 = calcCarga(turno1.inicio, turno1.fim, turno1.almocoMin, turno1.diasDeDiferenca);
+    const carga2 = calcCarga(turno2.inicio, turno2.fim, turno2.almocoMin, turno2.diasDeDiferenca);
+
+    currentEscala.historico[func1Id].horasTrabalhadas += (carga2 - carga1);
+    currentEscala.historico[func2Id].horasTrabalhadas += (carga1 - carga2);
 
     slot1.assigned = func2Id;
     slot2.assigned = func1Id;

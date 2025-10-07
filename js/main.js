@@ -6,6 +6,7 @@ const dirtyForms = {
     turnos: false,
     cargos: false,
     funcionarios: false,
+    equipes: false,
     'gerar-escala': false,
 };
 
@@ -20,10 +21,11 @@ function updateWelcomeMessage() {
 }
 
 function updateHomeScreenDashboard() {
-    const { turnos, cargos, funcionarios } = store.getState();
+    const { turnos, cargos, funcionarios, equipes } = store.getState();
     if($("#home-turnos-count")) $("#home-turnos-count").textContent = turnos.length > 0 ? `${turnos.length} cadastrado(s)` : '';
     if($("#home-cargos-count")) $("#home-cargos-count").textContent = cargos.length > 0 ? `${cargos.length} cadastrado(s)` : '';
     if($("#home-funcionarios-count")) $("#home-funcionarios-count").textContent = funcionarios.length > 0 ? `${funcionarios.length} cadastrado(s)` : '';
+    if($("#home-equipes-count")) $("#home-equipes-count").textContent = equipes.length > 0 ? `${equipes.length} cadastrada(s)` : '';
 }
 
 function applyTheme(theme) {
@@ -63,6 +65,7 @@ function go(page, options = {}) {
                     case 'turnos': cancelEditTurno(); break;
                     case 'cargos': cancelEditCargo(); break;
                     case 'funcionarios': cancelEditFunc(); break;
+                    case 'equipes': cancelEditEquipe(); break;
                     case 'gerar-escala': resetGeradorWizard(); break;
                 }
             }
@@ -99,6 +102,10 @@ function go(page, options = {}) {
                 case 'funcionarios':
                     renderFuncCargoSelect();
                     break;
+                case 'equipes':
+                    renderEquipeCargoSelect();
+                    renderEquipes();
+                    break;
                 case 'gerar-escala': initGeradorPage(options); break;
                 case 'relatorios': renderRelatoriosPage(); break;
                 case 'escalas-salvas': renderEscalasList(); break;
@@ -117,25 +124,32 @@ function renderRouter(actionName) {
 
     switch(actionName) {
         case 'LOAD_STATE':
-            renderTurnos(); renderCargos(); renderFuncs(); renderEscalasList();
-            renderTurnosSelects(); renderFuncCargoSelect();
+            renderTurnos(); renderCargos(); renderFuncs(); renderEquipes(); renderEscalasList();
+            renderTurnosSelects(); renderFuncCargoSelect(); renderEquipeCargoSelect();
             loadConfigForm(); updateWelcomeMessage();
             break;
         case 'SAVE_TURNO':
         case 'DELETE_TURNO':
             if (currentPageId === 'turnos') renderTurnos();
             if (currentPageId === 'cargos') renderTurnosSelects();
+            if (currentPageId === 'equipes') { renderEquipeCargoSelect(); renderEquipes(); }
             break;
         case 'SAVE_CARGO':
         case 'DELETE_CARGO':
             if (currentPageId === 'cargos') renderCargos();
             if (currentPageId === 'funcionarios') renderFuncCargoSelect();
+            if (currentPageId === 'equipes') { renderEquipeCargoSelect(); renderEquipes(); }
             break;
         case 'SAVE_FUNCIONARIO':
         case 'DELETE_FUNCIONARIO':
         case 'ARCHIVE_FUNCIONARIO':
         case 'UNARCHIVE_FUNCIONARIO':
             if (currentPageId === 'funcionarios') renderFuncs();
+            if (currentPageId === 'equipes') renderEquipes();
+            break;
+        case 'SAVE_EQUIPE':
+        case 'DELETE_EQUIPE':
+            if (currentPageId === 'equipes') renderEquipes();
             break;
         case 'DELETE_ESCALA_SALVA':
              if (currentPageId === 'escalas-salvas') renderEscalasList();

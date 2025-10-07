@@ -132,6 +132,9 @@
             <button class="tab-btn" data-page="funcionarios">
                 <span class="tab-icon">👨‍⚕️</span> <span class="tab-text">Funcionários</span>
             </button>
+            <button class="tab-btn" data-page="equipes">
+                <span class="tab-icon">🤝</span> <span class="tab-text">Equipes</span>
+            </button>
             <button class="tab-btn" data-page="gerar-escala">
                 <span class="tab-icon">✨</span>
                 <span class="tab-text">Geração Automática</span>
@@ -164,7 +167,7 @@
         <section id="page-home" class="page active">
             
             <h2 class="home-section-title">Cadastros Essenciais</h2>
-            <div class="home-grid-principal">
+            <div class="grid-4-col">
                 <a class="card home-card" data-goto="turnos">
                     <span class="card-step">Passo 1</span>
                     <h3>🕒 Turnos</h3>
@@ -182,6 +185,12 @@
                     <h3>👨‍⚕️ Funcionários</h3>
                     <p id="home-funcionarios-count" class="home-card-count"></p>
                     <p class="home-card-desc">Adicione seus funcionários, cargos e disponibilidade.</p>
+                </a>
+                <a class="card home-card" data-goto="equipes">
+                    <span class="card-optional-step">Opcional</span>
+                    <h3>🤝 Equipes</h3>
+                    <p id="home-equipes-count" class="home-card-count"></p>
+                    <p class="home-card-desc">Crie grupos fixos de funcionários para escalas de rodízio.</p>
                 </a>
             </div>
 
@@ -481,6 +490,68 @@
                             <th>Contrato</th>
                             <th>Carga Horária</th>
                             <th>H. Extra</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="page-equipes" class="page">
+            <div class="card">
+                <h2>Criar / Editar Equipe</h2>
+                <div class="grid-2-col-uneven" style="gap: 32px; align-items: start; margin-bottom: 0;">
+                    <div>
+                        <div class="animated-field" style="margin-bottom: 16px;">
+                            <input id="equipeNome" type="text" placeholder=" " />
+                            <label for="equipeNome">Nome da Equipe</label>
+                        </div>
+                        <div class="form-row-aligned" style="gap: 16px;">
+                             <fieldset class="fieldset-wrapper" style="margin:0; flex: 1;">
+                                <legend>Cargo</legend>
+                                <select id="equipeCargo"></select>
+                            </fieldset>
+                             <fieldset class="fieldset-wrapper" style="margin:0; flex: 1;">
+                                <legend>Turno</legend>
+                                <select id="equipeTurno" disabled></select>
+                            </fieldset>
+                        </div>
+                    </div>
+                    <fieldset>
+                        <legend>Membros da Equipe</legend>
+                        <div id="equipeFuncionariosContainer" class="check-container">
+                            <p class="muted">Selecione um cargo e um turno para listar os funcionários elegíveis.</p>
+                        </div>
+                    </fieldset>
+                </div>
+                 <div class="grid-2-col" style="align-items: start; margin-top: 16px; margin-bottom: 0;">
+                    <div class="explanation-box">
+                        <div><strong>Como as Equipes Funcionam?</strong><br>Crie grupos fixos de funcionários que sempre trabalharão juntos. Isso é ideal para padrões de rodízio como 12x36, 2x2, etc. Ao escalar uma equipe, todos os seus membros são alocados automaticamente.</div>
+                    </div>
+                     <div class="explanation-box">
+                        <div><strong>E os Funcionários Sem Equipe?</strong><br>Qualquer funcionário que não pertencer a uma equipe continuará sendo alocado individualmente pelo algoritmo para preencher as vagas restantes e complementar a cobertura dos turnos.</div>
+                    </div>
+                </div>
+
+                <div class="form-row" style="margin-top: 24px;">
+                    <button id="btnSalvarEquipe" class="success">💾 Salvar Equipe</button>
+                    <button id="btnCancelarEdEquipe" class="secondary hidden">Cancelar Edição</button>
+                    <button id="btnLimparEquipe" class="purple ml-auto">🗑️ Limpar</button>
+                </div>
+            </div>
+
+             <div class="card card-lista">
+                <h2>Equipes Cadastradas</h2>
+                 <div class="form-row"><input type="search" id="filtroEquipes" placeholder="🔎 Buscar equipe..."
+                        style="width: 100%;" /></div>
+                <table class="table" id="tblEquipes">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Cargo</th>
+                            <th>Turno</th>
+                            <th>Membros</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -866,6 +937,7 @@
     <script src="js/turnos.js"></script>
     <script src="js/cargos.js"></script>
     <script src="js/funcionarios.js"></script>
+    <script src="js/equipes.js"></script>
     <script src="js/gerar-escala-auto.js"></script>
     <script src="js/wizard-helpers.js"></script>
     <script src="js/escalas-gerador.js"></script>

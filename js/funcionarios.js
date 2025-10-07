@@ -275,17 +275,45 @@ function validateFuncForm() {
     return isNomeValid && isCargoValid && isCargaValid;
 }
 
-function saveFuncFromForm() {
+async function saveFuncFromForm() {
     if (!validateFuncForm()) {
         showToast("Preencha todos os campos obrigatórios.");
         focusFirstInvalidInput('#page-funcionarios .card');
         return;
     }
-    const { funcionarios } = store.getState();
+    const { funcionarios, equipes } = store.getState();
     const documento = funcDocumentoInput.value.trim();
     if (documento && funcionarios.some(f => f.documento?.toLowerCase() === documento.toLowerCase() && f.id !== editingFuncId)) {
         return showToast("O número do documento já está em uso por outro funcionário.");
     }
+    
+    // --- INÍCIO DA NOVA LÓGICA DE VALIDAÇÃO ---
+    if (editingFuncId) {
+        const funcOriginal = funcionarios.find(f => f.id === editingFuncId);
+        const novoCargoId = funcCargoSelect.value;
+        
+        if (funcOriginal && funcOriginal.cargoId !== novoCargoId) {
+            const equipeDoFunc = equipes.find(e => e.funcionarioIds.includes(editingFuncId));
+            if (equipeDoFunc) {
+                const confirmado = await showConfirm({
+                    title: "Remover Funcionário da Equipe?",
+                    message: `Ao alterar o cargo deste funcionário, ele será removido da equipe "${equipeDoFunc.nome}", pois ela pertence a um cargo diferente. Deseja continuar?`,
+                    confirmText: "Sim, Continuar"
+                });
+
+                if (!confirmado) {
+                    funcCargoSelect.value = funcOriginal.cargoId; // Reverte a seleção no formulário
+                    return; // Interrompe o salvamento
+                }
+                
+                // Se confirmado, remove o funcionário da equipe
+                equipeDoFunc.funcionarioIds = equipeDoFunc.funcionarioIds.filter(id => id !== editingFuncId);
+                store.dispatch('SAVE_EQUIPE', equipeDoFunc);
+            }
+        }
+    }
+    // --- FIM DA NOVA LÓGICA DE VALIDAÇÃO ---
+
 
     const disponibilidadeFinal = {};
     const preferenciasFinal = {};

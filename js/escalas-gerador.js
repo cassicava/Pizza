@@ -16,11 +16,13 @@ async function gerarEscala() {
     showLoader("Iniciando geração...");
 
     // Prepara os dados para enviar ao worker
-    const { cargos, funcionarios, turnos } = store.getState();
+    // CORREÇÃO: Adicionado 'equipes' à lista de dados enviados ao worker
+    const { cargos, funcionarios, turnos, equipes } = store.getState();
     const dataForWorker = {
         geradorState: JSON.parse(JSON.stringify(geradorState)), // Envia uma cópia do estado
         funcionarios,
         turnos,
+        equipes, // <-- DADO QUE ESTAVA FALTANDO
         cargos
     };
 

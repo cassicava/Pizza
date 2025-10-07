@@ -27,7 +27,7 @@
 /* --- Tablets e Telas Menores --- */
 @media (max-width: 992px) {
     /* --- Layouts Gerais --- */
-    .home-grid-principal,
+    .grid-4-col,
     .grid-3-col,
     .grid-2-col,
     .grid-2-col-uneven,

@@ -3,7 +3,16 @@
  * (Usado pelo main thread e pelo web worker)
  **************************************/
 
-function parseTimeToMinutes(t){ if(!t) return 0; const [h,m]=t.split(":").map(Number); return h*60+m; }
+const uid = () => Math.random().toString(36).slice(2,10);
+
+function parseTimeToMinutes(t) {
+    if (!t || typeof t !== 'string') return 0;
+    const parts = t.split(":");
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    return (h * 60) + m;
+}
+
 function minutesToHHMM(min){ const h=String(Math.floor(min/60)).padStart(2,"0"); const m=String(min%60).padStart(2,"0"); return `${h}:${m}`; }
 
 function calcCarga(inicio, fim, almocoMin, diasDeDiferenca = 0) {

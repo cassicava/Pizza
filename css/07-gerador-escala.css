@@ -413,11 +413,61 @@ html[data-theme="dark"] .legenda-item:hover {
     color: var(--brand);
 }
 
-#cobertura-turnos-container {
+.cobertura-modo-container {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
+
+.cobertura-equipe-options {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 8px;
+    background-color: var(--bg);
+}
+
+.cobertura-equipe-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+}
+.cobertura-equipe-row:not(:last-child) {
+    margin-bottom: 12px;
+}
+.cobertura-equipe-row .check-inline {
+    margin: 0;
+}
+
+.cobertura-equipe-padrao {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cobertura-equipe-padrao .animated-field,
+.cobertura-equipe-padrao input[type="date"] {
+    max-width: 120px;
+}
+
+.cobertura-complementar-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+}
+
+.equipe-pattern-explanation {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 8px;
+}
+
 
 /* NOVO: Estilos para o Título Editável da Escala */
 .escala-title-container {
@@ -689,4 +739,31 @@ html[data-theme="dark"] .legenda-item:hover {
 }
 .painel-feriados-list .feriado-nome {
     color: var(--muted);
+}
+
+.workload-indicator {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: transparent;
+    margin-right: 6px;
+    vertical-align: middle;
+    border: 1px solid var(--border);
+}
+.workload-indicator.workload-danger {
+    background-color: #ef4444; /* Vermelho */
+    border-color: #dc2626;
+}
+.workload-indicator.workload-warning {
+    background-color: #facc15; /* Amarelo */
+    border-color: #eab308;
+}
+.workload-indicator.workload-good {
+    background-color: #3b82f6; /* Azul */
+    border-color: #2563eb;
+}
+.workload-indicator.workload-ok {
+    background-color: #4ade80; /* Verde */
+    border-color: #22c55e;
 }

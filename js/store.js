@@ -9,6 +9,7 @@ const KEYS = {
     turnos: "ge_turnos",
     cargos: "ge_cargos",
     funcs: "ge_funcionarios",
+    equipes: "ge_equipes",
     escalas: "ge_escalas",
     config: "ge_config"
 };
@@ -19,6 +20,7 @@ const store = {
         turnos: [],
         cargos: [],
         funcionarios: [],
+        equipes: [],
         escalas: [],
         config: { nome: '', theme: 'light' },
     },
@@ -54,6 +56,7 @@ const store = {
             state.turnos = loadJSON(KEYS.turnos, []);
             state.cargos = loadJSON(KEYS.cargos, []);
             state.funcionarios = loadJSON(KEYS.funcs, []);
+            state.equipes = loadJSON(KEYS.equipes, []);
             state.escalas = loadJSON(KEYS.escalas, []);
             state.config = loadJSON(KEYS.config, { nome: '', theme: 'light' });
         },
@@ -69,6 +72,7 @@ const store = {
         },
         DELETE_TURNO(state, turnoId) {
             state.turnos = state.turnos.filter(t => t.id !== turnoId);
+            // Cascata: remove o turno de cargos e a disponibilidade de funcionários
             state.cargos.forEach(cargo => {
                 cargo.turnosIds = cargo.turnosIds.filter(id => id !== turnoId);
             });
@@ -77,15 +81,22 @@ const store = {
                     delete func.disponibilidade[turnoId];
                 }
             });
+            // --- INÍCIO DA SUGESTÃO DE MELHORIA ---
+            // Cascata: remove equipes associadas ao turno para manter a integridade dos dados
+            state.equipes = state.equipes.filter(e => e.turnoId !== turnoId);
+            // --- FIM DA SUGESTÃO DE MELHORIA ---
+
             saveJSON(KEYS.turnos, state.turnos);
             saveJSON(KEYS.cargos, state.cargos);
             saveJSON(KEYS.funcs, state.funcionarios);
+            saveJSON(KEYS.equipes, state.equipes);
         },
 
         SAVE_CARGO(state, cargo) {
             const index = state.cargos.findIndex(c => c.id === cargo.id);
             if (index > -1) {
                 state.cargos[index] = { ...state.cargos[index], ...cargo };
+                // Cascata: ajusta disponibilidade de funcionários se um turno for removido do cargo
                 state.funcionarios.forEach(func => {
                     if (func.cargoId === cargo.id) {
                         for (const turnoId in func.disponibilidade) {
@@ -103,11 +114,14 @@ const store = {
         },
         DELETE_CARGO(state, cargoId) {
             state.cargos = state.cargos.filter(c => c.id !== cargoId);
+            // Cascata: desassocia funcionários e remove equipes
             state.funcionarios.forEach(f => { if (f.cargoId === cargoId) f.cargoId = null; });
+            state.equipes = state.equipes.filter(e => e.cargoId !== cargoId);
             state.escalas = state.escalas.filter(e => e.cargoId !== cargoId);
 
             saveJSON(KEYS.cargos, state.cargos);
             saveJSON(KEYS.funcs, state.funcionarios);
+            saveJSON(KEYS.equipes, state.equipes);
             saveJSON(KEYS.escalas, state.escalas);
         },
 
@@ -116,19 +130,23 @@ const store = {
             if (index > -1) {
                 state.funcionarios[index] = { ...state.funcionarios[index], ...func };
             } else {
-                // --- INÍCIO DA ALTERAÇÃO ---
-                // Garante que novos funcionários sempre sejam 'ativos'
                 state.funcionarios.push({ ...func, status: 'ativo' });
-                // --- FIM DA ALTERAÇÃO ---
             }
             saveJSON(KEYS.funcs, state.funcionarios);
         },
         DELETE_FUNCIONARIO(state, funcId) {
             state.funcionarios = state.funcionarios.filter(f => f.id !== funcId);
+            // Cascata: remove o funcionário de qualquer equipe que ele pertença
+            state.equipes.forEach(equipe => {
+                equipe.funcionarioIds = equipe.funcionarioIds.filter(id => id !== funcId);
+            });
+            // Remove equipes que ficaram vazias
+            state.equipes = state.equipes.filter(e => e.funcionarioIds.length > 0);
+            
             saveJSON(KEYS.funcs, state.funcionarios);
+            saveJSON(KEYS.equipes, state.equipes);
         },
 
-        // --- INÍCIO DA ALTERAÇÃO ---
         ARCHIVE_FUNCIONARIO(state, funcId) {
             const index = state.funcionarios.findIndex(f => f.id === funcId);
             if (index > -1) {
@@ -143,7 +161,20 @@ const store = {
             }
             saveJSON(KEYS.funcs, state.funcionarios);
         },
-        // --- FIM DA ALTERAÇÃO ---
+        
+        SAVE_EQUIPE(state, equipe) {
+            const index = state.equipes.findIndex(e => e.id === equipe.id);
+            if (index > -1) {
+                state.equipes[index] = equipe;
+            } else {
+                state.equipes.push(equipe);
+            }
+            saveJSON(KEYS.equipes, state.equipes);
+        },
+        DELETE_EQUIPE(state, equipeId) {
+            state.equipes = state.equipes.filter(e => e.id !== equipeId);
+            saveJSON(KEYS.equipes, state.equipes);
+        },
 
         SAVE_ESCALA(state, escala) {
             const index = state.escalas.findIndex(e => e.id === escala.id);

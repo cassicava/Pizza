@@ -7,110 +7,132 @@
 importScripts('constants.js', 'shared-utils.js');
 
 self.onmessage = function(e) {
-    const { geradorState, funcionarios, turnos, cargos } = e.data;
+    const { geradorState, funcionarios, turnos, cargos, equipes } = e.data;
     
     postMessage({ type: 'progress', message: 'Analisando dados...' });
 
     try {
-        const { cargoId, inicio, fim, cobertura, excecoes, maxDiasConsecutivos, minFolgasSabados, minFolgasDomingos, feriados, otimizarFolgas } = geradorState;
+        const { cargoId, inicio, fim, cobertura, coberturaPorEquipe, excecoes, maxDiasConsecutivos, minFolgasSabados, minFolgasDomingos, feriados } = geradorState;
 
         const cargo = cargos.find(c => c.id === cargoId);
         if (!cargo) throw new Error("Cargo selecionado não foi encontrado.");
 
-        const funcs = funcionarios.filter(f => f.cargoId === cargoId && f.status !== 'arquivado');
         const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
-
-        const excecoesMap = {};
-        funcs.forEach(f => {
-            const funcExcecoes = excecoes[f.id] || { ferias: { dates: [] }, afastamento: { dates: [] }, folgas: [] };
-            const datasInvalidas = new Set([...funcExcecoes.ferias.dates, ...funcExcecoes.afastamento.dates, ...funcExcecoes.folgas.map(folga => folga.date)]);
-            excecoesMap[f.id] = datasInvalidas;
-        });
-
-        let historico = {};
-        funcs.forEach(f => {
-            historico[f.id] = { horasTrabalhadas: 0 };
-        });
-
+        const equipesMap = Object.fromEntries(equipes.map(eq => [eq.id, eq]));
         const dateRange = dateRangeInclusive(inicio, fim);
-        const metaHorasMap = new Map(funcs.map(f => [f.id, calcularMetaHoras(f, inicio, fim)]));
+        
+        postMessage({ type: 'progress', message: 'Preparando alocação...' });
 
-        const monthlyDayCounts = {};
-        dateRange.forEach(date => {
-            const d = new Date(date + 'T12:00:00');
-            const month = date.substring(0, 7);
-            if (!monthlyDayCounts[month]) {
-                monthlyDayCounts[month] = { totalSaturdays: 0, totalSundays: 0 };
+        const todosFuncsDoCargo = funcionarios.filter(f => f.cargoId === cargoId && f.status !== 'arquivado');
+        const excecoesMap = {};
+        todosFuncsDoCargo.forEach(f => {
+            const f_excecoes = excecoes[f.id] || {};
+            const ferias_dates = f_excecoes.ferias?.dates || [];
+            const afastamento_dates = f_excecoes.afastamento?.dates || [];
+            let folgas_dates = [];
+            if (Array.isArray(f_excecoes.folgas)) {
+                folgas_dates = f_excecoes.folgas.map(folga => folga.date);
             }
-            if (d.getUTCDay() === 6) monthlyDayCounts[month].totalSaturdays++;
-            if (d.getUTCDay() === 0) monthlyDayCounts[month].totalSundays++;
-        });
-
-        const monthlyWorkCounts = {};
-        funcs.forEach(f => {
-            monthlyWorkCounts[f.id] = {};
-            for (const month in monthlyDayCounts) {
-                monthlyWorkCounts[f.id][month] = { workedSaturdays: 0, workedSundays: 0 };
-            }
+            excecoesMap[f.id] = new Set([...ferias_dates, ...afastamento_dates, ...folgas_dates]);
         });
 
         let slots = [];
         dateRange.forEach(date => {
             const diaSemana = new Date(date + 'T12:00:00');
             const diaSemanaId = DIAS_SEMANA[diaSemana.getUTCDay()].id;
-            const feriado = feriados.find(f => f.date === date);
-            if (feriado && !feriado.trabalha) return;
+            const feriadoDoDia = feriados.find(f => f.date === date);
+            if (feriadoDoDia && !feriadoDoDia.trabalha) return;
+
             if (cargo.regras.dias.includes(diaSemanaId)) {
-                for (const turnoId in cobertura) {
-                    if (cobertura[turnoId] > 0) {
-                        for (let i = 0; i < cobertura[turnoId]; i++) {
-                            slots.push({ date, turnoId, assigned: null, id: 'slot_' + Math.random().toString(36).slice(2, 10) });
-                        }
+                const turnosDoDia = new Set(Object.keys(cobertura));
+                Object.keys(coberturaPorEquipe).forEach(turnoId => turnosDoDia.add(turnoId));
+
+                turnosDoDia.forEach(turnoId => {
+                    const coberturaIndividual = cobertura[turnoId] || 0;
+                    let coberturaTotalEquipes = 0;
+                    if (coberturaPorEquipe[turnoId]) {
+                        coberturaPorEquipe[turnoId].forEach(regra => {
+                            const equipe = equipesMap[regra.equipeId];
+                            if(equipe) coberturaTotalEquipes += equipe.funcionarioIds.length;
+                        });
                     }
-                }
+                    const totalCobertura = coberturaTotalEquipes + coberturaIndividual;
+                    for (let i = 0; i < totalCobertura; i++) {
+                        slots.push({ date, turnoId, assigned: null, id: uid() });
+                    }
+                });
             }
         });
+        
+        postMessage({ type: 'progress', message: 'Alocando equipes fixas...' });
+        const funcsEmEquipesAlocadas = new Set();
 
-        function preencherSlots(slotsParaTentar, usarHoraExtra = false) {
-            for (const slot of slotsParaTentar) {
-                if (slot.assigned) continue;
+        for (const turnoId in coberturaPorEquipe) {
+            coberturaPorEquipe[turnoId].forEach(regra => {
+                const equipe = equipesMap[regra.equipeId];
+                if (!equipe) return;
+                equipe.funcionarioIds.forEach(funcId => funcsEmEquipesAlocadas.add(funcId));
 
+                const startIndex = dateRange.indexOf(regra.start);
+                if (startIndex === -1) return;
+
+                dateRange.forEach((date, index) => {
+                    const ciclo = regra.work + regra.off;
+                    const diaNoCiclo = (index - startIndex) % ciclo;
+
+                    if (diaNoCiclo >= 0 && diaNoCiclo < regra.work) {
+                        const slotsDisponiveis = slots.filter(s => s.date === date && s.turnoId === turnoId && !s.assigned);
+                        if (slotsDisponiveis.length >= equipe.funcionarioIds.length) {
+                            equipe.funcionarioIds.forEach((funcId, i) => {
+                                if (!excecoesMap[funcId]?.has(date)) {
+                                    slotsDisponiveis[i].assigned = funcId;
+                                    slotsDisponiveis[i].equipeId = equipe.id;
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        postMessage({ type: 'progress', message: 'Preenchendo vagas restantes...' });
+        
+        // --- INÍCIO DA REESCRITA COMPLETA DA LÓGICA DE HORAS ---
+        
+        // O objeto 'historico' é a fonte da verdade e é construído progressivamente.
+        let historico = {};
+        todosFuncsDoCargo.forEach(f => { historico[f.id] = { horasTrabalhadas: 0 }; });
+
+        // 1. Pré-calcula as horas dos membros de equipe, que já foram alocados.
+        slots.filter(s => s.assigned && funcsEmEquipesAlocadas.has(s.assigned)).forEach(s => {
+            const turno = turnosMap[s.turnoId];
+            if(turno && historico[s.assigned]) {
+                historico[s.assigned].horasTrabalhadas += calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
+            }
+        });
+        
+        const funcsIndividuais = todosFuncsDoCargo.filter(f => !funcsEmEquipesAlocadas.has(f.id));
+        const metaHorasMap = new Map(funcsIndividuais.map(f => [f.id, calcularMetaHoras(f, inicio, fim)]));
+        
+        function preencherSlotsIndividuais(usarHoraExtra = false) {
+             slots.filter(s => !s.assigned).forEach(slot => {
                 const turno = turnosMap[slot.turnoId];
-                const d = new Date(slot.date + 'T12:00:00');
-                const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
-                const month = slot.date.substring(0, 7);
+                if (!turno) return;
 
-                const candidatos = funcs.map(f => {
+                const candidatos = funcsIndividuais.map(f => {
                     if (excecoesMap[f.id].has(slot.date)) return null;
-                    if (!f.disponibilidade[turno.id]?.includes(diaSemanaId)) return null;
+                    if (!f.disponibilidade[turno.id]?.includes(DIAS_SEMANA[new Date(slot.date + 'T12:00:00').getUTCDay()].id)) return null;
                     if (slots.some(s => s.assigned === f.id && s.date === slot.date)) return null;
+                    if (checkMandatoryRestViolation(f, turno, slot.date, slots, turnosMap).violation) return null;
+                    if ((calculateConsecutiveWorkDays(f.id, slots, addDays(slot.date, -1), turnosMap) + 1) > maxDiasConsecutivos) return null;
 
-                    const diasConsecutivosAnteriores = calculateConsecutiveWorkDays(f.id, slots, addDays(slot.date, -1), turnosMap);
-                    if ((diasConsecutivosAnteriores + 1) > maxDiasConsecutivos) return null;
-
-                    const restViolation = checkMandatoryRestViolation(f, turno, slot.date, slots, turnosMap);
-                    if (restViolation.violation) return null;
-
+                    const horasAtuais = historico[f.id].horasTrabalhadas;
                     const maxHoras = metaHorasMap.get(f.id) || 0;
-                    if (!usarHoraExtra && (historico[f.id].horasTrabalhadas / 60) >= maxHoras) return null;
+                    
+                    if (!usarHoraExtra && (horasAtuais / 60) >= maxHoras) return null;
                     if (usarHoraExtra && !f.fazHoraExtra) return null;
-
-                    if (d.getUTCDay() === 6) {
-                        const maxSaturdaysToWork = monthlyDayCounts[month].totalSaturdays - minFolgasSabados;
-                        if (monthlyWorkCounts[f.id][month].workedSaturdays >= maxSaturdaysToWork) return null;
-                    }
-                    if (d.getUTCDay() === 0) {
-                        const maxSundaysToWork = monthlyDayCounts[month].totalSundays - minFolgasDomingos;
-                        if (monthlyWorkCounts[f.id][month].workedSundays >= maxSundaysToWork) return null;
-                    }
-
-                    let score = (historico[f.id].horasTrabalhadas / 60) / (maxHoras || 1) * 100;
-                    score += (diasConsecutivosAnteriores / maxDiasConsecutivos) * 25;
-                    if (f.preferencias && f.preferencias[turno.id]?.includes(diaSemanaId)) score -= 10;
-                    if (d.getUTCDay() === 6) score += monthlyWorkCounts[f.id][month].workedSaturdays * 20;
-                    if (d.getUTCDay() === 0) score += monthlyWorkCounts[f.id][month].workedSundays * 20;
-                    if (otimizarFolgas && diasConsecutivosAnteriores > 0) score += 15;
-
+                    
+                    let score = (horasAtuais / 60) / (maxHoras || 1) * 100;
                     return { func: f, score };
                 }).filter(Boolean).sort((a, b) => a.score - b.score);
 
@@ -118,32 +140,35 @@ self.onmessage = function(e) {
                     const escolhido = candidatos[0].func;
                     slot.assigned = escolhido.id;
                     if (usarHoraExtra) slot.isExtra = true;
-                    historico[escolhido.id].horasTrabalhadas += turno.cargaMin;
-                    if (d.getUTCDay() === 6) monthlyWorkCounts[escolhido.id][month].workedSaturdays++;
-                    if (d.getUTCDay() === 0) monthlyWorkCounts[escolhido.id][month].workedSundays++;
+                    // 2. Acumula as horas dos individuais no mesmo objeto 'historico'.
+                    historico[escolhido.id].horasTrabalhadas += calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
                 }
-            }
+            });
         }
-
-        postMessage({ type: 'progress', message: 'Preenchendo turnos...' });
-        preencherSlots(slots.filter(s => !s.assigned), false);
-
+        
+        preencherSlotsIndividuais(false);
         postMessage({ type: 'progress', message: 'Otimizando com horas extras...' });
-        preencherSlots(slots.filter(s => !s.assigned), true);
-
-        postMessage({ type: 'progress', message: 'Ajustando feriados...' });
+        preencherSlotsIndividuais(true);
+        
+        // 3. Aplica descontos de feriados no objeto 'historico' já consolidado.
+        postMessage({ type: 'progress', message: 'Ajustando feriados...'});
         feriados.filter(f => f.descontaHoras).forEach(feriado => {
-            const funcsNaoTrabalharamNoFeriado = funcs.filter(f => !slots.some(s => s.date === feriado.date && s.assigned === f.id));
-            funcsNaoTrabalharamNoFeriado.forEach(f => {
+            const funcsQueFolgaram = todosFuncsDoCargo.filter(f => 
+                !slots.some(s => s.date === feriado.date && s.assigned === f.id) &&
+                !excecoesMap[f.id].has(feriado.date)
+            );
+            funcsQueFolgaram.forEach(f => {
                 if (historico[f.id]) {
                     historico[f.id].horasTrabalhadas -= (feriado.horasDesconto * 60);
                 }
             });
         });
+        // --- FIM DA REESCRITA COMPLETA ---
 
+        postMessage({ type: 'progress', message: 'Finalizando escala...' });
         const nomeEscala = generateEscalaNome(cargo.nome, inicio, fim);
         const escalaFinal = {
-            id: 'escala_' + Math.random().toString(36).slice(2, 10), nome: nomeEscala, cargoId, inicio, fim, slots, historico,
+            id: uid(), nome: nomeEscala, cargoId, inicio, fim, slots, historico,
             excecoes: JSON.parse(JSON.stringify(excecoes)),
             feriados: [...geradorState.feriados],
             cobertura,

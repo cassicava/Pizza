@@ -200,13 +200,9 @@ main.container {
 }
 
 /* GRIDS DA HOME */
-.grid-2-col, .grid-3-col, .grid-4-col, .home-grid-principal {
+.grid-2-col, .grid-3-col, .grid-4-col {
     display: grid;
     gap: 24px;
-}
-
-.home-grid-principal {
-    grid-template-columns: repeat(3, 1fr);
 }
 
 .grid-4-col {
