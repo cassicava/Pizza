@@ -21,7 +21,7 @@ const descansoHorasInput = $("#turnoDescansoHoras");
 const descansoHorasGroup = $("#descansoHorasGroup");
 const descansoHiddenInput = $("#descansoObrigatorioHidden");
 const btnSalvarTurno = $("#btnSalvarTurno");
-const btnCancelarEdTurno = $("#btnCancelarEdTurno");
+const btnCancelarTurno = $("#btnCancelarTurno");
 const filtroTurnosInput = $("#filtroTurnos");
 const tblTurnosBody = $("#tblTurnos tbody");
 
@@ -109,7 +109,7 @@ function selectCor(cor) {
 function updateTurnoCargaPreview() {
     const i = turnoInicioInput.value;
     const f = turnoFimInput.value;
-    const a = Number(turnoAlmocoInput.value || 0);
+    const a = Math.max(0, Number(turnoAlmocoInput.value || 0));
     const diasDeDiferenca = Number(turnoFimDiaSelect.value);
 
     turnoViraDiaIndicator.classList.add('hidden');
@@ -154,8 +154,8 @@ function renderTurnos() {
             <td>${t.almocoMin} min</td><td>${minutesToHHMM(t.cargaMin)}</td>
             <td>${descansoTxt}</td>
             <td>
-                <button class="secondary" data-action="edit" data-id="${t.id}">✏️ Editar</button>
-                <button class="danger" data-action="delete" data-id="${t.id}">🔥 Excluir</button>
+                <button class="secondary" data-action="edit" data-id="${t.id}" aria-label="Editar o turno ${t.nome}">✏️ Editar</button>
+                <button class="danger" data-action="delete" data-id="${t.id}" aria-label="Excluir o turno ${t.nome}">🔥 Excluir</button>
             </td>`;
         tblTurnosBody.appendChild(tr);
     });
@@ -183,26 +183,51 @@ async function saveTurnoFromForm() {
     }
     if (!checkHorarioLogico()) return;
 
+    const almocoMin = Number(turnoAlmocoInput.value || 0);
+    if (almocoMin < 0) {
+        showToast("O tempo de almoço não pode ser negativo.");
+        validateInput(turnoAlmocoInput, false);
+        return;
+    }
+    
+    const inicio = turnoInicioInput.value;
+    const fim = turnoFimInput.value;
+    const diasDeDiferenca = Number(turnoFimDiaSelect.value);
+    const cargaMin = calcCarga(inicio, fim, almocoMin, diasDeDiferenca);
+
+    if (parseTimeToMinutes(fim) + (diasDeDiferenca * 1440) - parseTimeToMinutes(inicio) < almocoMin) {
+        showToast("O tempo de almoço não pode ser maior que a duração do turno.");
+        validateInput(turnoAlmocoInput, false);
+        return;
+    }
+
     const { turnos } = store.getState();
     const nome = turnoNomeInput.value.trim();
     const sigla = turnoSiglaInput.value.trim().toUpperCase();
     if (turnos.some(t => t.nome.toLowerCase() === nome.toLowerCase() && t.id !== editingTurnoId)) return showToast("Já existe um turno com este nome.");
     if (sigla && turnos.some(t => t.sigla && t.sigla.toLowerCase() === sigla.toLowerCase() && t.id !== editingTurnoId)) return showToast("Já existe um turno com essa sigla.");
 
-    const inicio = turnoInicioInput.value;
-    const fim = turnoFimInput.value;
-    const diasDeDiferenca = Number(turnoFimDiaSelect.value);
-    const almocoMin = Number(turnoAlmocoInput.value || 0);
     const descansoObrigatorio = descansoHiddenInput.value === 'sim';
     const dadosTurno = {
         id: editingTurnoId || uid(), nome, sigla, cor: turnoCorHiddenInput.value,
         inicio, fim, diasDeDiferenca, almocoMin,
         descansoObrigatorioHoras: descansoObrigatorio ? Number(descansoHorasInput.value || 0) : null,
-        cargaMin: calcCarga(inicio, fim, almocoMin, diasDeDiferenca)
+        cargaMin: cargaMin
     };
-    if (!editingTurnoId) lastAddedTurnoId = dadosTurno.id;
+
+    const isEditing = !!editingTurnoId;
+    if (!isEditing) {
+        lastAddedTurnoId = dadosTurno.id;
+    }
+    
     store.dispatch('SAVE_TURNO', dadosTurno);
-    cancelEditTurno();
+    
+    if (isEditing) {
+        setTurnoFormDirty(false);
+    } else {
+        cancelEditTurno();
+    }
+    
     showToast("Turno salvo com sucesso!");
 }
 
@@ -226,7 +251,6 @@ function editTurnoInForm(id) {
     }
     updateTurnoCargaPreview();
     btnSalvarTurno.textContent = "💾 Salvar Alterações";
-    btnCancelarEdTurno.classList.remove("hidden");
     setTurnoFormDirty(false);
     window.scrollTo(0, 0);
 }
@@ -239,12 +263,21 @@ function cancelEditTurno() {
     turnoFimInput.value = "";
     turnoFimDiaSelect.value = 0;
     turnoAlmocoInput.value = "";
-    selectCor(PALETA_CORES[0]);
+
+    const { turnos } = store.getState();
+    const colorCounts = PALETA_CORES.reduce((acc, color) => ({ ...acc, [color]: 0 }), {});
+    turnos.forEach(t => {
+        if (colorCounts.hasOwnProperty(t.cor)) {
+            colorCounts[t.cor]++;
+        }
+    });
+    const leastUsedColor = Object.entries(colorCounts).sort((a, b) => a[1] - b[1])[0][0];
+    selectCor(leastUsedColor || PALETA_CORES[0]);
+    
     $$('.invalid', turnoNomeInput.closest('.card')).forEach(el => el.classList.remove('invalid'));
     $(`.toggle-btn[data-value="nao"]`, descansoToggleGroup).click();
     updateTurnoCargaPreview();
     btnSalvarTurno.textContent = "💾 Salvar Turno";
-    btnCancelarEdTurno.classList.add("hidden");
     setTurnoFormDirty(false);
     turnoNomeInput.focus();
 }
@@ -263,8 +296,7 @@ function handleTurnosTableClick(event) {
 
 function initTurnosPage() {
     btnSalvarTurno.addEventListener('click', saveTurnoFromForm);
-    btnCancelarEdTurno.addEventListener('click', cancelEditTurno);
-    $("#btnLimparTurno").addEventListener('click', cancelEditTurno);
+    btnCancelarTurno.addEventListener('click', cancelEditTurno);
     tblTurnosBody.addEventListener('click', handleTurnosTableClick);
     renderCorPalette();
     selectCor(PALETA_CORES[0]);

@@ -20,7 +20,8 @@ function calcCarga(inicio, fim, almocoMin, diasDeDiferenca = 0) {
   const fimMin = parseTimeToMinutes(fim);
   const minutosEmUmDia = 1440;
   let duracaoMin = (fimMin - inicioMin) + (diasDeDiferenca * minutosEmUmDia);
-  return duracaoMin - (almocoMin || 0);
+  // ALTERAÇÃO: Garante que a carga horária nunca seja negativa.
+  return Math.max(0, duracaoMin - (almocoMin || 0));
 }
 
 function addDays(dateISO,n){ const d=new Date(dateISO); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
@@ -62,6 +63,43 @@ function calcularMetaHoras(funcionario, inicioEscala, fimEscala) {
     }
     return metaHoras;
 }
+
+/**
+ * NOVA FUNÇÃO: Calcula a meta de turnos proporcional para o período da escala.
+ * @param {object} funcionario - O objeto do funcionário.
+ * @param {string} inicioEscala - Data de início da escala (ISO).
+ * @param {string} fimEscala - Data de fim da escala (ISO).
+ * @returns {number} - A meta de turnos para o período.
+ */
+function calcularMetaTurnos(funcionario, inicioEscala, fimEscala) {
+    const metaBase = parseFloat(funcionario.cargaHoraria) || 0;
+    if (metaBase === 0) return 0;
+    
+    const dateRange = dateRangeInclusive(inicioEscala, fimEscala);
+    const totalDiasEscala = dateRange.length;
+
+    if (funcionario.periodoHoras === 'semanal') {
+        // Proporcional a uma semana de 7 dias
+        return (metaBase / 7) * totalDiasEscala;
+    } 
+    
+    // Lógica para meta mensal
+    let metaFinal = 0;
+    const mesesNaEscala = {};
+    dateRange.forEach(d => {
+        const mesAno = d.slice(0, 7);
+        mesesNaEscala[mesAno] = (mesesNaEscala[mesAno] || 0) + 1;
+    });
+
+    for (const mesAno in mesesNaEscala) {
+        const [ano, mes] = mesAno.split('-').map(Number);
+        const diasNoMesCalendario = new Date(ano, mes, 0).getDate();
+        const diasDaEscalaNesseMes = mesesNaEscala[mesAno];
+        metaFinal += (metaBase / diasNoMesCalendario) * diasDaEscalaNesseMes;
+    }
+    return metaFinal;
+}
+
 
 function calculateConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMap) {
     const turnosDoFuncMap = new Map(allSlots.filter(s => s.assigned === employeeId).map(s => [s.date, s]));

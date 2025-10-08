@@ -24,6 +24,82 @@ function saveConfig() {
     showToast("Preferências salvas com sucesso!");
 }
 
+async function exportAllData() {
+    showLoader("Preparando arquivo de backup...");
+    await new Promise(resolve => setTimeout(resolve, 50)); // Para dar tempo do loader aparecer
+
+    try {
+        const allData = {};
+        for (const key in KEYS) {
+            allData[key] = loadJSON(KEYS[key], null);
+        }
+
+        const dataStr = JSON.stringify(allData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: "application/json" });
+
+        const date = new Date();
+        const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        triggerDownload(dataBlob, `backup_escala_facil_${dateString}.json`);
+    } catch (error) {
+        console.error("Erro ao exportar dados:", error);
+        showToast("Ocorreu um erro ao gerar o arquivo de backup.");
+    } finally {
+        hideLoader();
+    }
+}
+
+
+async function importAllData() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json,application/json';
+
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                
+                // Validação básica para garantir que é um backup válido
+                if (!importedData || typeof importedData.turnos === 'undefined' || typeof importedData.cargos === 'undefined') {
+                    throw new Error("Arquivo de backup inválido ou corrompido.");
+                }
+
+                const confirmado = await showPromptConfirm({
+                    title: "Confirmar Importação?",
+                    message: "<strong>ATENÇÃO:</strong> Isto irá substituir TODOS os seus dados atuais (turnos, cargos, funcionários, etc.) pelos dados do arquivo. Esta ação é IRREVERSÍVEL.",
+                    promptLabel: `Para confirmar, digite a palavra "IMPORTAR":`,
+                    requiredWord: "IMPORTAR",
+                    confirmText: "Substituir Dados Atuais"
+                });
+
+                if (confirmado) {
+                    showLoader("Importando dados...");
+                    for (const key in KEYS) {
+                        if (importedData.hasOwnProperty(key)) {
+                            saveJSON(KEYS[key], importedData[key]);
+                        }
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Pequena pausa
+                    showToast("Dados importados com sucesso! A aplicação será reiniciada.");
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } catch (error) {
+                console.error("Erro ao importar dados:", error);
+                showToast(error.message || "Ocorreu um erro ao ler o arquivo de backup.");
+                hideLoader();
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    fileInput.click();
+}
+
+
 function exibirTermosDeUso(requireScrollableConfirm = false) {
     const termosDeUsoHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
@@ -151,7 +227,6 @@ function initConfiguracoesPage() {
         e.preventDefault();
         exibirPoliticaDePrivacidade();
     };
-    // NOVO: Evento para o card de atalhos
     $("#config-shortcuts-card").onclick = (e) => {
         e.preventDefault();
         exibirAtalhosDeTeclado();
@@ -169,6 +244,25 @@ function initConfiguracoesPage() {
             store.dispatch('SAVE_CONFIG', { ...config, theme: selectedTheme });
         };
     });
+    
+    // Listeners para os novos botões de Backup
+    $("#btn-export-data").onclick = exportAllData;
+    $("#btn-import-data").onclick = importAllData;
+
+    // Listeners para o novo card "Gato do Dev"
+    const btnCopyPix = $("#btn-copy-pix");
+    const pixKeyText = $("#pix-key-text");
+
+    if (btnCopyPix && pixKeyText) {
+        btnCopyPix.onclick = () => {
+            navigator.clipboard.writeText(pixKeyText.textContent).then(() => {
+                showToast('Chave PIX copiada!');
+            }).catch(err => {
+                console.error('Erro ao copiar a chave PIX: ', err);
+                showToast('Erro ao copiar. Tente manualmente.');
+            });
+        };
+    }
 
     const btnReiniciarOnboarding = $("#btnReiniciarOnboarding");
     const btnHardReset = $("#btnHardReset");

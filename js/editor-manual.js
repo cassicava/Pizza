@@ -7,7 +7,7 @@ const editorState = {
     selectedCell: null,
     focusedEmployeeId: null,
     focusedEmployeeIndex: -1,
-    alphabetizedFuncs: [],
+    scheduleOrderedFuncs: [], // Alterado de alphabetizedFuncs
     selectedShiftBrush: null,
     lastHoveredDate: null, 
     animationDirection: 'right',
@@ -186,7 +186,7 @@ function findPotentialConflicts(employeeId, turnoId, date, escala) {
 function initEditor() {
     Object.assign(editorState, {
         editMode: 'employee', selectedCell: null, focusedEmployeeId: null,
-        focusedEmployeeIndex: -1, alphabetizedFuncs: [], selectedShiftBrush: null,
+        focusedEmployeeIndex: -1, scheduleOrderedFuncs: [], selectedShiftBrush: null,
         lastHoveredDate: null, selectedCellCoords: { row: -1, col: -1 },
         allConflicts: [], selectedAbsenceBrush: 'ferias', 
         selectedFolgaReason: 'Folga Normal', selectedAfastamentoReason: 'Atestado Médico',
@@ -247,14 +247,17 @@ function setEditMode(mode) {
     
     if (mode === 'employee') {
         const { funcionarios } = store.getState();
-        editorState.alphabetizedFuncs = funcionarios
-            .filter(f => currentEscala.historico.hasOwnProperty(f.id) && f.status !== 'arquivado')
-            .sort((a, b) => a.nome.localeCompare(b.nome));
+        const funcionariosMap = new Map(funcionarios.map(f => [f.id, f]));
+        const tableWrap = $(`#${currentEscala.owner}-escalaTabelaWrap`);
+
+        // CORREÇÃO: Pega a ordem dos funcionários da tabela renderizada, não alfabética.
+        const orderedIds = $$('tr[data-employee-row-id]', tableWrap).map(row => row.dataset.employeeRowId);
+        editorState.scheduleOrderedFuncs = orderedIds.map(id => funcionariosMap.get(id)).filter(Boolean);
         
-        if (editorState.alphabetizedFuncs.length > 0) {
-            const currentFocusedIndex = editorState.alphabetizedFuncs.findIndex(f => f.id === editorState.focusedEmployeeId);
+        if (editorState.scheduleOrderedFuncs.length > 0) {
+            const currentFocusedIndex = editorState.scheduleOrderedFuncs.findIndex(f => f.id === editorState.focusedEmployeeId);
             editorState.focusedEmployeeIndex = (currentFocusedIndex !== -1) ? currentFocusedIndex : 0;
-            editorState.focusedEmployeeId = editorState.alphabetizedFuncs[editorState.focusedEmployeeIndex].id;
+            editorState.focusedEmployeeId = editorState.scheduleOrderedFuncs[editorState.focusedEmployeeIndex].id;
         } else {
              editorState.focusedEmployeeIndex = -1;
              editorState.focusedEmployeeId = null;
@@ -321,23 +324,47 @@ function updateIndicatorsInCard(card) {
     const employeeId = card.dataset.employeeId;
     const employee = store.getState().funcionarios.find(f => f.id === employeeId);
     if (!employee) return;
-    
-    const metaHoras = calcularMetaHoras(employee, currentEscala.inicio, currentEscala.fim);
-    const horasTrabalhadas = (currentEscala.historico[employee.id]?.horasTrabalhadas / 60) || 0;
-    let mainPercentage = metaHoras > 0 ? (horasTrabalhadas / metaHoras) * 100 : 0;
+
+    const medicao = employee.medicaoCarga || 'horas';
+    let progresso, meta, unidade;
+    let mainPercentage = 0;
     let overtimePercentage = 0;
-    if (mainPercentage > 100) {
-        overtimePercentage = mainPercentage - 100;
-        mainPercentage = 100;
+
+    if (medicao === 'turnos') {
+        progresso = currentEscala.historico[employee.id]?.turnosTrabalhados || 0;
+        meta = calcularMetaTurnos(employee, currentEscala.inicio, currentEscala.fim);
+        unidade = ' turnos';
+        
+        mainPercentage = meta > 0 ? (progresso / meta) * 100 : 0;
+        if (mainPercentage > 100) {
+            overtimePercentage = mainPercentage - 100;
+            mainPercentage = 100;
+        }
+    } else { // 'horas'
+        progresso = (currentEscala.historico[employee.id]?.horasTrabalhadas / 60) || 0;
+        meta = calcularMetaHoras(employee, currentEscala.inicio, currentEscala.fim);
+        unidade = 'h';
+
+        mainPercentage = meta > 0 ? (progresso / meta) * 100 : 0;
+        if (mainPercentage > 100) {
+            overtimePercentage = mainPercentage - 100;
+            mainPercentage = 100;
+        }
     }
+
     let barColorClass = 'progress-bar-blue';
     if (mainPercentage >= 105) barColorClass = 'progress-bar-green';
     else if (mainPercentage > 80) barColorClass = 'progress-bar-yellow';
 
     const workloadText = $('.workload-text-compact', card);
     if (workloadText) {
-        workloadText.innerHTML = `${horasTrabalhadas.toFixed(1)}h / ${metaHoras.toFixed(1)}h`;
+        if (medicao === 'turnos') {
+            workloadText.innerHTML = `${progresso.toFixed(0)} / ${meta.toFixed(0)}${unidade}`;
+        } else {
+            workloadText.innerHTML = `${progresso.toFixed(1)}${unidade} / ${meta.toFixed(1)}${unidade}`;
+        }
     }
+
     const mainBar = $('.progress-bar-main', card);
     if (mainBar) {
         mainBar.className = `progress-bar progress-bar-main ${barColorClass}`;
@@ -351,6 +378,7 @@ function updateIndicatorsInCard(card) {
     const targetDate = editorState.lastHoveredDate || currentEscala.fim;
     updateConsecutiveDaysIndicator(card, targetDate);
 }
+
 
 function updateConsecutiveDaysIndicator(card, targetDate) {
     const employeeId = card.dataset.employeeId;
@@ -397,6 +425,10 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
     const turno = store.getState().turnos.find(t => t.id === turnoId);
     if (!turno) return;
 
+    if (!currentEscala.historico[employeeId]) {
+        currentEscala.historico[employeeId] = { horasTrabalhadas: 0, turnosTrabalhados: 0 };
+    }
+
     const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
     
     const existingSlotIndex = currentEscala.slots.findIndex(s => s.date === date && s.assigned === employeeId);
@@ -406,6 +438,7 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
         if (turnoAntigo) {
             const cargaAntiga = calcCarga(turnoAntigo.inicio, turnoAntigo.fim, turnoAntigo.almocoMin, turnoAntigo.diasDeDiferenca);
             currentEscala.historico[employeeId].horasTrabalhadas -= cargaAntiga;
+            currentEscala.historico[employeeId].turnosTrabalhados -= 1;
         }
         currentEscala.slots.splice(existingSlotIndex, 1);
     }
@@ -413,8 +446,10 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
     const novoSlot = { date, turnoId, assigned: employeeId, id: uid(), isExtra: currentEscala.isManual };
     currentEscala.slots.push(novoSlot);
 
-    if (!currentEscala.historico[employeeId]) currentEscala.historico[employeeId] = { horasTrabalhadas: 0 };
     currentEscala.historico[employeeId].horasTrabalhadas += cargaReal;
+    currentEscala.historico[employeeId].turnosTrabalhados += 1;
+    
+    setGeradorFormDirty(true);
     
     surgicallyRerenderTable(currentEscala);
     updateAllIndicators();
@@ -432,9 +467,10 @@ function handleRemoveShiftClick(slotId) {
     const turno = store.getState().turnos.find(t => t.id === slot.turnoId);
     const employeeId = slot.assigned;
 
-    if (turno) {
+    if (turno && currentEscala.historico[employeeId]) {
         const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
         currentEscala.historico[employeeId].horasTrabalhadas -= cargaReal;
+        currentEscala.historico[employeeId].turnosTrabalhados -= 1;
     }
     
     const isGeradaAutomaticamente = !currentEscala.isManual;
@@ -448,6 +484,8 @@ function handleRemoveShiftClick(slotId) {
         currentEscala.slots.splice(slotIndex, 1);
     }
     
+    setGeradorFormDirty(true);
+
     surgicallyRerenderTable(currentEscala);
     updateAllIndicators();
     runSurgicalValidation([employeeId]);
@@ -457,7 +495,7 @@ function handleRemoveShiftClick(slotId) {
 
 function handleEmployeePaint(cell) {
     if (cell.dataset.equipeId) {
-        showToast("Turnos de equipe não podem ser modificados individualmente.");
+        showToast("Turnos de equipe são fixos. Use o modo 'Borracha' para remover a equipe do dia.");
         return;
     }
 
@@ -465,12 +503,43 @@ function handleEmployeePaint(cell) {
         showToast("Selecione um turno para começar a pintar.");
         return;
     }
-    const { date, employeeId: cellEmployeeId } = cell.dataset;
+    
+    const { date, employeeId: cellEmployeeId, turnoId: cellTurnoId, slotId } = cell.dataset;
     if (cellEmployeeId !== editorState.focusedEmployeeId) {
         showToast("Você só pode adicionar turnos na linha do funcionário selecionado.");
         return;
     }
-    handleAddShiftClick(editorState.focusedEmployeeId, editorState.selectedShiftBrush, date);
+
+    // CORREÇÃO: Implementa a lógica de toggle (apagar).
+    if (cellTurnoId === editorState.selectedShiftBrush) {
+        handleRemoveShiftClick(slotId);
+    } else {
+        handleAddShiftClick(editorState.focusedEmployeeId, editorState.selectedShiftBrush, date);
+    }
+}
+
+function removeAbsenceFromCell(cell) {
+    const { employeeId, date } = cell.dataset;
+    if (!employeeId || !date || !currentEscala.excecoes[employeeId]) return false;
+
+    const excecoesFunc = currentEscala.excecoes[employeeId];
+    let removed = false;
+
+    if (excecoesFunc.ferias.dates.includes(date)) {
+        excecoesFunc.ferias.dates = excecoesFunc.ferias.dates.filter(d => d !== date);
+        removed = true;
+    }
+    if (excecoesFunc.afastamento.dates.includes(date)) {
+        excecoesFunc.afastamento.dates = excecoesFunc.afastamento.dates.filter(d => d !== date);
+        removed = true;
+    }
+    const folgaIndex = excecoesFunc.folgas.findIndex(f => f.date === date);
+    if (folgaIndex > -1) {
+        excecoesFunc.folgas.splice(folgaIndex, 1);
+        removed = true;
+    }
+    
+    return removed;
 }
 
 async function handleEraseClick(cell) {
@@ -489,6 +558,16 @@ async function handleEraseClick(cell) {
         }
     } else if (slotId) {
         handleRemoveShiftClick(slotId);
+    } else {
+        // CORREÇÃO: Adiciona lógica para apagar ausências com a borracha.
+        const wasAbsenceRemoved = removeAbsenceFromCell(cell);
+        if (wasAbsenceRemoved) {
+            setGeradorFormDirty(true);
+            surgicallyRerenderTable(currentEscala);
+            runSurgicalValidation([cell.dataset.employeeId]);
+            updateAllIndicators();
+            highlightEmployeeRow(editorState.focusedEmployeeId);
+        }
     }
 }
 
@@ -508,6 +587,7 @@ async function handleRemoveTeamFromDay(equipeId, date) {
             if (currentEscala.historico[funcId] && turno) {
                 const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
                 currentEscala.historico[funcId].horasTrabalhadas -= cargaReal;
+                currentEscala.historico[funcId].turnosTrabalhados -= 1;
                 affectedEmployeeIds.push(funcId);
             }
 
@@ -517,6 +597,7 @@ async function handleRemoveTeamFromDay(equipeId, date) {
     });
 
     if (affectedEmployeeIds.length > 0) {
+        setGeradorFormDirty(true);
         surgicallyRerenderTable(currentEscala);
         updateAllIndicators();
         runSurgicalValidation(affectedEmployeeIds);
@@ -617,22 +698,22 @@ function handleToolboxChange(event) {
 }
 
 function showNextEmployee(animate = false){
-    if (editorState.alphabetizedFuncs.length === 0) return;
-    if(editorState.focusedEmployeeIndex < editorState.alphabetizedFuncs.length - 1) editorState.focusedEmployeeIndex++;
+    if (editorState.scheduleOrderedFuncs.length === 0) return;
+    if(editorState.focusedEmployeeIndex < editorState.scheduleOrderedFuncs.length - 1) editorState.focusedEmployeeIndex++;
     else editorState.focusedEmployeeIndex = 0;
     editorState.animationDirection = 'right';
     updateFocusedEmployee(animate);
 }
 function showPrevEmployee(animate = false){
-    if (editorState.alphabetizedFuncs.length === 0) return;
+    if (editorState.scheduleOrderedFuncs.length === 0) return;
     if(editorState.focusedEmployeeIndex > 0) editorState.focusedEmployeeIndex--;
-    else editorState.focusedEmployeeIndex = editorState.alphabetizedFuncs.length - 1;
+    else editorState.focusedEmployeeIndex = editorState.scheduleOrderedFuncs.length - 1;
     editorState.animationDirection = 'left';
     updateFocusedEmployee(animate);
 }
 
 function updateFocusedEmployee(animate = false){
-    editorState.focusedEmployeeId = editorState.alphabetizedFuncs[editorState.focusedEmployeeIndex].id;
+    editorState.focusedEmployeeId = editorState.scheduleOrderedFuncs[editorState.focusedEmployeeIndex].id;
     editorState.selectedShiftBrush = null;
     highlightEmployeeRow(editorState.focusedEmployeeId);
     
@@ -667,7 +748,7 @@ function updateToolboxView() {
     } else if (editMode === 'eraser') {
         title.textContent = 'Modo Borracha';
         subtitle.textContent = 'Clique em um turno na escala para apagá-lo.';
-        contentEl.innerHTML = '<div class="explanation-box" style="margin: 16px;"><div>Clique em qualquer turno alocado na tabela para removê-lo. Turnos de equipe serão removidos por completo no dia selecionado.</div></div>';
+        contentEl.innerHTML = '<div class="explanation-box" style="margin: 16px;"><div>Clique em qualquer turno ou ausência na tabela para remover. Turnos de equipe serão removidos por completo no dia selecionado.</div></div>';
     } else if (editMode === 'conflicts') {
         title.textContent = 'Conflitos e Avisos';
         subtitle.textContent = 'Lista de regras violadas na escala atual.';
@@ -685,8 +766,8 @@ function renderActionsView() {
         <div class="actions-panel">
             <div class="action-row">
                 <div>
-                    <label class="form-label">Limpar Alocações de Turno</label>
-                    <p class="explanation">Remove todos os turnos da escala, preservando férias e afastamentos.</p>
+                    <label class="form-label">Limpar Alocações e Ausências</label>
+                    <p class="explanation">Remove todos os turnos, férias, folgas e afastamentos da escala.</p>
                 </div>
                 <button class="danger" data-action="clear-assignments">Limpar Escala</button>
             </div>
@@ -706,8 +787,8 @@ function renderActionsView() {
 
 async function handleClearAssignments() {
     const confirmado = await showPromptConfirm({
-        title: "Limpar Todas as Alocações?",
-        message: "Esta ação removerá todos os turnos alocados na escala. Férias, afastamentos e folgas avulsas serão mantidos. Esta ação não pode ser desfeita.",
+        title: "Limpar Todas as Alocações e Ausências?",
+        message: "Esta ação removerá todos os turnos, férias, afastamentos e folgas avulsas da escala. Esta ação não pode ser desfeita.",
         promptLabel: "Para confirmar, digite a palavra \"LIMPAR\":",
         requiredWord: "LIMPAR",
         confirmText: "Confirmar Limpeza"
@@ -718,8 +799,11 @@ async function handleClearAssignments() {
     const employeeIdsToUpdate = Object.keys(currentEscala.historico);
 
     for (const funcId in currentEscala.historico) {
-        currentEscala.historico[funcId].horasTrabalhadas = 0;
+        currentEscala.historico[funcId] = { horasTrabalhadas: 0, turnosTrabalhados: 0 };
     }
+
+    // CORREÇÃO: Limpa também as exceções (ausências).
+    currentEscala.excecoes = {};
 
     if (currentEscala.isManual) {
         currentEscala.slots = [];
@@ -730,11 +814,13 @@ async function handleClearAssignments() {
         });
     }
 
+    setGeradorFormDirty(true);
+
     surgicallyRerenderTable(currentEscala);
     runSurgicalValidation(employeeIdsToUpdate);
     updateAllIndicators();
     highlightEmployeeRow(editorState.focusedEmployeeId);
-    showToast("Alocações da escala foram limpas.");
+    showToast("Escala limpa com sucesso.");
 }
 
 function renderAbsencesView() {
@@ -774,17 +860,17 @@ function renderAbsencesView() {
                 <div>${reasonSelectorHTML}</div>
             </div>
             <div class="explanation-box" style="margin-top: 16px;">
-                <div>Selecione o tipo de ausência e depois clique em uma célula para aplicar ou remover. Você também pode clicar e arrastar sobre vários dias.</div>
+                <div>Selecione o tipo de ausência e depois clique em uma célula para aplicar. <strong>Clicar novamente na mesma célula irá remover a ausência.</strong></div>
             </div>
         </div>
     `;
 }
 
 function renderFocusedEmployeeView(animate = false) {
-    const { focusedEmployeeId, alphabetizedFuncs, focusedEmployeeIndex } = editorState;
+    const { focusedEmployeeId, scheduleOrderedFuncs, focusedEmployeeIndex } = editorState;
     if (!focusedEmployeeId) return `<div class="focused-employee-view"><p class="muted" style="text-align: center; padding: 2rem;">Nenhum funcionário para editar nesta escala.</p></div>`;
 
-    const employee = alphabetizedFuncs[focusedEmployeeIndex];
+    const employee = scheduleOrderedFuncs[focusedEmployeeIndex];
     const { turnos } = store.getState();
     const turnosDisponiveis = turnos.filter(t => employee.disponibilidade && employee.disponibilidade[t.id]);
     
@@ -816,7 +902,7 @@ function renderFocusedEmployeeView(animate = false) {
         </div>`;
 
     let dotsHTML = '';
-    alphabetizedFuncs.forEach((_, index) => {
+    scheduleOrderedFuncs.forEach((_, index) => {
         dotsHTML += `<div class="employee-dot ${index === focusedEmployeeIndex ? 'active' : ''}"></div>`;
     });
 
@@ -873,61 +959,50 @@ function applyAbsenceToCell(cell) {
         return;
     }
 
-    const { turnos } = store.getState();
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
-
     if (!currentEscala.excecoes[employeeId]) {
         currentEscala.excecoes[employeeId] = { ferias: { dates: [] }, afastamento: { dates: [], motivo: '' }, folgas: [] };
     }
     
     const excecoesFunc = currentEscala.excecoes[employeeId];
-    const emFerias = excecoesFunc.ferias.dates.includes(date);
-    const afastado = excecoesFunc.afastamento.dates.includes(date);
-    const folgaIndex = excecoesFunc.folgas.findIndex(f => f.date === date);
+    
+    // CORREÇÃO: Lógica de toggle refatorada para ser mais robusta
+    const { selectedAbsenceBrush } = editorState;
+    let isAlreadyApplied = false;
 
-    const removerTurnoExistente = () => {
+    if (selectedAbsenceBrush === 'ferias') {
+        isAlreadyApplied = excecoesFunc.ferias.dates.includes(date);
+    } else if (selectedAbsenceBrush === 'afastamento') {
+        isAlreadyApplied = excecoesFunc.afastamento.dates.includes(date);
+    } else if (selectedAbsenceBrush === 'folga') {
+        isAlreadyApplied = excecoesFunc.folgas.some(f => f.date === date);
+    }
+
+    // Se a ausência selecionada já está aplicada, remove todas do dia e sai.
+    if (isAlreadyApplied) {
+        removeAbsenceFromCell(cell);
+    } else {
+        // Se não, limpa qualquer outra ausência ou turno e adiciona a nova.
+        removeAbsenceFromCell(cell); // Limpa outras ausências
+        
         const existingSlotIndex = currentEscala.slots.findIndex(s => s.assigned === employeeId && s.date === date);
         if (existingSlotIndex > -1) {
-            const turnoRemovido = turnosMap[currentEscala.slots[existingSlotIndex].turnoId];
-            if (turnoRemovido) {
-                const cargaAntiga = calcCarga(turnoRemovido.inicio, turnoRemovido.fim, turnoRemovido.almocoMin, turnoRemovido.diasDeDiferenca);
-                currentEscala.historico[employeeId].horasTrabalhadas -= cargaAntiga;
-            }
-            if (currentEscala.isManual) {
-                currentEscala.slots.splice(existingSlotIndex, 1);
-            } else {
-                currentEscala.slots[existingSlotIndex].assigned = null;
-            }
+            handleRemoveShiftClick(currentEscala.slots[existingSlotIndex].id);
         }
-    };
 
-    if (editorState.selectedAbsenceBrush === 'ferias') {
-        if (emFerias) {
-            excecoesFunc.ferias.dates = excecoesFunc.ferias.dates.filter(d => d !== date);
-        } else {
-            removerTurnoExistente();
-            if (!excecoesFunc.ferias.dates.includes(date)) excecoesFunc.ferias.dates.push(date);
+        if (selectedAbsenceBrush === 'ferias') {
+            excecoesFunc.ferias.dates.push(date);
             excecoesFunc.ferias.dates.sort();
-        }
-    } else if (editorState.selectedAbsenceBrush === 'afastamento') {
-        if (afastado) {
-            excecoesFunc.afastamento.dates = excecoesFunc.afastamento.dates.filter(d => d !== date);
-        } else {
-            removerTurnoExistente();
-            if (!excecoesFunc.afastamento.dates.includes(date)) excecoesFunc.afastamento.dates.push(date);
+        } else if (selectedAbsenceBrush === 'afastamento') {
+            excecoesFunc.afastamento.dates.push(date);
             excecoesFunc.afastamento.motivo = editorState.selectedAfastamentoReason;
             excecoesFunc.afastamento.dates.sort();
-        }
-    } else if (editorState.selectedAbsenceBrush === 'folga') {
-        if (folgaIndex > -1) {
-            excecoesFunc.folgas.splice(folgaIndex, 1);
-        } else {
-            removerTurnoExistente();
+        } else if (selectedAbsenceBrush === 'folga') {
             excecoesFunc.folgas.push({ date, tipo: editorState.selectedFolgaReason });
             excecoesFunc.folgas.sort((a,b) => a.date.localeCompare(b.date));
         }
     }
     
+    setGeradorFormDirty(true);
     surgicallyRerenderTable(currentEscala);
     updateAllIndicators();
     runSurgicalValidation([employeeId]);
@@ -1183,7 +1258,8 @@ function handleDragStart(e) {
     if (!cell) return;
 
     if (cell.dataset.equipeId) {
-        showToast("Turnos de equipe não podem ser movidos.");
+        // ALTERAÇÃO: Mensagem de brinde mais útil para o usuário.
+        showToast("Turnos de equipe são fixos. Use o modo 'Borracha' para remover a equipe do dia.");
         e.preventDefault();
         return;
     }
@@ -1243,12 +1319,19 @@ async function handleDrop(e) {
         if (turno) {
             const cargaReal = calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
             currentEscala.historico[oldEmployeeId].horasTrabalhadas -= cargaReal;
-            if (!currentEscala.historico[targetEmployeeId]) currentEscala.historico[targetEmployeeId] = { horasTrabalhadas: 0 };
+            currentEscala.historico[oldEmployeeId].turnosTrabalhados -= 1;
+            
+            if (!currentEscala.historico[targetEmployeeId]) {
+                currentEscala.historico[targetEmployeeId] = { horasTrabalhadas: 0, turnosTrabalhados: 0 };
+            }
             currentEscala.historico[targetEmployeeId].horasTrabalhadas += cargaReal;
+            currentEscala.historico[targetEmployeeId].turnosTrabalhados += 1;
         }
         
         sourceSlot.assigned = targetEmployeeId;
         sourceSlot.date = targetDate;
+        
+        setGeradorFormDirty(true);
 
         surgicallyRerenderTable(currentEscala);
         runSurgicalValidation([oldEmployeeId, targetEmployeeId]);
@@ -1291,6 +1374,8 @@ async function handleSwapShiftClick(slot1Id, slot2Id) {
 
     slot1.assigned = func2Id;
     slot2.assigned = func1Id;
+
+    setGeradorFormDirty(true);
 
     surgicallyRerenderTable(currentEscala);
     runSurgicalValidation([func1Id, func2Id]);

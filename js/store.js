@@ -81,10 +81,8 @@ const store = {
                     delete func.disponibilidade[turnoId];
                 }
             });
-            // --- INÍCIO DA SUGESTÃO DE MELHORIA ---
             // Cascata: remove equipes associadas ao turno para manter a integridade dos dados
             state.equipes = state.equipes.filter(e => e.turnoId !== turnoId);
-            // --- FIM DA SUGESTÃO DE MELHORIA ---
 
             saveJSON(KEYS.turnos, state.turnos);
             saveJSON(KEYS.cargos, state.cargos);
@@ -106,6 +104,18 @@ const store = {
                         }
                     }
                 });
+                
+                // CORREÇÃO DE INTEGRIDADE: Remove equipes que se tornaram "órfãs"
+                // porque o turno delas foi removido do cargo.
+                const equipesInvalidas = state.equipes.filter(equipe => 
+                    equipe.cargoId === cargo.id && !cargo.turnosIds.includes(equipe.turnoId)
+                ).map(e => e.id);
+
+                if (equipesInvalidas.length > 0) {
+                    state.equipes = state.equipes.filter(equipe => !equipesInvalidas.includes(equipe.id));
+                    saveJSON(KEYS.equipes, state.equipes);
+                }
+
                 saveJSON(KEYS.funcs, state.funcionarios);
             } else {
                 state.cargos.push(cargo);

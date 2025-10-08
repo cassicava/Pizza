@@ -15,21 +15,21 @@ function renderEscalaLegend(escala, container) {
     turnosDoCargo.forEach(turno => {
         allLegendItems.push({
             id: turno.id,
-            html: `<div class="legenda-item"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
+            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
             type: 'turno',
         });
     });
 
     allLegendItems.push({
         id: 'ferias',
-        html: `<div class="legenda-item"><span class="color-dot" style="background-color: transparent; border: 2px solid #166534;"></span><strong>FÉ</strong> - Férias</div>`,
+        html: `<div class="legenda-item" data-tipo="ferias"><span class="color-dot" style="background-color: transparent; border: 2px solid #166534;"></span><strong>FÉ</strong> - Férias</div>`,
         type: 'ferias',
     });
 
     TIPOS_AFASTAMENTO.forEach(af => {
         allLegendItems.push({
             id: af.nome,
-            html: `<div class="legenda-item"><span class="color-dot" style="background-color: #fef9c3"></span><strong>${af.sigla}</strong> - ${af.nome}</div>`,
+            html: `<div class="legenda-item" data-tipo="afastamento" data-id="${af.nome}"><span class="color-dot" style="background-color: #fef9c3"></span><strong>${af.sigla}</strong> - ${af.nome}</div>`,
             type: 'afastamento',
         });
     });
@@ -37,12 +37,12 @@ function renderEscalaLegend(escala, container) {
     TIPOS_FOLGA.forEach(folga => {
         allLegendItems.push({
             id: folga.nome,
-            html: `<div class="legenda-item"><span class="color-dot" style="background-color: #eef2ff"></span><strong>${folga.sigla}</strong> - ${folga.nome}</div>`,
+            html: `<div class="legenda-item" data-tipo="folga" data-id="${folga.nome}"><span class="color-dot" style="background-color: #eef2ff"></span><strong>${folga.sigla}</strong> - ${folga.nome}</div>`,
             type: 'folga',
         });
     });
 
-    const activeTurnos = new Set(escala.slots.map(s => s.turnoId));
+    const activeTurnos = new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId));
     const activeExcecoes = {
         ferias: false,
         afastamentos: new Set(),
@@ -92,6 +92,9 @@ function renderGenericEscalaTable(escala, container, options = {}) {
         return;
     }
 
+    const getTurnoInfo = (turnoId) => (escala.snapshot?.turnos?.[turnoId]) || turnos.find(t => t.id === turnoId) || {};
+    const getFuncInfo = (funcId) => (escala.snapshot?.funcionarios?.[funcId]) || funcionarios.find(f => f.id === funcId) || {};
+
     let cobertura = escala.cobertura || {};
     if (escala.isManual) {
         const cargo = cargos.find(c => c.id === escala.cargoId);
@@ -110,23 +113,22 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     Object.keys(escala.historico || {}).forEach(funcId => allFuncsInvolved.add(funcId));
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
-
+    
     const funcsDaEscala = [...allFuncsInvolved]
-        .map(funcId => funcionarios.find(f => f.id === funcId))
-        .filter(Boolean)
+        .map(funcId => ({ id: funcId, ...getFuncInfo(funcId) }))
+        .filter(f => f.nome)
         .sort((a, b) => {
             const primeiroDia = dateRange[0];
             const slotA = escala.slots.find(s => s.assigned === a.id && s.date === primeiroDia);
             const slotB = escala.slots.find(s => s.assigned === b.id && s.date === primeiroDia);
             
-            const turnoA = slotA ? turnosMap[slotA.turnoId] : null;
-            const turnoB = slotB ? turnosMap[slotB.turnoId] : null;
+            const turnoA = slotA ? getTurnoInfo(slotA.turnoId) : null;
+            const turnoB = slotB ? getTurnoInfo(slotB.turnoId) : null;
 
             if (turnoA && !turnoB) return -1;
             if (!turnoA && turnoB) return 1;
 
-            if (turnoA && turnoB) {
+            if (turnoA && turnoB && turnoA.inicio && turnoB.inicio) {
                 const inicioComparison = turnoA.inicio.localeCompare(turnoB.inicio);
                 if (inicioComparison !== 0) return inicioComparison;
             }
@@ -153,20 +155,18 @@ function renderGenericEscalaTable(escala, container, options = {}) {
         const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
         const percentual = metaHoras > 0 ? (horasTrabalhadas / metaHoras) * 100 : 0;
         
-        // --- INÍCIO DA ALTERAÇÃO (LÓGICA DE CORES) ---
         let indicatorClass = '';
         let indicatorTitle = `Carga Horária: ${horasTrabalhadas.toFixed(1)}h de ${metaHoras.toFixed(1)}h (${percentual.toFixed(0)}%)`;
         
         if (percentual >= 100) {
-            indicatorClass = 'workload-ok'; // Verde
+            indicatorClass = 'workload-ok';
         } else if (percentual >= 80) {
-            indicatorClass = 'workload-good'; // Azul (seguindo a lógica da barra)
+            indicatorClass = 'workload-good';
         } else if (percentual >= 40) {
-            indicatorClass = 'workload-warning'; // Amarelo
+            indicatorClass = 'workload-warning';
         } else if (horasTrabalhadas > 0) {
-            indicatorClass = 'workload-danger'; // Vermelho
+            indicatorClass = 'workload-danger';
         }
-        // --- FIM DA ALTERAÇÃO ---
 
         const indicatorHTML = `<span class="workload-indicator ${indicatorClass}" title="${indicatorTitle}"></span>`;
 
@@ -189,22 +189,22 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             const afastado = excecoesFunc?.afastamento.dates.includes(date);
 
             if (slot) {
-                const turno = turnosMap[slot.turnoId];
-                const slotAttr = isInteractive ? `data-slot-id="${slot.id}"` : '';
+                const turno = getTurnoInfo(slot.turnoId);
+                const slotAttr = isInteractive ? `data-slot-id="${slot.id}" data-turno-id="${slot.turnoId}"` : '';
                 const equipeAttr = isInteractive && slot.equipeId ? `data-equipe-id="${slot.equipeId}"` : '';
                 const draggableAttr = isInteractive ? `draggable="true"` : '';
                 const textColor = getContrastingTextColor(turno.cor);
                 const extraClass = slot.isExtra ? 'celula-hora-extra' : '';
-                tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} ${draggableAttr} title="${turno.nome}">${turno.sigla}</td>`;
+                tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} ${draggableAttr} title="${turno.nome}">${turno.sigla || '?'}</td>`;
             } else if (afastado) {
                 const motivo = excecoesFunc.afastamento.motivo || "Afastado";
                 const sigla = TIPOS_AFASTAMENTO.find(a => a.nome === motivo)?.sigla || 'AF';
-                tableHTML += `<td class="celula-afastamento" title="${motivo}">${sigla}</td>`;
+                tableHTML += `<td class="celula-afastamento" data-tipo="afastamento" data-id="${motivo}" title="${motivo}">${sigla}</td>`;
             } else if (emFerias) {
-                tableHTML += `<td class="celula-ferias-destaque" title="Férias">FÉ</td>`;
+                tableHTML += `<td class="celula-ferias-destaque" data-tipo="ferias" title="Férias">FÉ</td>`;
             } else if (folgaDoDia) {
                 const sigla = TIPOS_FOLGA.find(tf => tf.nome === folgaDoDia.tipo)?.sigla || 'F';
-                tableHTML += `<td class="celula-excecao" data-tipo-folga="${folgaDoDia.tipo}" title="${folgaDoDia.tipo}">${sigla}</td>`;
+                tableHTML += `<td class="celula-excecao" data-tipo="folga" data-id="${folgaDoDia.tipo}" data-tipo-folga="${folgaDoDia.tipo}" title="${folgaDoDia.tipo}">${sigla}</td>`;
             } else {
                  tableHTML += `<td class="${cellClass}" ${dataAttrs}></td>`;
             }
@@ -311,7 +311,6 @@ function renderPainelDaEscala(escala) {
             saldoLabel = fazHoraExtra ? 'H. Extra' : 'Acima da Meta';
         }
 
-        // Lógica de cores da barra de progresso
         let barColorClass = 'blue';
         if (progPrincipal < 40) barColorClass = 'red';
         else if (progPrincipal < 80) barColorClass = 'yellow';
@@ -342,8 +341,11 @@ function renderPainelDaEscala(escala) {
             <ul class="painel-feriados-list">
                 ${feriadosNaEscala.map(f => `
                     <li>
-                        <span class="feriado-data">${new Date(f.date + 'T12:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</span>
-                        <span class="feriado-nome">${f.nome} ${f.trabalha ? '' : '(Folga Geral)'}</span>
+                        <div>
+                            <span class="feriado-data">${new Date(f.date + 'T12:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</span>
+                            - <span class="feriado-nome">${f.nome}</span>
+                        </div>
+                        <span class="tag">${f.trabalha ? 'Trabalho Normal' : 'Folga Geral'}</span>
                     </li>
                 `).join('')}
             </ul>
@@ -363,8 +365,12 @@ function renderPainelDaEscala(escala) {
             ${feriadosHTML || '<p class="muted" style="text-align:center; padding: 8px 0;">Nenhum feriado cadastrado para esta escala.</p>'}
         </fieldset>
 
-        <h5 style="margin-top: 24px; margin-bottom: 8px; color: var(--muted);">Legenda</h5>
-        <div class="escala-legenda"></div>
+        <div class="painel-legendas-container">
+            <h5 style="margin-top: 24px; margin-bottom: 8px; color: var(--muted);">Legenda de Turnos e Ausências</h5>
+            <div class="escala-legenda turnos-legenda"></div>
+            <h5 style="margin-top: 16px; margin-bottom: 8px; color: var(--muted);">Legenda de Status do Funcionário</h5>
+            <div class="escala-legenda status-legenda"></div>
+        </div>
     `;
 
     $('.painel-content', painelContainer).innerHTML = `
@@ -372,31 +378,31 @@ function renderPainelDaEscala(escala) {
         <div class="painel-tab-content" data-tab-content="stats">${statsHTML}</div>
     `;
     
-    // --- INÍCIO DA ALTERAÇÃO (LEGENDA) ---
-    const legendaContainer = $('.escala-legenda', painelContainer);
-    renderEscalaLegend(escala, legendaContainer);
+    const turnosLegendaContainer = $('.turnos-legenda', painelContainer);
+    renderEscalaLegend(escala, turnosLegendaContainer);
 
-    // Adiciona a legenda para os indicadores de carga horária
+    const statusLegendaContainer = $('.status-legenda', painelContainer);
     const legendaStatusHTML = `
-        <div class="legenda-item" title="Carga horária muito abaixo da meta (<40%)">
+        <div class="legenda-item" data-tipo="workload" data-id="workload-danger" title="Carga horária muito abaixo da meta (<40%)">
             <span class="workload-indicator workload-danger"></span>
             <span>Abaixo da Meta</span>
         </div>
-        <div class="legenda-item" title="Carga horária se aproximando da meta (40% a 79%)">
+        <div class="legenda-item" data-tipo="workload" data-id="workload-warning" title="Carga horária se aproximando da meta (40% a 79%)">
             <span class="workload-indicator workload-warning"></span>
             <span>Em Progresso</span>
         </div>
-        <div class="legenda-item" title="Carga horária adequada (80% a 99%)">
+        <div class="legenda-item" data-tipo="workload" data-id="workload-good" title="Carga horária adequada (80% a 99%)">
             <span class="workload-indicator workload-good"></span>
             <span>Meta Próxima</span>
         </div>
-        <div class="legenda-item" title="Carga horária atingida ou excedida (≥100%)">
+        <div class="legenda-item" data-tipo="workload" data-id="workload-ok" title="Carga horária atingida ou excedida (≥100%)">
             <span class="workload-indicator workload-ok"></span>
             <span>Meta Atingida</span>
         </div>
     `;
-    legendaContainer.insertAdjacentHTML('beforeend', legendaStatusHTML);
-    // --- FIM DA ALTERAÇÃO ---
+    if (statusLegendaContainer) {
+        statusLegendaContainer.innerHTML = legendaStatusHTML;
+    }
 
     $$('.painel-tab-btn', painelContainer).forEach(btn => {
         btn.onclick = () => {
@@ -406,6 +412,48 @@ function renderPainelDaEscala(escala) {
             $(`.painel-tab-content[data-tab-content="${btn.dataset.tab}"]`, painelContainer).classList.add('active');
         };
     });
+
+    const legendasWrapper = $('.painel-legendas-container', painelContainer);
+    if (legendasWrapper) {
+        legendasWrapper.addEventListener('mouseover', (event) => {
+            const legendaItem = event.target.closest('.legenda-item');
+            if (!legendaItem) return;
+
+            const tipo = legendaItem.dataset.tipo;
+            const id = legendaItem.dataset.id;
+            const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
+            if (!table) return;
+
+            // Limpa destaques anteriores para evitar sobreposição
+            $$('td.highlight', table).forEach(cell => cell.classList.remove('highlight'));
+
+            if (tipo === 'workload') {
+                const statusClass = id;
+                $$(`tr[data-employee-row-id]`, table).forEach(row => {
+                    if ($(`.workload-indicator.${statusClass}`, row)) {
+                        row.querySelectorAll('td').forEach(cell => cell.classList.add('highlight'));
+                    }
+                });
+            } else {
+                $$('td', table).forEach(cell => {
+                    const cellTipo = cell.dataset.tipo;
+                    const cellId = cell.dataset.id;
+                    const cellTurnoId = cell.dataset.turnoId;
+                    
+                    if ((cellTipo === tipo && cellId === id) || (tipo === 'turno' && cellTurnoId === id)) {
+                        cell.classList.add('highlight');
+                    }
+                });
+            }
+        });
+
+        legendasWrapper.addEventListener('mouseout', (event) => {
+            const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
+            if (table) {
+                $$('td.highlight', table).forEach(cell => cell.classList.remove('highlight'));
+            }
+        });
+    }
 }
 
 function renderEscalaTable(escala) {
@@ -434,6 +482,35 @@ function surgicallyRerenderTable(escala) {
 async function salvarEscalaAtual(options = {}){
     const { showToast: shouldShowToast = true } = options;
     if (currentEscala) {
+        const { funcionarios, turnos } = store.getState();
+        const funcsInvolvedIds = new Set(Object.keys(currentEscala.historico || {}));
+        const turnosInvolvedIds = new Set(currentEscala.slots.map(s => s.turnoId));
+
+        currentEscala.snapshot = {
+            funcionarios: {},
+            turnos: {}
+        };
+
+        funcsInvolvedIds.forEach(id => {
+            const func = funcionarios.find(f => f.id === id);
+            if (func) {
+                currentEscala.snapshot.funcionarios[id] = { 
+                    nome: func.nome, 
+                    documento: func.documento,
+                    cargaHoraria: func.cargaHoraria,
+                    periodoHoras: func.periodoHoras,
+                    medicaoCarga: func.medicaoCarga
+                };
+            }
+        });
+
+        turnosInvolvedIds.forEach(id => {
+            const turno = turnos.find(t => t.id === id);
+            if (turno) {
+                currentEscala.snapshot.turnos[id] = { nome: turno.nome, sigla: turno.sigla, cor: turno.cor, inicio: turno.inicio, fim: turno.fim };
+            }
+        });
+
         store.dispatch('SAVE_ESCALA', currentEscala);
         if (shouldShowToast) {
             showToast("Alterações salvas com sucesso!");

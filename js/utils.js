@@ -314,3 +314,20 @@ function playConfettiAnimation(sourceElement) {
         }, duration * 1000);
     }
 }
+
+/**
+ * Dispara o download de um blob de dados.
+ * @param {Blob} blob - O conteúdo do arquivo.
+ * @param {string} filename - O nome do arquivo para download.
+ */
+function triggerDownload(blob, filename) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+}

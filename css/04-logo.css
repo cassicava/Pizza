@@ -24,6 +24,22 @@
     text-shadow: none;
 }
 
+/* NOVO: Classe para o gradiente com as cores do gato */
+.animated-brand-text.animated-brand-text--cat-colors {
+    background: linear-gradient(
+        to right,
+        #f97316, /* Laranja */
+        #fafafa, /* Branco */
+        #000000, /* Preto */
+        #fafafa,
+        #f97316
+    );
+    background-size: 300% 100%;
+    animation: animated-gradient-text 6s linear infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
 
 /* --- ANIMAÇÃO PARA O LOGO COMPACTO 'EF' --- */
 .logo-compact {

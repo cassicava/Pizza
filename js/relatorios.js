@@ -4,9 +4,26 @@
 
 // Variáveis para armazenar as instâncias dos gráficos e evitar duplicação
 let horasChartInstance = null;
+let metaTurnosChartInstance = null;
 let folgasSabadoChartInstance = null;
 let folgasDomingoChartInstance = null;
 let turnosChartInstance = null;
+
+/**
+ * Destrói todas as instâncias de gráficos existentes para evitar memory leaks.
+ */
+function destroyCharts() {
+    if(horasChartInstance) horasChartInstance.destroy();
+    if(metaTurnosChartInstance) metaTurnosChartInstance.destroy();
+    if(folgasSabadoChartInstance) folgasSabadoChartInstance.destroy();
+    if(folgasDomingoChartInstance) folgasDomingoChartInstance.destroy();
+    if(turnosChartInstance) turnosChartInstance.destroy();
+    horasChartInstance = null;
+    metaTurnosChartInstance = null;
+    folgasSabadoChartInstance = null;
+    folgasDomingoChartInstance = null;
+    turnosChartInstance = null;
+}
 
 /**
  * Inicializa a página de relatórios, adicionando os listeners de eventos.
@@ -33,6 +50,7 @@ function renderRelatoriosPage() {
     const emptyState = $("#relatorios-empty-state");
 
     // Limpa e reseta a página
+    destroyCharts();
     container.classList.add('hidden');
     cargoSelect.innerHTML = '<option value="">Selecione um cargo...</option>';
     anoSelect.innerHTML = '<option value="">Ano</option>';
@@ -91,6 +109,7 @@ function handleCargoSelectChange() {
     const escalaSelect = $("#relatorioEscalaSelect");
 
     // Reseta os seletores seguintes
+    destroyCharts();
     escalaSelect.innerHTML = '<option value="">Selecione o ano...</option>';
     escalaSelect.disabled = true;
     $("#relatorios-container").classList.add('hidden');
@@ -111,6 +130,7 @@ function handleAnoSelectChange() {
     const escalaSelect = $("#relatorioEscalaSelect");
     const { escalas } = store.getState();
 
+    destroyCharts();
     escalaSelect.innerHTML = '<option value="">Selecione a escala...</option>';
     $("#relatorios-container").classList.add('hidden');
 
@@ -144,6 +164,7 @@ function handleAnoSelectChange() {
 async function handleEscalaSelectChange(event) {
     const escalaId = event.target.value;
     const container = $("#relatorios-container");
+    destroyCharts();
 
     if (!escalaId) {
         container.classList.add('hidden');
@@ -193,9 +214,15 @@ function calculateMetricsForScale(escala) {
         if (!funcionariosMap[funcId]) continue; 
 
         const funcionario = funcionariosMap[funcId];
+        const medicao = funcionario.medicaoCarga || 'horas';
+
         const horasTrabalhadas = (escala.historico[funcId].horasTrabalhadas / 60) || 0;
+        const turnosTrabalhados = escala.historico[funcId].turnosTrabalhados || 0;
+        
         const metaHoras = calcularMetaHoras(funcionario, escala.inicio, escala.fim);
-        const horasExtras = Math.max(0, horasTrabalhadas - metaHoras);
+        const metaTurnos = calcularMetaTurnos(funcionario, escala.inicio, escala.fim);
+        
+        const horasExtras = medicao === 'horas' ? Math.max(0, horasTrabalhadas - metaHoras) : 0;
         
         const turnosDoFunc = escala.slots.filter(s => s.assigned === funcId);
         const turnosCount = {};
@@ -231,9 +258,12 @@ function calculateMetricsForScale(escala) {
 
         employeeMetrics[funcId] = {
             nome: funcionario.nome,
+            medicaoCarga: medicao,
             horasTrabalhadas,
             metaHoras,
             horasExtras,
+            turnosTrabalhados,
+            metaTurnos,
             turnosCount,
             sabadosDeFolga: totalSabados - sabadosTrabalhados,
             domingosDeFolga: totalDomingos - domingosTrabalhados,
@@ -259,41 +289,60 @@ function renderMetrics(metrics) {
     
     $("#summary-horas-extras").textContent = `${totalHorasExtras.toFixed(1)}h`;
     $("#summary-total-funcs").textContent = employeeMetrics.length;
+    
+    destroyCharts();
 
-    const labels = employeeMetrics.map(e => e.nome);
+    // ATUALIZAÇÃO: Separa os funcionários por tipo de medição para os gráficos de meta
+    const employeesByHoras = employeeMetrics.filter(e => e.medicaoCarga === 'horas');
+    const employeesByTurnos = employeeMetrics.filter(e => e.medicaoCarga === 'turnos');
 
-    if(horasChartInstance) horasChartInstance.destroy();
-    if(folgasSabadoChartInstance) folgasSabadoChartInstance.destroy();
-    if(folgasDomingoChartInstance) folgasDomingoChartInstance.destroy();
-    if(turnosChartInstance) turnosChartInstance.destroy();
+    const horasChartContainer = $('#horasChartContainerWrapper');
+    if (employeesByHoras.length > 0) {
+        horasChartContainer.style.display = 'block';
+        const horasCtx = $('#horasChart').getContext('2d');
+        horasChartInstance = new Chart(horasCtx, {
+            type: 'bar',
+            data: {
+                labels: employeesByHoras.map(e => e.nome),
+                datasets: [{
+                    label: 'Horas Trabalhadas',
+                    data: employeesByHoras.map(e => e.horasTrabalhadas),
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                }, {
+                    label: 'Meta de Horas',
+                    data: employeesByHoras.map(e => e.metaHoras),
+                    backgroundColor: 'rgba(203, 213, 225, 0.7)',
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    } else {
+        horasChartContainer.style.display = 'none';
+    }
 
-    const horasCtx = $('#horasChart').getContext('2d');
-    horasChartInstance = new Chart(horasCtx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Horas Trabalhadas',
-                data: employeeMetrics.map(e => e.horasTrabalhadas),
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderColor: 'rgba(59, 130, 246, 1)',
-                borderWidth: 1
-            }, {
-                label: 'Meta de Horas',
-                data: employeeMetrics.map(e => e.metaHoras),
-                backgroundColor: 'rgba(203, 213, 225, 0.7)',
-                borderColor: 'rgba(203, 213, 225, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            scales: { 
-                y: { beginAtZero: true } 
-            } 
-        }
-    });
+    const turnosChartContainer = $('#turnosChartContainerWrapper');
+    if (employeesByTurnos.length > 0) {
+        turnosChartContainer.style.display = 'block';
+        const metaTurnosCtx = $('#metaTurnosChart').getContext('2d');
+        metaTurnosChartInstance = new Chart(metaTurnosCtx, {
+            type: 'bar',
+            data: {
+                labels: employeesByTurnos.map(e => e.nome),
+                datasets: [{
+                    label: 'Turnos Realizados',
+                    data: employeesByTurnos.map(e => e.turnosTrabalhados),
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                }, {
+                    label: 'Meta de Turnos',
+                    data: employeesByTurnos.map(e => e.metaTurnos),
+                    backgroundColor: 'rgba(203, 213, 225, 0.7)',
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+    } else {
+        turnosChartContainer.style.display = 'none';
+    }
 
     renderFolgasCharts(employeeMetrics);
     renderTurnosChart(totalTurnosCount);
@@ -319,19 +368,13 @@ function renderTurnosChart(totalTurnosCount) {
                 label: 'Nº de Turnos',
                 data: data,
                 backgroundColor: backgroundColors,
-                borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
-                borderWidth: 1,
             }]
         },
         options: { 
             indexAxis: 'y',
             responsive: true, 
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }

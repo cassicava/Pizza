@@ -4,7 +4,6 @@
 
 let currentEscalaToExport = null;
 
-// Função principal que é chamada pelo botão na tela de escalas salvas
 function showExportModal(escala) {
     currentEscalaToExport = escala;
     $('#exportModalBackdrop').classList.remove('hidden');
@@ -13,19 +12,6 @@ function showExportModal(escala) {
 function hideExportModal() {
     $('#exportModalBackdrop').classList.add('hidden');
     currentEscalaToExport = null;
-}
-
-// Função para acionar o download de um arquivo Blob (usado para o ZIP)
-function triggerDownload(blob, filename) {
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    a.remove();
 }
 
 /**
@@ -42,17 +28,22 @@ function generateVisaoGeralPDF(escala) {
     });
 
     const { funcionarios, turnos } = store.getState();
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
-    const funcsDaEscala = funcionarios.filter(f => escala.historico && escala.historico[f.id]).sort((a,b) => a.nome.localeCompare(b.nome));
+    const useSnapshot = !!escala.snapshot;
+    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : turnos.find(t => t.id === turnoId)) || {};
+    const getFuncInfo = (funcId) => (useSnapshot ? escala.snapshot.funcionarios?.[funcId] : funcionarios.find(f => f.id === funcId)) || {};
+
+    const funcsDaEscalaIds = Object.keys(escala.historico || {});
+    const funcsDaEscala = funcsDaEscalaIds
+        .map(id => ({ id, ...getFuncInfo(id) }))
+        .filter(f => f.nome)
+        .sort((a,b) => a.nome.localeCompare(b.nome));
+
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     
-    // --- Cabeçalho ---
     doc.setFontSize(18);
     doc.text(escala.nome, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
     doc.setFontSize(10);
-    // Removido "Gerado por"
     
-    // --- Tabela Principal da Escala ---
     const head = [['Funcionário', ...dateRange.map(date => {
         const d = new Date(date + 'T12:00:00');
         const dia = d.getDate();
@@ -69,7 +60,7 @@ function generateVisaoGeralPDF(escala) {
             const folgaDoDia = excecoesFunc?.folgas.find(f => f.date === date);
             const emFerias = excecoesFunc?.ferias.dates.includes(date);
 
-            if (slot) row.push(turnosMap[slot.turnoId]?.sigla || '?');
+            if (slot) row.push(getTurnoInfo(slot.turnoId)?.sigla || '?');
             else if (emFerias) row.push('FÉR');
             else if (folgaDoDia) row.push(TIPOS_FOLGA.find(tf => tf.nome === folgaDoDia.tipo)?.sigla || 'F');
             else row.push('');
@@ -77,7 +68,6 @@ function generateVisaoGeralPDF(escala) {
         return row;
     });
     
-    // Cálculo para células quadradas
     const pageMargin = 40;
     const availableWidth = doc.internal.pageSize.getWidth() - (pageMargin * 2);
     const funcColWidth = 60;
@@ -121,18 +111,17 @@ function generateVisaoGeralPDF(escala) {
                 const func = funcsDaEscala[data.row.index];
                 const date = dateRange[data.column.index - 1];
                 const slot = escala.slots.find(s => s.date === date && s.assigned === func.id);
+                const turnoInfo = slot ? getTurnoInfo(slot.turnoId) : null;
 
-                if (slot && turnosMap[slot.turnoId]?.cor) {
-                    doc.setFillColor(turnosMap[slot.turnoId].cor);
+                if (turnoInfo?.cor) {
+                    doc.setFillColor(turnoInfo.cor);
                     doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                     
-                    doc.setTextColor(getContrastingTextColor(turnosMap[slot.turnoId].cor));
+                    doc.setTextColor(getContrastingTextColor(turnoInfo.cor));
                     doc.setFont(undefined, 'bold');
                     doc.setFontSize(data.cell.styles.fontSize);
 
                     const text = data.cell.text.toString().trim();
-                    
-                    // Centralização manual baseada na largura real do texto
                     const textWidth = doc.getTextWidth(text);
                     const textX = data.cell.x + (data.cell.width - textWidth) / 2;
                     const textY = data.cell.y + (data.cell.height / 2);
@@ -150,13 +139,15 @@ function generateVisaoGeralPDF(escala) {
 
     let finalY = doc.lastAutoTable.finalY || 60;
     
-    // --- Legenda Horizontal ---
     const legendItems = [];
-    const turnosNaEscala = turnos.filter(t => escala.slots.some(s => s.turnoId === t.id && s.assigned));
+    const turnosNaEscalaIds = [...new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId))];
     
-    turnosNaEscala.forEach(t => {
-        const text = `${t.sigla} - ${t.nome}\n(${t.inicio} - ${t.fim})`;
-        legendItems.push({ color: t.cor, text: text });
+    turnosNaEscalaIds.forEach(turnoId => {
+        const t = getTurnoInfo(turnoId);
+        if (t.sigla && t.nome) {
+            const text = `${t.sigla} - ${t.nome}\n(${t.inicio} - ${t.fim})`;
+            legendItems.push({ color: t.cor, text: text });
+        }
     });
     legendItems.push({ color: '#f0fdf4', text: `FÉR - Férias` });
     
@@ -177,7 +168,6 @@ function generateVisaoGeralPDF(escala) {
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
 
-    // Calcula a largura total da legenda para centralizá-la
     let totalLegendWidth = 0;
     legendItems.forEach(item => {
         const textLines = item.text.split('\n');
@@ -211,21 +201,40 @@ function generateVisaoGeralPDF(escala) {
         legendX += rectSize + textSpacing + maxWidth + spacing;
     });
 
-
-    // --- Tabela de Resumo de Horas ---
     doc.addPage();
     doc.setFontSize(16);
-    doc.text('Resumo de Horas no Período', 40, 40);
+    doc.text('Resumo de Carga Horária no Período', 40, 40);
 
+    const resumoHead = [['Funcionário', 'Meta', 'Realizado', 'Saldo']];
     const resumoBody = funcsDaEscala.map(func => {
         const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60);
-        const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
-        const saldo = horasTrabalhadas - metaHoras;
-        return [func.nome, `${metaHoras.toFixed(2)}h`, `${horasTrabalhadas.toFixed(2)}h`, `${saldo > 0 ? '+' : ''}${saldo.toFixed(2)}h`];
+        
+        let metaLabel = '';
+        let realizadoLabel = '';
+        let saldoLabel = '';
+
+        if (func.medicaoCarga === 'turnos') {
+            const metaTurnos = calcularMetaTurnos(func, escala.inicio, escala.fim);
+            const realizadoTurnos = escala.historico[func.id].turnosTrabalhados || 0;
+            const saldo = realizadoTurnos - metaTurnos;
+            
+            metaLabel = `${metaTurnos.toFixed(1)} turnos`;
+            realizadoLabel = `${realizadoTurnos} turnos`;
+            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(1)} turnos`;
+        } else { // Padrão é horas
+            const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
+            const saldo = horasTrabalhadas - metaHoras;
+            
+            metaLabel = `${metaHoras.toFixed(2)}h`;
+            realizadoLabel = `${horasTrabalhadas.toFixed(2)}h`;
+            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(2)}h`;
+        }
+
+        return [func.nome, metaLabel, realizadoLabel, saldoLabel];
     });
 
     doc.autoTable({
-        head: [['Funcionário', 'Meta de Horas', 'Horas Realizadas', 'Saldo']],
+        head: resumoHead,
         body: resumoBody,
         startY: 60,
         theme: 'striped',
@@ -243,9 +252,12 @@ function generateVisaoGeralPDF(escala) {
 function generateRelatorioDiarioPDF(escala) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    
     const { funcionarios, turnos } = store.getState();
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
-    const funcionariosMap = Object.fromEntries(funcionarios.map(f => [f.id, f]));
+    const useSnapshot = !!escala.snapshot;
+    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : turnos.find(t => t.id === turnoId)) || {};
+    const getFuncInfo = (funcId) => (useSnapshot ? escala.snapshot.funcionarios?.[funcId] : funcionarios.find(f => f.id === funcId)) || {};
+
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
@@ -255,7 +267,6 @@ function generateRelatorioDiarioPDF(escala) {
     dateRange.forEach((date, index) => {
         if (index > 0) doc.addPage();
         
-        // --- Cabeçalho da Página ---
         doc.setFontSize(14);
         doc.text('Escala Fácil', leftMargin, 40);
         doc.setFontSize(9);
@@ -263,7 +274,6 @@ function generateRelatorioDiarioPDF(escala) {
         doc.setLineWidth(1.5);
         doc.line(leftMargin, 60, rightMargin, 60);
 
-        // --- Título do Dia ---
         const d = new Date(date + 'T12:00:00');
         const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'long' });
         const diaFormatado = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -271,13 +281,18 @@ function generateRelatorioDiarioPDF(escala) {
         doc.setFontSize(20);
         doc.text(fullDateString, pageWidth / 2, 110, { align: 'center' });
 
-        // --- Seções dos Turnos ---
         let yPos = 160;
-        const turnosDoDia = [...new Set(escala.slots.filter(s => s.date === date).map(s => s.turnoId))];
-        const turnosOrdenados = turnos.filter(t => turnosDoDia.includes(t.id)).sort((a,b) => a.inicio.localeCompare(b.inicio));
+        const turnosDoDiaIds = [...new Set(escala.slots.filter(s => s.date === date).map(s => s.turnoId))];
+        const turnosOrdenados = turnosDoDiaIds
+            .map(id => ({ id, ...getTurnoInfo(id) }))
+            .sort((a,b) => a.inicio.localeCompare(b.inicio));
         
         turnosOrdenados.forEach(turno => {
-            const funcionariosAlocados = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).map(s => funcionariosMap[s.assigned]?.nome);
+            if (!turno.id) return;
+            
+            const funcionariosAlocados = escala.slots
+                .filter(s => s.date === date && s.turnoId === turno.id && s.assigned)
+                .map(s => getFuncInfo(s.assigned)?.nome);
             
             const cardHeight = 25 + (funcionariosAlocados.length * 30);
             doc.setFillColor(turno.cor || '#cccccc');
@@ -293,7 +308,7 @@ function generateRelatorioDiarioPDF(escala) {
                 doc.setFontSize(16);
                 doc.setFont(undefined, 'normal');
                 funcionariosAlocados.forEach(nome => {
-                    doc.text(`\u2022 ${nome}`, leftMargin + 25, yPos);
+                    doc.text(`\u2022 ${nome || 'Funcionário Removido'}`, leftMargin + 25, yPos);
                     
                     doc.setDrawColor(220, 220, 220); 
                     doc.setLineWidth(0.5);
@@ -311,7 +326,6 @@ function generateRelatorioDiarioPDF(escala) {
             yPos += 15;
         });
         
-        // --- Rodapé da Página ---
         doc.setFontSize(8);
         doc.text(`Página ${index + 1} de ${dateRange.length}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
     });
@@ -319,9 +333,7 @@ function generateRelatorioDiarioPDF(escala) {
     return doc;
 }
 
-// Lógica para os botões do modal
 async function initPdfExport() {
-    // MELHORIA: Trocado .onclick por addEventListener para maior robustez.
     $('#btnExportCancelar').addEventListener('click', hideExportModal);
 
     $('#btnExportVisaoGeral').addEventListener('click', async () => {
