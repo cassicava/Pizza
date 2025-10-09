@@ -125,7 +125,8 @@ function createExcecoesComponent(options) {
 
         funcs.forEach(func => {
             if (!stateObject.excecoes[func.id]) {
-                stateObject.excecoes[func.id] = { ferias: { dates: [] }, afastamento: { dates: [], motivo: '' }, folgas: [] };
+                // ALTERAÇÃO: Inicializa 'afastamento' como um array vazio.
+                stateObject.excecoes[func.id] = { ferias: { dates: [] }, afastamento: [], folgas: [] };
             }
             
             const div = document.createElement('div');
@@ -202,10 +203,7 @@ function createExcecoesComponent(options) {
         // Event listener para o select de motivo do afastamento
         const afastamentoMotivoSelect = $('[data-afastamento-motivo]', cardEl);
         if (afastamentoMotivoSelect) {
-            afastamentoMotivoSelect.onchange = () => {
-                stateObject.excecoes[funcId].afastamento.motivo = afastamentoMotivoSelect.value;
-                if (onUpdate) onUpdate();
-            };
+            afastamentoMotivoSelect.onchange = (e) => updateExcecaoDates(e, funcId);
         }
         
         // Event listener para adicionar folga
@@ -232,10 +230,6 @@ function createExcecoesComponent(options) {
                 // Dispara a atualização para limpar as datas no estado
                 iniInput.dispatchEvent(new Event('change')); 
             }
-        } else if (tipo === 'afastamento' && !stateObject.excecoes[funcId].afastamento.motivo) {
-            // Define um motivo padrão ao ativar
-            const motivoSelect = $('[data-afastamento-motivo]', container.closest('.excecao-body'));
-            stateObject.excecoes[funcId].afastamento.motivo = motivoSelect.value;
         }
         if (onUpdate) onUpdate();
     }
@@ -245,14 +239,26 @@ function createExcecoesComponent(options) {
         const container = inputEl.closest('[data-dates-container]');
         const tipo = container.dataset.datesContainer;
         
-        const inicio = $(`[data-date-ini="${tipo}"]`, container.closest('.excecao-body')).value;
-        const fim = $(`[data-date-fim="${tipo}"]`, container.closest('.excecao-body')).value;
+        const bodyEl = container.closest('.excecao-body');
+        const inicio = $(`[data-date-ini="${tipo}"]`, bodyEl).value;
+        const fim = $(`[data-date-fim="${tipo}"]`, bodyEl).value;
 
-        if (inicio && fim && fim >= inicio) {
-            stateObject.excecoes[funcId][tipo].dates = dateRangeInclusive(inicio, fim);
-        } else {
-            stateObject.excecoes[funcId][tipo].dates = [];
+        if (tipo === 'ferias') {
+             if (inicio && fim && fim >= inicio) {
+                stateObject.excecoes[funcId].ferias.dates = dateRangeInclusive(inicio, fim);
+            } else {
+                stateObject.excecoes[funcId].ferias.dates = [];
+            }
+        } else if (tipo === 'afastamento') {
+             const motivo = $(`[data-afastamento-motivo]`, bodyEl).value;
+             if (inicio && fim && fim >= inicio) {
+                const range = dateRangeInclusive(inicio, fim);
+                stateObject.excecoes[funcId].afastamento = range.map(d => ({ date: d, motivo: motivo }));
+            } else {
+                stateObject.excecoes[funcId].afastamento = [];
+            }
         }
+
         if (onUpdate) onUpdate();
     }
 

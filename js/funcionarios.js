@@ -163,7 +163,6 @@ function renderFuncTurnosForCargo() {
 
 funcCargoSelect.addEventListener("change", (e) => {
     validateInput(e.target);
-    // MELHORIA: Limpa a disponibilidade ao trocar de cargo, pois os turnos mudam.
     funcDisponibilidadeTemporaria = {};
     renderFuncTurnosForCargo();
     setFuncFormDirty(true);
@@ -203,12 +202,11 @@ function renderFuncCargoSelect() {
     });
 }
 
-
 function renderFuncs() {
-    const { funcionarios, cargos, turnos } = store.getState();
+    const { funcionarios, cargos } = store.getState();
     const filtro = filtroFuncionariosInput.value.toLowerCase();
     const mostrarArquivados = $("#mostrarArquivadosCheck")?.checked || false;
-
+    
     tblFuncionariosBody.innerHTML = "";
 
     const funcsFiltrados = funcionarios.filter(f => {
@@ -217,18 +215,12 @@ function renderFuncs() {
         return correspondeFiltro && correspondeStatus;
     });
 
-    const colspan = 6; 
-
     if (funcsFiltrados.length === 0) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
-        emptyCell.colSpan = colspan;
+        emptyCell.colSpan = 6;
         if (funcionarios.filter(f => f.status !== 'arquivado').length === 0 && !mostrarArquivados) {
-            emptyCell.innerHTML = `<div class="empty-state">
-                                <div class="empty-state-icon">👨‍⚕️</div>
-                                <h3>Nenhum Funcionário Cadastrado</h3>
-                                <p>Comece a cadastrar funcionários para poder gerar escalas.</p>
-                               </div>`;
+            emptyCell.innerHTML = `<div class="empty-state">...</div>`;
         } else {
             emptyCell.textContent = `Nenhum funcionário encontrado.`;
             emptyCell.className = 'muted center';
@@ -239,7 +231,7 @@ function renderFuncs() {
     }
 
     const cargosMap = Object.fromEntries(cargos.map(c => [c.id, c.nome]));
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
+    const fragment = document.createDocumentFragment();
 
     const agrupados = funcsFiltrados.reduce((acc, func) => {
         const cargoNome = cargosMap[func.cargoId] || SEM_CARGO_DEFINIDO;
@@ -248,60 +240,62 @@ function renderFuncs() {
         return acc;
     }, {});
 
-    const cargosOrdenados = Object.keys(agrupados).sort((a, b) => a.localeCompare(b));
-
-    for (const cargoNome of cargosOrdenados) {
-        const funcsDoGrupo = agrupados[cargoNome].sort((a, b) => a.nome.localeCompare(b.nome));
-
+    Object.keys(agrupados).sort((a, b) => a.localeCompare(b)).forEach(cargoNome => {
         const headerRow = document.createElement('tr');
         const headerCell = document.createElement('th');
-        headerCell.colSpan = colspan;
+        headerCell.colSpan = 6;
         headerCell.className = `group-header ${cargoNome === SEM_CARGO_DEFINIDO ? 'warning' : ''}`;
         headerCell.textContent = cargoNome;
         headerRow.appendChild(headerCell);
-        tblFuncionariosBody.appendChild(headerRow);
+        fragment.appendChild(headerRow);
 
-        funcsDoGrupo.forEach(f => {
+        agrupados[cargoNome].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(f => {
+            const row = document.createElement('tr');
+            row.dataset.funcId = f.id;
             const isArquivado = f.status === 'arquivado';
-            
+            if (isArquivado) row.style.opacity = '0.6';
+
             let cargaHoraria = 'N/D';
             if (f.cargaHoraria) {
                 const unidade = f.medicaoCarga === 'turnos' ? (f.cargaHoraria == 1 ? ' turno' : ' turnos') : 'h';
                 const periodo = f.periodoHoras === 'mensal' ? '/mês' : '/semana';
                 cargaHoraria = `${f.cargaHoraria}${unidade} ${periodo}`;
             }
+
+            const nomeCell = document.createElement('td');
+            nomeCell.innerHTML = `${f.nome} ${isArquivado ? '(Arquivado)' : ''}<br><small class="muted">${f.documento || '---'}</small>`;
             
-            const horaExtra = f.fazHoraExtra ? 'Sim' : 'Não';
-            const tipoContrato = f.tipoContrato === 'pj' ? 'Prestador' : 'CLT';
-            const cargoDoFunc = cargosMap[f.cargoId] || SEM_CARGO_DEFINIDO;
-            const cargoTitle = cargoDoFunc === SEM_CARGO_DEFINIDO ? 'title="O cargo original deste funcionário foi removido. Por favor, edite-o para atribuir um novo cargo."' : '';
+            const cargoCell = document.createElement('td');
+            cargoCell.textContent = cargosMap[f.cargoId] || SEM_CARGO_DEFINIDO;
+            if (cargoCell.textContent === SEM_CARGO_DEFINIDO) {
+                cargoCell.title = "O cargo original foi removido. Edite o funcionário para atribuir um novo.";
+            }
 
-            const row = document.createElement('tr');
-            row.dataset.funcId = f.id;
-            if (isArquivado) row.style.opacity = '0.6';
+            const contratoCell = document.createElement('td');
+            contratoCell.textContent = f.tipoContrato === 'pj' ? 'Prestador' : 'CLT';
+            
+            const cargaCell = document.createElement('td');
+            cargaCell.textContent = cargaHoraria;
 
-            const acoes = isArquivado 
-            ? `<button class="secondary" data-action="unarchive" aria-label="Reativar ${f.nome}">🔄 Reativar</button>` 
-            : `
-                <button class="secondary" data-action="edit" aria-label="Editar ${f.nome}">✏️ Editar</button>
-                <button class="danger" data-action="archive" aria-label="Arquivar ${f.nome}">🗄️ Arquivar</button>
-            `;
-
-            row.innerHTML = `
-                <td>
-                    ${f.nome} ${isArquivado ? '(Arquivado)' : ''}
-                    <br>
-                    <small class="muted">${f.documento || '---'}</small>
-                </td>
-                <td ${cargoTitle}>${cargoDoFunc}</td>
-                <td>${tipoContrato}</td>
-                <td>${cargaHoraria}</td>
-                <td>${horaExtra}</td>
-                <td>${acoes}</td>
-            `;
-            tblFuncionariosBody.appendChild(row);
+            const extraCell = document.createElement('td');
+            extraCell.textContent = f.fazHoraExtra ? 'Sim' : 'Não';
+            
+            const acoesCell = document.createElement('td');
+            if (isArquivado) {
+                acoesCell.innerHTML = `<button class="secondary" data-action="unarchive" aria-label="Reativar ${f.nome}">🔄 Reativar</button>`;
+            } else {
+                acoesCell.innerHTML = `
+                    <button class="secondary" data-action="edit" aria-label="Editar ${f.nome}">✏️ Editar</button>
+                    <button class="danger" data-action="archive" aria-label="Arquivar ${f.nome}">🗄️ Arquivar</button>
+                `;
+            }
+            
+            row.append(nomeCell, cargoCell, contratoCell, cargaCell, extraCell, acoesCell);
+            fragment.appendChild(row);
         });
-    }
+    });
+
+    tblFuncionariosBody.appendChild(fragment);
 
     if (lastAddedFuncId) {
         tblFuncionariosBody.querySelector(`tr[data-func-id="${lastAddedFuncId}"]`)?.classList.add('new-item');
@@ -392,18 +386,13 @@ async function saveFuncFromForm() {
         preferencias: preferenciasFinal,
     };
 
-    const isEditing = !!editingFuncId;
-    if (!isEditing) {
+    if (!editingFuncId) {
         lastAddedFuncId = funcData.id;
     }
 
     store.dispatch('SAVE_FUNCIONARIO', funcData);
 
-    if (isEditing) {
-        setFuncFormDirty(false);
-    } else {
-        cancelEditFunc();
-    }
+    cancelEditFunc();
 
     showToast("Funcionário salvo com sucesso!");
 }

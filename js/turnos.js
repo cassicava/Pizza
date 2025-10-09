@@ -215,18 +215,13 @@ async function saveTurnoFromForm() {
         cargaMin: cargaMin
     };
 
-    const isEditing = !!editingTurnoId;
-    if (!isEditing) {
+    if (!editingTurnoId) {
         lastAddedTurnoId = dadosTurno.id;
     }
     
     store.dispatch('SAVE_TURNO', dadosTurno);
     
-    if (isEditing) {
-        setTurnoFormDirty(false);
-    } else {
-        cancelEditTurno();
-    }
+    cancelEditTurno();
     
     showToast("Turno salvo com sucesso!");
 }

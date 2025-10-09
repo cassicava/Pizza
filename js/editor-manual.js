@@ -9,10 +9,10 @@ const editorState = {
     focusedEmployeeIndex: -1,
     scheduleOrderedFuncs: [], // Alterado de alphabetizedFuncs
     selectedShiftBrush: null,
-    lastHoveredDate: null, 
+    lastHoveredDate: null,
     animationDirection: 'right',
-    enforceRules: true, 
-    selectedCellCoords: { row: -1, col: -1 }, 
+    enforceRules: true,
+    selectedCellCoords: { row: -1, col: -1 },
     allConflicts: [],
     selectedAbsenceBrush: 'ferias',
     selectedFolgaReason: 'Folga Normal',
@@ -250,7 +250,6 @@ function setEditMode(mode) {
         const funcionariosMap = new Map(funcionarios.map(f => [f.id, f]));
         const tableWrap = $(`#${currentEscala.owner}-escalaTabelaWrap`);
 
-        // CORREÇÃO: Pega a ordem dos funcionários da tabela renderizada, não alfabética.
         const orderedIds = $$('tr[data-employee-row-id]', tableWrap).map(row => row.dataset.employeeRowId);
         editorState.scheduleOrderedFuncs = orderedIds.map(id => funcionariosMap.get(id)).filter(Boolean);
         
@@ -280,15 +279,33 @@ function setEditMode(mode) {
 }
 
 function handleTableClick(event) {
-    const cell = event.target.closest('.editable-cell');
+    const cell = event.target.closest('td');
     if (!cell) return;
+
+    const parentRow = cell.parentElement;
+    const employeeId = parentRow.dataset.employeeRowId;
+    if (!employeeId) return;
+
     const allRows = $$(`#${currentEscala.owner}-escalaTabelaWrap tbody tr[data-employee-row-id]`);
-    const rowIndex = allRows.findIndex(row => row.contains(cell));
-    const colIndex = Array.from(cell.parentElement.children).indexOf(cell) - 1;
-    focusCell(rowIndex, colIndex);
-    if (editorState.editMode === 'employee') handleEmployeePaint(cell);
-    else if (editorState.editMode === 'eraser') handleEraseClick(cell);
-    else if (editorState.editMode === 'absences' && !editorState.isPaintingAbsence) applyAbsenceToCell(cell);
+    const rowIndex = allRows.findIndex(row => row === parentRow);
+    const colIndex = Array.from(parentRow.children).indexOf(cell) - 1;
+
+    // Se o clique foi na primeira coluna (nome), o objetivo é focar no funcionário
+    if (cell.matches(':first-child')) {
+        const newIndex = editorState.scheduleOrderedFuncs.findIndex(f => f.id === employeeId);
+        if (newIndex !== -1 && newIndex !== editorState.focusedEmployeeIndex) {
+            editorState.focusedEmployeeIndex = newIndex;
+            updateFocusedEmployee(false); // Não animar para seleção direta
+        }
+    } 
+    // Se o clique foi em uma célula de turno/data, o objetivo é editar a célula
+    else if (cell.classList.contains('editable-cell')) {
+        focusCell(rowIndex, colIndex); // Foca na célula para navegação por teclado
+        // Executa a ação do modo atual (pintar, apagar, etc.)
+        if (editorState.editMode === 'employee') handleEmployeePaint(cell);
+        else if (editorState.editMode === 'eraser') handleEraseClick(cell);
+        else if (editorState.editMode === 'absences' && !editorState.isPaintingAbsence) applyAbsenceToCell(cell);
+    }
 }
 
 function handleTableMouseover(event) {
@@ -299,19 +316,16 @@ function handleTableMouseover(event) {
 
     const cell = event.target.closest('.editable-cell');
     if (cell && editorState.editMode === 'employee') {
-        const { date, employeeId } = cell.dataset;
-        const turnoId = editorState.selectedShiftBrush;
+        const { date } = cell.dataset;
+        // Apenas atualiza o indicador de dias consecutivos
         if (date && date !== editorState.lastHoveredDate) {
             editorState.lastHoveredDate = date;
             const card = $(".focused-employee-card");
             if(card) updateConsecutiveDaysIndicator(card, date);
         }
-        if (employeeId === editorState.focusedEmployeeId && turnoId && date) {
-            const conflitos = findPotentialConflicts(employeeId, turnoId, date, currentEscala);
-            cell.title = conflitos.length > 0 ? conflitos.join('\n') : (store.getState().turnos.find(t => t.id === turnoId)?.nome || '');
-        }
     }
 }
+
 
 function updateAllIndicators() {
     if(editorState.editMode === 'employee') {
@@ -451,7 +465,7 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
     
     setGeradorFormDirty(true);
     
-    surgicallyRerenderTable(currentEscala);
+    updateTableAfterEdit(currentEscala);
     updateAllIndicators();
     runSurgicalValidation([employeeId]);
     highlightEmployeeRow(employeeId);
@@ -486,7 +500,7 @@ function handleRemoveShiftClick(slotId) {
     
     setGeradorFormDirty(true);
 
-    surgicallyRerenderTable(currentEscala);
+    updateTableAfterEdit(currentEscala);
     updateAllIndicators();
     runSurgicalValidation([employeeId]);
     highlightEmployeeRow(employeeId);
@@ -500,17 +514,16 @@ function handleEmployeePaint(cell) {
     }
 
     if (!editorState.focusedEmployeeId || !editorState.selectedShiftBrush) {
-        showToast("Selecione um turno para começar a pintar.");
+        showToast("Selecione um turno na Caixa de Ferramentas para começar a pintar.");
         return;
     }
     
     const { date, employeeId: cellEmployeeId, turnoId: cellTurnoId, slotId } = cell.dataset;
     if (cellEmployeeId !== editorState.focusedEmployeeId) {
-        showToast("Você só pode adicionar turnos na linha do funcionário selecionado.");
+        showToast("Você só pode pintar turnos na linha do funcionário selecionado na Caixa de Ferramentas.");
         return;
     }
 
-    // CORREÇÃO: Implementa a lógica de toggle (apagar).
     if (cellTurnoId === editorState.selectedShiftBrush) {
         handleRemoveShiftClick(slotId);
     } else {
@@ -529,10 +542,13 @@ function removeAbsenceFromCell(cell) {
         excecoesFunc.ferias.dates = excecoesFunc.ferias.dates.filter(d => d !== date);
         removed = true;
     }
-    if (excecoesFunc.afastamento.dates.includes(date)) {
-        excecoesFunc.afastamento.dates = excecoesFunc.afastamento.dates.filter(d => d !== date);
+    
+    const afastamentoIndex = excecoesFunc.afastamento.findIndex(a => a.date === date);
+    if (afastamentoIndex > -1) {
+        excecoesFunc.afastamento.splice(afastamentoIndex, 1);
         removed = true;
     }
+
     const folgaIndex = excecoesFunc.folgas.findIndex(f => f.date === date);
     if (folgaIndex > -1) {
         excecoesFunc.folgas.splice(folgaIndex, 1);
@@ -559,11 +575,10 @@ async function handleEraseClick(cell) {
     } else if (slotId) {
         handleRemoveShiftClick(slotId);
     } else {
-        // CORREÇÃO: Adiciona lógica para apagar ausências com a borracha.
         const wasAbsenceRemoved = removeAbsenceFromCell(cell);
         if (wasAbsenceRemoved) {
             setGeradorFormDirty(true);
-            surgicallyRerenderTable(currentEscala);
+            updateTableAfterEdit(currentEscala);
             runSurgicalValidation([cell.dataset.employeeId]);
             updateAllIndicators();
             highlightEmployeeRow(editorState.focusedEmployeeId);
@@ -598,7 +613,7 @@ async function handleRemoveTeamFromDay(equipeId, date) {
 
     if (affectedEmployeeIds.length > 0) {
         setGeradorFormDirty(true);
-        surgicallyRerenderTable(currentEscala);
+        updateTableAfterEdit(currentEscala);
         updateAllIndicators();
         runSurgicalValidation(affectedEmployeeIds);
         showToast(`Equipe "${equipe.nome}" removida do dia ${new Date(date+'T12:00:00').toLocaleDateString()}.`);
@@ -802,7 +817,6 @@ async function handleClearAssignments() {
         currentEscala.historico[funcId] = { horasTrabalhadas: 0, turnosTrabalhados: 0 };
     }
 
-    // CORREÇÃO: Limpa também as exceções (ausências).
     currentEscala.excecoes = {};
 
     if (currentEscala.isManual) {
@@ -816,7 +830,7 @@ async function handleClearAssignments() {
 
     setGeradorFormDirty(true);
 
-    surgicallyRerenderTable(currentEscala);
+    updateTableAfterEdit(currentEscala);
     runSurgicalValidation(employeeIdsToUpdate);
     updateAllIndicators();
     highlightEmployeeRow(editorState.focusedEmployeeId);
@@ -953,36 +967,31 @@ function highlightEmployeeRow(employeeId) {
 function applyAbsenceToCell(cell) {
     const { employeeId, date, equipeId } = cell.dataset;
     if (!employeeId || !date) return;
-    
+
     if (equipeId) {
         showToast("Não é possível adicionar uma ausência sobre um turno de equipe. Remova a equipe do dia primeiro.");
         return;
     }
 
     if (!currentEscala.excecoes[employeeId]) {
-        currentEscala.excecoes[employeeId] = { ferias: { dates: [] }, afastamento: { dates: [], motivo: '' }, folgas: [] };
+        currentEscala.excecoes[employeeId] = { ferias: { dates: [] }, afastamento: [], folgas: [] };
     }
-    
+
     const excecoesFunc = currentEscala.excecoes[employeeId];
-    
-    // CORREÇÃO: Lógica de toggle refatorada para ser mais robusta
     const { selectedAbsenceBrush } = editorState;
     let isAlreadyApplied = false;
+    let currentAbsenceType = null;
 
-    if (selectedAbsenceBrush === 'ferias') {
-        isAlreadyApplied = excecoesFunc.ferias.dates.includes(date);
-    } else if (selectedAbsenceBrush === 'afastamento') {
-        isAlreadyApplied = excecoesFunc.afastamento.dates.includes(date);
-    } else if (selectedAbsenceBrush === 'folga') {
-        isAlreadyApplied = excecoesFunc.folgas.some(f => f.date === date);
-    }
+    if (excecoesFunc.ferias.dates.includes(date)) currentAbsenceType = 'ferias';
+    else if (excecoesFunc.afastamento.some(a => a.date === date)) currentAbsenceType = 'afastamento';
+    else if (excecoesFunc.folgas.some(f => f.date === date)) currentAbsenceType = 'folga';
+    
+    isAlreadyApplied = currentAbsenceType === selectedAbsenceBrush;
 
-    // Se a ausência selecionada já está aplicada, remove todas do dia e sai.
     if (isAlreadyApplied) {
         removeAbsenceFromCell(cell);
     } else {
-        // Se não, limpa qualquer outra ausência ou turno e adiciona a nova.
-        removeAbsenceFromCell(cell); // Limpa outras ausências
+        removeAbsenceFromCell(cell);
         
         const existingSlotIndex = currentEscala.slots.findIndex(s => s.assigned === employeeId && s.date === date);
         if (existingSlotIndex > -1) {
@@ -993,17 +1002,16 @@ function applyAbsenceToCell(cell) {
             excecoesFunc.ferias.dates.push(date);
             excecoesFunc.ferias.dates.sort();
         } else if (selectedAbsenceBrush === 'afastamento') {
-            excecoesFunc.afastamento.dates.push(date);
-            excecoesFunc.afastamento.motivo = editorState.selectedAfastamentoReason;
-            excecoesFunc.afastamento.dates.sort();
+            excecoesFunc.afastamento.push({ date, motivo: editorState.selectedAfastamentoReason });
+            excecoesFunc.afastamento.sort((a,b) => a.date.localeCompare(b.date));
         } else if (selectedAbsenceBrush === 'folga') {
             excecoesFunc.folgas.push({ date, tipo: editorState.selectedFolgaReason });
             excecoesFunc.folgas.sort((a,b) => a.date.localeCompare(b.date));
         }
     }
-    
+
     setGeradorFormDirty(true);
-    surgicallyRerenderTable(currentEscala);
+    updateTableAfterEdit(currentEscala);
     updateAllIndicators();
     runSurgicalValidation([employeeId]);
     highlightEmployeeRow(employeeId);
@@ -1258,7 +1266,6 @@ function handleDragStart(e) {
     if (!cell) return;
 
     if (cell.dataset.equipeId) {
-        // ALTERAÇÃO: Mensagem de brinde mais útil para o usuário.
         showToast("Turnos de equipe são fixos. Use o modo 'Borracha' para remover a equipe do dia.");
         e.preventDefault();
         return;
@@ -1272,22 +1279,79 @@ function handleDragStart(e) {
 
 function handleDragOver(e) {
     e.preventDefault();
-    const cell = e.target.closest('.editable-cell');
-    if (cell) cell.classList.add('drop-target');
+    const targetCell = e.target.closest('.editable-cell');
+    if (!targetCell) return;
+
+    targetCell.classList.remove('drop-invalid');
+    targetCell.classList.add('drop-target');
+
+    try {
+        const sourceData = JSON.parse(e.dataTransfer.getData('application/json'));
+        const sourceSlot = currentEscala.slots.find(s => s.id === sourceData.slotId);
+        const targetSlotId = targetCell.dataset.slotId;
+        
+        if (!sourceSlot || targetCell.dataset.equipeId) {
+            targetCell.classList.add('drop-invalid');
+            return;
+        }
+
+        const { funcionarios, turnos } = store.getState();
+        const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
+        const maxDias = currentEscala.regras?.maxDiasConsecutivos || 6;
+        let todosConflitos = [];
+
+        const tempSlots = JSON.parse(JSON.stringify(currentEscala.slots));
+
+        if (targetSlotId && sourceSlot.assigned !== targetCell.dataset.employeeId) { // Cenário de TROCA
+            const targetSlot = currentEscala.slots.find(s => s.id === targetSlotId);
+            if (!targetSlot) return;
+
+            const func1 = funcionarios.find(f => f.id === sourceSlot.assigned);
+            const func2 = funcionarios.find(f => f.id === targetSlot.assigned);
+            const turno1 = turnosMap[sourceSlot.turnoId];
+            const turno2 = turnosMap[targetSlot.turnoId];
+
+            if (!func1 || !func2 || !turno1 || !turno2) return;
+
+            const tempSourceInArray = tempSlots.find(s => s.id === sourceSlot.id);
+            const tempTargetInArray = tempSlots.find(s => s.id === targetSlot.id);
+            tempSourceInArray.assigned = func2.id;
+            tempTargetInArray.assigned = func1.id;
+
+            const restV1 = checkMandatoryRestViolation(func1, turno2, targetSlot.date, tempSlots, turnosMap);
+            if (restV1.violation) todosConflitos.push(restV1.message);
+            if (calculateConsecutiveWorkDays(func1.id, tempSlots, targetSlot.date, turnosMap) > maxDias) todosConflitos.push(`Dias consecutivos de ${func1.nome.split(' ')[0]} excedidos.`);
+
+            const restV2 = checkMandatoryRestViolation(func2, turno1, sourceSlot.date, tempSlots, turnosMap);
+            if (restV2.violation) todosConflitos.push(restV2.message);
+            if (calculateConsecutiveWorkDays(func2.id, tempSlots, sourceSlot.date, turnosMap) > maxDias) todosConflitos.push(`Dias consecutivos de ${func2.nome.split(' ')[0]} excedidos.`);
+
+        } else { // Cenário de MOVIMENTO para célula vazia
+            todosConflitos = findPotentialConflicts(targetCell.dataset.employeeId, sourceSlot.turnoId, targetCell.dataset.date, currentEscala);
+        }
+
+        if (editorState.enforceRules && todosConflitos.length > 0) {
+            targetCell.classList.add('drop-invalid');
+        }
+
+    } catch (error) { /* Ignora erros de parsing no início do drag */ }
 }
+
 
 function handleDragLeave(e) {
     const cell = e.target.closest('.editable-cell');
-    if (cell) cell.classList.remove('drop-target');
+    if (cell) {
+        cell.classList.remove('drop-target', 'drop-invalid');
+    }
 }
 
 async function handleDrop(e) {
     e.preventDefault();
     const targetCell = e.target.closest('.editable-cell');
+    $$('.dragging').forEach(el => el.classList.remove('dragging'));
     if (!targetCell) return;
 
-    targetCell.classList.remove('drop-target');
-    $$('.dragging').forEach(el => el.classList.remove('dragging'));
+    targetCell.classList.remove('drop-target', 'drop-invalid');
 
     if (targetCell.dataset.equipeId) {
         showToast("Não é possível mover um turno para uma célula ocupada por uma equipe.");
@@ -1304,7 +1368,7 @@ async function handleDrop(e) {
 
     if (sourceSlot.assigned === targetEmployeeId && sourceSlot.date === targetDate) return;
 
-    if (targetSlotId) {
+    if (targetSlotId && sourceSlot.assigned !== targetEmployeeId) {
         await handleSwapShiftClick(sourceData.slotId, targetSlotId);
     } else {
         const conflitos = findPotentialConflicts(targetEmployeeId, sourceSlot.turnoId, targetDate, currentEscala);
@@ -1333,7 +1397,7 @@ async function handleDrop(e) {
         
         setGeradorFormDirty(true);
 
-        surgicallyRerenderTable(currentEscala);
+        updateTableAfterEdit(currentEscala);
         runSurgicalValidation([oldEmployeeId, targetEmployeeId]);
         updateAllIndicators();
         highlightEmployeeRow(targetEmployeeId);
@@ -1341,44 +1405,55 @@ async function handleDrop(e) {
 }
 
 async function handleSwapShiftClick(slot1Id, slot2Id) {
+    const { funcionarios, turnos } = store.getState();
+    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
+    const maxDias = currentEscala.regras?.maxDiasConsecutivos || 6;
+
     const slot1 = currentEscala.slots.find(s => s.id === slot1Id);
     const slot2 = currentEscala.slots.find(s => s.id === slot2Id);
     if (!slot1 || !slot2) return;
 
-    const func1Id = slot1.assigned;
-    const func2Id = slot2.assigned;
-    const turno1 = store.getState().turnos.find(t => t.id === slot1.turnoId);
-    const turno2 = store.getState().turnos.find(t => t.id === slot2.turnoId);
-    if(!turno1 || !turno2) return;
+    const func1 = funcionarios.find(f => f.id === slot1.assigned);
+    const func2 = funcionarios.find(f => f.id === slot2.assigned);
+    const turno1 = turnosMap[slot1.turnoId];
+    const turno2 = turnosMap[slot2.turnoId];
+    if (!func1 || !func2 || !turno1 || !turno2) return;
 
-    const tempEscala = JSON.parse(JSON.stringify(currentEscala));
-    const tempSlot1 = tempEscala.slots.find(s => s.id === slot1Id);
-    const tempSlot2 = tempEscala.slots.find(s => s.id === slot2Id);
-    tempSlot1.assigned = func2Id;
-    tempSlot2.assigned = func1Id;
+    const tempSlots = JSON.parse(JSON.stringify(currentEscala.slots));
+    const tempSlotInArray1 = tempSlots.find(s => s.id === slot1Id);
+    const tempSlotInArray2 = tempSlots.find(s => s.id === slot2Id);
+    tempSlotInArray1.assigned = func2.id;
+    tempSlotInArray2.assigned = func1.id;
 
-    const conflitos1 = findPotentialConflicts(func2Id, tempSlot1.turnoId, tempSlot1.date, tempEscala);
-    const conflitos2 = findPotentialConflicts(func1Id, tempSlot2.turnoId, tempSlot2.date, tempEscala);
-    const todosConflitos = [...new Set([...conflitos1, ...conflitos2])];
+    const restV1 = checkMandatoryRestViolation(func1, turno2, slot2.date, tempSlots, turnosMap);
+    const consDays1 = calculateConsecutiveWorkDays(func1.id, tempSlots, slot2.date, turnosMap);
+    const restV2 = checkMandatoryRestViolation(func2, turno1, slot1.date, tempSlots, turnosMap);
+    const consDays2 = calculateConsecutiveWorkDays(func2.id, tempSlots, slot1.date, turnosMap);
+    
+    let todosConflitos = [];
+    if (restV1.violation) todosConflitos.push(restV1.message);
+    if (consDays1 > maxDias) todosConflitos.push(`Dias consecutivos de ${func1.nome.split(' ')[0]} excedidos.`);
+    if (restV2.violation) todosConflitos.push(restV2.message);
+    if (consDays2 > maxDias) todosConflitos.push(`Dias consecutivos de ${func2.nome.split(' ')[0]} excedidos.`);
     
     if (todosConflitos.length > 0 && editorState.enforceRules) {
-        showToast(`Troca inválida: ${todosConflitos.join('; ')}`);
+        showToast(`Troca inválida: ${[...new Set(todosConflitos)].join('; ')}`);
         return;
     }
     
     const carga1 = calcCarga(turno1.inicio, turno1.fim, turno1.almocoMin, turno1.diasDeDiferenca);
     const carga2 = calcCarga(turno2.inicio, turno2.fim, turno2.almocoMin, turno2.diasDeDiferenca);
 
-    currentEscala.historico[func1Id].horasTrabalhadas += (carga2 - carga1);
-    currentEscala.historico[func2Id].horasTrabalhadas += (carga1 - carga2);
+    currentEscala.historico[func1.id].horasTrabalhadas += (carga2 - carga1);
+    currentEscala.historico[func2.id].horasTrabalhadas += (carga1 - carga2);
 
-    slot1.assigned = func2Id;
-    slot2.assigned = func1Id;
+    slot1.assigned = func2.id;
+    slot2.assigned = func1.id;
 
     setGeradorFormDirty(true);
 
-    surgicallyRerenderTable(currentEscala);
-    runSurgicalValidation([func1Id, func2Id]);
+    updateTableAfterEdit(currentEscala);
+    runSurgicalValidation([func1.id, func2.id]);
     updateAllIndicators();
     highlightEmployeeRow(editorState.focusedEmployeeId);
 }

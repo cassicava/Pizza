@@ -401,6 +401,11 @@ html[data-theme="dark"] #editor-toolbox::before {
 }
 
 /* --- Estilos na Tabela --- */
+/* ALTERAÇÃO: O clique na primeira coluna agora tem um cursor diferente */
+.escala-final-table td:first-child {
+    cursor: pointer;
+}
+
 .escala-final-table .editable-cell {
     cursor: pointer;
     transition: all 0.2s ease-in-out;
@@ -420,12 +425,19 @@ html[data-theme="dark"] #editor-toolbox::before {
 
 .escala-final-table tr.employee-row-highlight > td:first-child {
     border-left: 4px solid var(--brand);
+    background-color: #eef2ff; /* Cor de fundo para destacar o nome */
+}
+
+html[data-theme="dark"] .escala-final-table tr.employee-row-highlight > td:first-child {
+    background-color: rgba(37, 99, 235, 0.15);
 }
 
 
-.escala-final-table.employee-paint-mode { cursor: cell; }
-.escala-final-table.eraser-mode { cursor: crosshair; }
-.escala-final-table.absence-paint-mode { cursor: copy; }
+.escala-final-table.employee-paint-mode,
+.escala-final-table.eraser-mode,
+.escala-final-table.absence-paint-mode { 
+    cursor: crosshair; 
+}
 
 .escala-final-table.employee-paint-mode .editable-cell:hover::after { background: var(--brand); opacity: 0.2; }
 .escala-final-table.absence-paint-mode .editable-cell:hover::after,
@@ -586,6 +598,16 @@ html[data-theme="dark"] #editor-toolbox::before {
 /* --- Estilos para Arrastar e Soltar (Drag and Drop) --- */
 .editable-cell.dragging { opacity: 0.4; transform: scale(0.9); }
 .editable-cell.drop-target { box-shadow: inset 0 0 0 3px var(--brand); }
+
+/* ALTERAÇÃO: Adicionado estilo para drop inválido */
+.escala-final-table .editable-cell.drop-target.drop-invalid {
+    box-shadow: inset 0 0 0 3px var(--danger);
+    background-color: rgba(239, 68, 68, 0.1) !important; /* !important para sobrepor a cor do turno */
+}
+.escala-final-table .editable-cell.drop-target.drop-invalid::after {
+    display: none; /* Esconde o overlay de hover */
+}
+
 
 /* Badge de contagem na aba de conflitos */
 .toolbox-mode-btn { position: relative; }

@@ -52,7 +52,13 @@ function renderEscalaLegend(escala, container) {
     if (escala.excecoes) {
         Object.values(escala.excecoes).forEach(exc => {
             if (exc.ferias && exc.ferias.dates.length > 0) activeExcecoes.ferias = true;
-            if (exc.afastamento && exc.afastamento.dates.length > 0) activeExcecoes.afastamentos.add(exc.afastamento.motivo);
+            if (exc.afastamento) {
+                if (Array.isArray(exc.afastamento)) { // Formato novo
+                    exc.afastamento.forEach(a => activeExcecoes.afastamentos.add(a.motivo));
+                } else if (exc.afastamento.dates && exc.afastamento.dates.length > 0) { // Formato antigo
+                    activeExcecoes.afastamentos.add(exc.afastamento.motivo);
+                }
+            }
             if (exc.folgas) exc.folgas.forEach(f => activeExcecoes.folgas.add(f.tipo));
         });
     }
@@ -186,7 +192,15 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             const slot = escala.slots.find(s => s.date === date && s.assigned === func.id);
             const folgaDoDia = excecoesFunc?.folgas.find(f => f.date === date);
             const emFerias = excecoesFunc?.ferias.dates.includes(date);
-            const afastado = excecoesFunc?.afastamento.dates.includes(date);
+            
+            let afastamentoDoDia = null;
+            if (excecoesFunc?.afastamento) {
+                if (Array.isArray(excecoesFunc.afastamento)) {
+                    afastamentoDoDia = excecoesFunc.afastamento.find(a => a.date === date);
+                } else if (excecoesFunc.afastamento.dates?.includes(date)) {
+                    afastamentoDoDia = { date: date, motivo: excecoesFunc.afastamento.motivo || 'Afastado' };
+                }
+            }
 
             if (slot) {
                 const turno = getTurnoInfo(slot.turnoId);
@@ -196,8 +210,8 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 const textColor = getContrastingTextColor(turno.cor);
                 const extraClass = slot.isExtra ? 'celula-hora-extra' : '';
                 tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} ${draggableAttr} title="${turno.nome}">${turno.sigla || '?'}</td>`;
-            } else if (afastado) {
-                const motivo = excecoesFunc.afastamento.motivo || "Afastado";
+            } else if (afastamentoDoDia) {
+                const motivo = afastamentoDoDia.motivo || "Afastado";
                 const sigla = TIPOS_AFASTAMENTO.find(a => a.nome === motivo)?.sigla || 'AF';
                 tableHTML += `<td class="celula-afastamento" data-tipo="afastamento" data-id="${motivo}" title="${motivo}">${sigla}</td>`;
             } else if (emFerias) {
@@ -424,7 +438,6 @@ function renderPainelDaEscala(escala) {
             const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
             if (!table) return;
 
-            // Limpa destaques anteriores para evitar sobreposição
             $$('td.highlight', table).forEach(cell => cell.classList.remove('highlight'));
 
             if (tipo === 'workload') {
@@ -458,7 +471,11 @@ function renderPainelDaEscala(escala) {
 
 function renderEscalaTable(escala) {
     currentEscala = escala;
-    surgicallyRerenderTable(escala);
+    // Alterado para chamar a função de renderização completa na primeira vez
+    const container = $(`#${escala.owner}-escalaTabelaWrap`);
+    renderGenericEscalaTable(escala, container, { isInteractive: true });
+    renderPainelDaEscala(escala);
+
 
     $(`#${escala.owner}-wizard-container`).classList.add('hidden');
     $(`#${escala.owner}-escalaView`).classList.remove('hidden');
@@ -473,11 +490,98 @@ function renderEscalaTable(escala) {
     }
 }
 
-function surgicallyRerenderTable(escala) {
-    const container = $(`#${escala.owner}-escalaTabelaWrap`);
-    renderGenericEscalaTable(escala, container, { isInteractive: true });
+// Renomeada para clareza
+function updateTableAfterEdit(escala) {
+    updateTableCells(escala);
     renderPainelDaEscala(escala);
 }
+
+// NOVA FUNÇÃO: Atualiza apenas as células necessárias
+function updateTableCells(escala) {
+    const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
+    if (!table) return;
+
+    const { turnos } = store.getState();
+    const getTurnoInfo = (turnoId) => (escala.snapshot?.turnos?.[turnoId]) || turnos.find(t => t.id === turnoId) || {};
+    
+    // 1. Mapeia o estado atual da tabela para comparação
+    const currentTableState = new Map();
+    $$('tbody tr[data-employee-row-id]', table).forEach(row => {
+        const employeeId = row.dataset.employeeRowId;
+        $$('td.editable-cell', row).forEach(cell => {
+            const date = cell.dataset.date;
+            currentTableState.set(`${employeeId}-${date}`, cell.innerHTML);
+        });
+    });
+
+    // 2. Itera sobre os dados da escala e atualiza o DOM apenas onde houver mudança
+    $$('tbody tr[data-employee-row-id]', table).forEach(row => {
+        const funcId = row.dataset.employeeRowId;
+        $$('td.editable-cell', row).forEach(cell => {
+            const date = cell.dataset.date;
+            
+            // Lógica para gerar o conteúdo esperado da célula (similar à renderGenericEscalaTable)
+            const excecoesFunc = escala.excecoes ? escala.excecoes[funcId] : null;
+            const slot = escala.slots.find(s => s.date === date && s.assigned === funcId);
+            const folgaDoDia = excecoesFunc?.folgas.find(f => f.date === date);
+            const emFerias = excecoesFunc?.ferias.dates.includes(date);
+            let afastamentoDoDia = null;
+            if (excecoesFunc?.afastamento) {
+                if (Array.isArray(excecoesFunc.afastamento)) {
+                    afastamentoDoDia = excecoesFunc.afastamento.find(a => a.date === date);
+                } else if (excecoesFunc.afastamento.dates?.includes(date)) {
+                    afastamentoDoDia = { date: date, motivo: excecoesFunc.afastamento.motivo || 'Afastado' };
+                }
+            }
+
+            // Limpa a célula antes de adicionar novo conteúdo
+            cell.innerHTML = '';
+            cell.style.backgroundColor = '';
+            cell.style.color = '';
+            cell.className = 'editable-cell'; // Reseta classes
+            Object.keys(cell.dataset).forEach(key => {
+                if (key !== 'date' && key !== 'employeeId') {
+                    delete cell.dataset[key];
+                }
+            });
+
+            if (slot) {
+                const turno = getTurnoInfo(slot.turnoId);
+                cell.dataset.slotId = slot.id;
+                cell.dataset.turnoId = slot.turnoId;
+                if (slot.equipeId) cell.dataset.equipeId = slot.equipeId;
+                cell.draggable = true;
+                cell.style.backgroundColor = turno.cor;
+                cell.style.color = getContrastingTextColor(turno.cor);
+                cell.title = turno.nome;
+                cell.textContent = turno.sigla || '?';
+                if (slot.isExtra) cell.classList.add('celula-hora-extra');
+            } else if (afastamentoDoDia) {
+                const motivo = afastamentoDoDia.motivo || "Afastado";
+                const sigla = TIPOS_AFASTAMENTO.find(a => a.nome === motivo)?.sigla || 'AF';
+                cell.classList.add('celula-afastamento');
+                cell.dataset.tipo = 'afastamento';
+                cell.dataset.id = motivo;
+                cell.title = motivo;
+                cell.textContent = sigla;
+            } else if (emFerias) {
+                cell.classList.add('celula-ferias-destaque');
+                cell.dataset.tipo = 'ferias';
+                cell.title = 'Férias';
+                cell.textContent = 'FÉ';
+            } else if (folgaDoDia) {
+                const sigla = TIPOS_FOLGA.find(tf => tf.nome === folgaDoDia.tipo)?.sigla || 'F';
+                cell.classList.add('celula-excecao');
+                cell.dataset.tipo = 'folga';
+                cell.dataset.id = folgaDoDia.tipo;
+                cell.dataset.tipoFolga = folgaDoDia.tipo;
+                cell.title = folgaDoDia.tipo;
+                cell.textContent = sigla;
+            }
+        });
+    });
+}
+
 
 async function salvarEscalaAtual(options = {}){
     const { showToast: shouldShowToast = true } = options;

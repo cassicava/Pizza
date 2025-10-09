@@ -46,9 +46,14 @@ function calcularMetaHoras(funcionario, inicioEscala, fimEscala) {
     const horasContratadasBase = parseFloat(funcionario.cargaHoraria) || 0;
     if (horasContratadasBase === 0) return 0;
     const dateRange = dateRangeInclusive(inicioEscala, fimEscala);
+    const totalDiasEscala = dateRange.length;
+
     if (funcionario.periodoHoras === 'semanal') {
-        return (horasContratadasBase / 7) * dateRange.length;
+        const meta = (horasContratadasBase / 7) * totalDiasEscala;
+        // Se a escala for muito curta, arredonda para cima para garantir que haja uma meta mínima.
+        return totalDiasEscala < 7 ? Math.ceil(meta) : meta;
     } 
+
     let metaHoras = 0;
     const mesesNaEscala = {};
     dateRange.forEach(d => {
@@ -61,7 +66,8 @@ function calcularMetaHoras(funcionario, inicioEscala, fimEscala) {
         const diasDaEscalaNesseMes = mesesNaEscala[mesAno];
         metaHoras += (horasContratadasBase / diasNoMesCalendario) * diasDaEscalaNesseMes;
     }
-    return metaHoras;
+    // Arredonda para cima também para metas mensais em períodos curtos.
+    return totalDiasEscala < 15 ? Math.ceil(metaHoras) : metaHoras;
 }
 
 /**
@@ -79,11 +85,10 @@ function calcularMetaTurnos(funcionario, inicioEscala, fimEscala) {
     const totalDiasEscala = dateRange.length;
 
     if (funcionario.periodoHoras === 'semanal') {
-        // Proporcional a uma semana de 7 dias
-        return (metaBase / 7) * totalDiasEscala;
+        const meta = (metaBase / 7) * totalDiasEscala;
+        return totalDiasEscala < 7 ? Math.ceil(meta) : meta;
     } 
     
-    // Lógica para meta mensal
     let metaFinal = 0;
     const mesesNaEscala = {};
     dateRange.forEach(d => {
@@ -97,7 +102,7 @@ function calcularMetaTurnos(funcionario, inicioEscala, fimEscala) {
         const diasDaEscalaNesseMes = mesesNaEscala[mesAno];
         metaFinal += (metaBase / diasNoMesCalendario) * diasDaEscalaNesseMes;
     }
-    return metaFinal;
+    return totalDiasEscala < 15 ? Math.ceil(metaFinal) : metaFinal;
 }
 
 

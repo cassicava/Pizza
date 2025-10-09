@@ -83,39 +83,19 @@ function renderRelatoriosPage() {
     }
 }
 
-function renderFiltroRelatoriosAno() {
-    const filtroSelect = $("#relatorioAnoSelect");
-    if (!filtroSelect) return;
-
-    const valorAtual = filtroSelect.value;
-    const anoAtual = new Date().getFullYear();
-    const anoInicio = 2025;
-    
-    filtroSelect.innerHTML = '<option value="">Selecione um ano</option>';
-    for (let ano = anoInicio; ano <= anoAtual + 2; ano++) {
-        const option = document.createElement('option');
-        option.value = ano;
-        option.textContent = ano;
-        filtroSelect.appendChild(option);
-    }
-    
-    filtroSelect.value = valorAtual;
-}
-
-
 function handleCargoSelectChange() {
     const cargoId = $("#relatorioCargoSelect").value;
     const anoSelect = $("#relatorioAnoSelect");
     const escalaSelect = $("#relatorioEscalaSelect");
 
-    // Reseta os seletores seguintes
     destroyCharts();
     escalaSelect.innerHTML = '<option value="">Selecione o ano...</option>';
     escalaSelect.disabled = true;
     $("#relatorios-container").classList.add('hidden');
 
     if (cargoId) {
-        renderFiltroRelatoriosAno();
+        // Utiliza a nova função reutilizável
+        renderAnoSelect("#relatorioAnoSelect");
         anoSelect.disabled = false;
         anoSelect.showPicker();
     } else {
@@ -292,7 +272,6 @@ function renderMetrics(metrics) {
     
     destroyCharts();
 
-    // ATUALIZAÇÃO: Separa os funcionários por tipo de medição para os gráficos de meta
     const employeesByHoras = employeeMetrics.filter(e => e.medicaoCarga === 'horas');
     const employeesByTurnos = employeeMetrics.filter(e => e.medicaoCarga === 'turnos');
 

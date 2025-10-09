@@ -193,18 +193,13 @@ function saveEquipeFromForm() {
         funcionarioIds: $$('input[name="equipeFuncionario"]:checked').map(chk => chk.value)
     };
 
-    const isEditing = !!editingEquipeId;
-    if (!isEditing) {
+    if (!editingEquipeId) {
         lastAddedEquipeId = equipeData.id;
     }
 
     store.dispatch('SAVE_EQUIPE', equipeData);
     
-    if (isEditing) {
-        setEquipeFormDirty(false);
-    } else {
-        cancelEditEquipe();
-    }
+    cancelEditEquipe();
     
     showToast("Equipe salva com sucesso!");
 }

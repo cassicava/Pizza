@@ -104,18 +104,7 @@ const store = {
                         }
                     }
                 });
-                
-                // CORREÇÃO DE INTEGRIDADE: Remove equipes que se tornaram "órfãs"
-                // porque o turno delas foi removido do cargo.
-                const equipesInvalidas = state.equipes.filter(equipe => 
-                    equipe.cargoId === cargo.id && !cargo.turnosIds.includes(equipe.turnoId)
-                ).map(e => e.id);
-
-                if (equipesInvalidas.length > 0) {
-                    state.equipes = state.equipes.filter(equipe => !equipesInvalidas.includes(equipe.id));
-                    saveJSON(KEYS.equipes, state.equipes);
-                }
-
+                // A lógica de remoção de equipes foi movida para cargos.js para garantir a confirmação do usuário.
                 saveJSON(KEYS.funcs, state.funcionarios);
             } else {
                 state.cargos.push(cargo);

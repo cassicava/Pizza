@@ -331,3 +331,27 @@ function triggerDownload(blob, filename) {
     window.URL.revokeObjectURL(url);
     a.remove();
 }
+
+/**
+ * Renderiza um seletor de anos.
+ * @param {string} selector - O seletor CSS do elemento <select>.
+ * @param {number} startYear - O ano inicial para o range.
+ * @param {number} futureYears - Quantos anos no futuro devem ser exibidos.
+ */
+function renderAnoSelect(selector, startYear = 2025, futureYears = 2) {
+    const selectEl = $(selector);
+    if (!selectEl) return;
+
+    const currentValue = selectEl.value;
+    const currentYear = new Date().getFullYear();
+    selectEl.innerHTML = '<option value="" selected>Selecione um ano</option>';
+
+    for (let year = startYear; year <= currentYear + futureYears; year++) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        selectEl.appendChild(option);
+    }
+    
+    selectEl.value = currentValue;
+}

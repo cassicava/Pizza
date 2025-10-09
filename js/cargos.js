@@ -352,6 +352,11 @@ async function saveCargoFromForm() {
                 });
 
                 if (!confirmado) return;
+
+                // A exclusão agora é feita aqui, antes de salvar o cargo
+                equipesAfetadas.forEach(equipe => {
+                    store.dispatch('DELETE_EQUIPE', equipe.id);
+                });
             }
         }
     }
@@ -375,11 +380,8 @@ async function saveCargoFromForm() {
 
     store.dispatch('SAVE_CARGO', cargoData);
     
-    if (isEditing) {
-        setCargoFormDirty(false);
-    } else {
-        cancelEditCargo();
-    }
+    // A limpeza do formulário agora acontece mesmo em modo de edição
+    cancelEditCargo();
 
     showToast("Cargo salvo com sucesso!");
 }

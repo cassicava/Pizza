@@ -224,11 +224,28 @@ function renderHolidayCalendar() {
 function handleCalendarDayClick(event) {
     const dayEl = event.target.closest('.calendar-day:not(.empty)');
     if (!dayEl) return;
-    geradorState.selectedDate = dayEl.dataset.date;
+    const newDate = dayEl.dataset.date;
+    
+    // Se clicar no mesmo dia, não faz nada
+    if (newDate === geradorState.selectedDate) return;
+
+    geradorState.selectedDate = newDate;
     const existingHoliday = geradorState.feriados.find(f => f.date === geradorState.selectedDate);
-    tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : {};
+    
+    // Reseta o estado temporário para o feriado existente ou um objeto vazio
+    tempHolidayData = existingHoliday 
+        ? JSON.parse(JSON.stringify(existingHoliday)) 
+        : { 
+            date: newDate, 
+            nome: '', 
+            trabalha: true, 
+            descontaMeta: false, 
+            desconto: { tipo: 'horas', valor: 8 } 
+        };
+
     renderHolidayStep();
 }
+
 
 function renderHolidayEditor(date) {
     const container = $("#holiday-editor-container");
@@ -239,11 +256,8 @@ function renderHolidayEditor(date) {
         return;
     }
     
-    const holiday = {
-        nome: '', trabalha: true, descontaMeta: false,
-        desconto: { tipo: 'horas', valor: 8 },
-        ...tempHolidayData
-    };
+    // Usa sempre o tempHolidayData como fonte da verdade para a UI
+    const holiday = tempHolidayData;
 
     container.innerHTML = `
         <div class="holiday-editor-content">
@@ -297,7 +311,6 @@ function renderHolidayEditor(date) {
     addHolidayEditorListeners(date);
 }
 
-
 function renderHolidayList() {
     const container = $('#holiday-list-wrapper');
     if (!container) return;
@@ -331,7 +344,10 @@ function renderHolidayList() {
 
     $$('.holiday-list-item').forEach(item => {
         item.onclick = () => {
-            geradorState.selectedDate = item.dataset.date;
+            const newDate = item.dataset.date;
+            if (newDate === geradorState.selectedDate) return;
+
+            geradorState.selectedDate = newDate;
             const existingHoliday = geradorState.feriados.find(f => f.date === geradorState.selectedDate);
             tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : {};
             renderHolidayStep();
@@ -341,29 +357,20 @@ function renderHolidayList() {
 
 
 function addHolidayEditorListeners(date) {
-    const updateTempDataFromUI = () => {
-        const nomeInput = $('#holiday-name');
-        
-        tempHolidayData = {
-            date,
-            nome: nomeInput.value.trim(),
-            trabalha: $('#holiday-trabalha-toggle .active').dataset.value === 'sim',
-            descontaMeta: $('#holiday-desconta-toggle .active').dataset.value === 'sim',
-            desconto: {
-                tipo: $('#holiday-desconto-tipo-toggle .active').dataset.value,
-                valor: parseFloat($('#holiday-desconto-valor').value) || 0
-            }
-        };
-    };
-
     const nomeInput = $('#holiday-name');
     if(nomeInput) {
         nomeInput.oninput = () => {
             if (nomeInput.value.length > 0) {
                 nomeInput.value = nomeInput.value.charAt(0).toUpperCase() + nomeInput.value.slice(1);
             }
+            tempHolidayData.nome = nomeInput.value.trim();
         };
     }
+    
+    $('#holiday-desconto-valor').oninput = (e) => {
+        tempHolidayData.desconto.valor = parseFloat(e.target.value) || 0;
+    };
+
 
     const setupToggle = (toggleId, onToggle) => {
         const toggleEl = $(toggleId);
@@ -379,11 +386,15 @@ function addHolidayEditorListeners(date) {
         }
     };
 
-    setupToggle('#holiday-trabalha-toggle');
+    setupToggle('#holiday-trabalha-toggle', (value) => {
+        tempHolidayData.trabalha = value === 'sim';
+    });
+    
     setupToggle('#holiday-desconta-toggle', (value) => {
         const isSim = value === 'sim';
         $('#holiday-desconto-options').classList.toggle('hidden', !isSim);
         $('#holiday-desconto-explanation').classList.toggle('hidden', !isSim);
+        tempHolidayData.descontaMeta = isSim;
     });
 
     setupToggle('#holiday-desconto-tipo-toggle', (value) => {
@@ -391,6 +402,7 @@ function addHolidayEditorListeners(date) {
         if (label) {
             label.textContent = value === 'horas' ? 'Total de Horas' : 'Total de Turnos';
         }
+        tempHolidayData.desconto.tipo = value;
     });
     
     // Trigger initial state for label
@@ -400,7 +412,6 @@ function addHolidayEditorListeners(date) {
 
 
     $('#holiday-save-btn').onclick = () => {
-        updateTempDataFromUI();
         if (!tempHolidayData.nome && tempHolidayData.trabalha) {
             showToast("Por favor, dê um nome ao feriado ou marque que 'Não Haverá Trabalho'.");
             return;
@@ -408,9 +419,9 @@ function addHolidayEditorListeners(date) {
 
         const index = geradorState.feriados.findIndex(f => f.date === date);
         if (index > -1) {
-            geradorState.feriados[index] = tempHolidayData;
+            geradorState.feriados[index] = { ...tempHolidayData };
         } else {
-            geradorState.feriados.push(tempHolidayData);
+            geradorState.feriados.push({ ...tempHolidayData });
         }
         setGeradorFormDirty(true);
         renderHolidayCalendar();
@@ -428,7 +439,6 @@ function addHolidayEditorListeners(date) {
         showToast("Feriado removido.");
     };
 }
-
 
 function renderPasso4_Cobertura() {
     const { cargos, turnos, equipes } = store.getState();

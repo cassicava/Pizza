@@ -21,22 +21,6 @@ function renderFiltroEscalasCargo() {
     filtroSelect.value = valorAtual;
 }
 
-function renderFiltroEscalasAno() {
-    const filtroSelect = $("#filtroEscalasAno");
-    if (!filtroSelect) return;
-    const valorAtual = filtroSelect.value;
-    const anoAtual = new Date().getFullYear();
-    const anoInicio = 2025;
-    filtroSelect.innerHTML = `<option value="" selected>Selecione um ano</option>`;
-    for (let ano = anoInicio; ano <= anoAtual + 2; ano++) {
-        const option = document.createElement('option');
-        option.value = ano;
-        option.textContent = ano;
-        filtroSelect.appendChild(option);
-    }
-    filtroSelect.value = valorAtual;
-}
-
 function renderEscalasList(){
   const { escalas } = store.getState();
   const filtroCargoSelect = $("#filtroEscalasCargo");
@@ -45,7 +29,8 @@ function renderEscalasList(){
   container.innerHTML = "";
 
   renderFiltroEscalasCargo();
-  renderFiltroEscalasAno();
+  // Utiliza a nova função reutilizável
+  renderAnoSelect("#filtroEscalasAno");
 
   const cargoFiltro = filtroCargoSelect ? filtroCargoSelect.value : '';
   const anoFiltro = filtroAnoSelect ? filtroAnoSelect.value : '';
@@ -79,7 +64,6 @@ function renderEscalasList(){
   const escalasOrdenadas = [...escalasFiltradas].sort((a,b) => b.inicio.localeCompare(a.inicio));
 
   escalasOrdenadas.forEach(esc => {
-    // SUGESTÃO B: INDICADOR VISUAL DE "SAÚDE"
     const temVagas = esc.slots.some(s => !s.assigned);
     const statusIcon = temVagas ? '⚠️' : '✅';
     const statusClass = temVagas ? 'status-warning' : 'status-ok';
@@ -90,7 +74,6 @@ function renderEscalasList(){
     card.dataset.viewId = esc.id;
     const periodo = `${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
     
-    // REMOÇÃO DOS BOTÕES DOS CARDS
     card.innerHTML = `
       <div class="escala-card-status ${statusClass}" title="${statusTitle}">${statusIcon}</div>
       <div class="escala-card-content">
@@ -106,9 +89,7 @@ function verEscalaSalva(id) {
     const { escalas } = store.getState();
     const escala = escalas.find(e => e.id === id);
     if(escala) {
-        // Armazena a escala para os botões de ação poderem encontrá-la
         escalaParaEditar = escala;
-
         escala.owner = 'salva';
         
         $("#escalaSalvaViewTitle").textContent = escala.nome || 'Visualização da Escala';
@@ -127,7 +108,6 @@ function verEscalaSalva(id) {
 
 function editEscalaSalva() {
     if (escalaParaEditar) {
-        // Redireciona para a página de geração, que também funciona como editora
         go('gerar-escala', { escalaParaEditar: escalaParaEditar, isEditing: true });
     }
 }
@@ -140,16 +120,14 @@ async function excluirEscalaSalva(id){
   });
   
   if (confirmado) {
-      // Retorna para a lista de escalas após a exclusão
       $('#escalaSalvaView').classList.add('hidden');
       $('#listaEscalasContainer').classList.remove('hidden');
       escalaParaEditar = null;
-      renderEscalasList(); // Atualiza a lista
+      renderEscalasList();
   }
 }
 
 function handleEscalasSalvasContainerClick(event) {
-    // AGORA A LÓGICA DE CLIQUE É APENAS NO CARD PARA VISUALIZAÇÃO
     const card = event.target.closest('.escala-card[data-view-id]');
     if (card) {
         verEscalaSalva(card.dataset.viewId);
@@ -164,7 +142,6 @@ function initEscalasSalvasPage() {
     };
     $("#btnEditarEscalaSalva").onclick = editEscalaSalva;
     
-    // NOVO LISTENER PARA O BOTÃO DE EXCLUIR NA TELA DE VISUALIZAÇÃO
     $("#btnExcluirEscalaSalva").onclick = () => {
         if (escalaParaEditar) {
             excluirEscalaSalva(escalaParaEditar.id);

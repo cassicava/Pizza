@@ -34,7 +34,8 @@ self.onmessage = function(e) {
         todosFuncsDoCargo.forEach(f => {
             const f_excecoes = excecoes[f.id] || {};
             const ferias_dates = f_excecoes.ferias?.dates || [];
-            const afastamento_dates = f_excecoes.afastamento?.dates || [];
+            // ALTERAÇÃO: Lógica ajustada para a nova estrutura de afastamentos
+            const afastamento_dates = Array.isArray(f_excecoes.afastamento) ? f_excecoes.afastamento.map(a => a.date) : [];
             let folgas_dates = [];
             if (Array.isArray(f_excecoes.folgas)) {
                 folgas_dates = f_excecoes.folgas.map(folga => folga.date);
