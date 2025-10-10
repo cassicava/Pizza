@@ -493,7 +493,7 @@ async function deleteFuncionario(id) {
     }
 
     const isInEscalaSalva = escalas.some(escala =>
-        escala.slots.some(slot => slot.assigned === id) || (escala.excecoes && escala.excecoes[id])
+        escala.slots.some(slot => slot.assigned === id)
     );
 
     if (isInEscalaSalva) {

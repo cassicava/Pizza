@@ -2,83 +2,62 @@
  * 📅 Visualização da Escala
  **************************************/
 
+let currentEscala = null;
+
 function renderEscalaLegend(escala, container) {
-    const { turnos, cargos } = store.getState();
+    const {
+        turnos,
+        cargos
+    } = store.getState();
     if (!container) return;
     container.innerHTML = '';
 
     const cargo = cargos.find(c => c.id === escala.cargoId);
     if (!cargo) return;
 
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const allLegendItems = [];
-    const turnosDoCargo = turnos.filter(t => cargo.turnosIds.includes(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio));
+    const turnosDoCargo = allTurnos.filter(t => cargo.turnosIds?.includes(t.id) || t.isSystem)
+        .sort((a,b) => {
+            if (a.isSystem && !b.isSystem) return -1;
+            if (!a.isSystem && b.isSystem) return 1;
+            return a.nome.localeCompare(b.nome);
+        });
+        
     turnosDoCargo.forEach(turno => {
         allLegendItems.push({
             id: turno.id,
             html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
-            type: 'turno',
         });
     });
 
-    allLegendItems.push({
-        id: 'ferias',
-        html: `<div class="legenda-item" data-tipo="ferias"><span class="color-dot" style="background-color: transparent; border: 2px solid #166534;"></span><strong>FÉ</strong> - Férias</div>`,
-        type: 'ferias',
-    });
-
-    TIPOS_AFASTAMENTO.forEach(af => {
+    const activeTurnos = new Set(escala.slots.map(s => s.turnoId));
+    
+    // Adiciona os turnos de sistema se houverem na escala.
+    if(activeTurnos.has(TURNO_FERIAS_ID)) {
+        const turno = TURNOS_SISTEMA_AUSENCIA[TURNO_FERIAS_ID];
         allLegendItems.push({
-            id: af.nome,
-            html: `<div class="legenda-item" data-tipo="afastamento" data-id="${af.nome}"><span class="color-dot" style="background-color: #fef9c3"></span><strong>${af.sigla}</strong> - ${af.nome}</div>`,
-            type: 'afastamento',
+            id: turno.id,
+            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
         });
-    });
-
-    TIPOS_FOLGA.forEach(folga => {
+    }
+    if(activeTurnos.has(TURNO_FOLGA_ID)) {
+        const turno = TURNOS_SISTEMA_AUSENCIA[TURNO_FOLGA_ID];
         allLegendItems.push({
-            id: folga.nome,
-            html: `<div class="legenda-item" data-tipo="folga" data-id="${folga.nome}"><span class="color-dot" style="background-color: #eef2ff"></span><strong>${folga.sigla}</strong> - ${folga.nome}</div>`,
-            type: 'folga',
+            id: turno.id,
+            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
         });
-    });
-
-    const activeTurnos = new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId));
-    const activeExcecoes = {
-        ferias: false,
-        afastamentos: new Set(),
-        folgas: new Set(),
-    };
-
-    if (escala.excecoes) {
-        Object.values(escala.excecoes).forEach(exc => {
-            if (exc.ferias && exc.ferias.dates.length > 0) activeExcecoes.ferias = true;
-            if (exc.afastamento) {
-                if (Array.isArray(exc.afastamento)) { // Formato novo
-                    exc.afastamento.forEach(a => activeExcecoes.afastamentos.add(a.motivo));
-                } else if (exc.afastamento.dates && exc.afastamento.dates.length > 0) { // Formato antigo
-                    activeExcecoes.afastamentos.add(exc.afastamento.motivo);
-                }
-            }
-            if (exc.folgas) exc.folgas.forEach(f => activeExcecoes.folgas.add(f.tipo));
+    }
+    if(activeTurnos.has(TURNO_AFASTAMENTO_ID)) {
+        const turno = TURNOS_SISTEMA_AUSENCIA[TURNO_AFASTAMENTO_ID];
+        allLegendItems.push({
+            id: turno.id,
+            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
         });
     }
 
     const finalHTML = allLegendItems.map(item => {
-        let isActive = false;
-        switch(item.type) {
-            case 'turno':
-                isActive = activeTurnos.has(item.id);
-                break;
-            case 'ferias':
-                isActive = activeExcecoes.ferias;
-                break;
-            case 'afastamento':
-                isActive = activeExcecoes.afastamentos.has(item.id);
-                break;
-            case 'folga':
-                isActive = activeExcecoes.folgas.has(item.id);
-                break;
-        }
+        const isActive = activeTurnos.has(item.id);
         const classInactive = !isActive ? 'inactive' : '';
         return item.html.replace('class="legenda-item"', `class="legenda-item ${classInactive}"`);
     }).join('');
@@ -90,15 +69,22 @@ function renderEscalaLegend(escala, container) {
 
 
 function renderGenericEscalaTable(escala, container, options = {}) {
-    const { isInteractive = false } = options;
-    const { funcionarios, turnos, cargos } = store.getState();
+    const {
+        isInteractive = false
+    } = options;
+    const {
+        funcionarios,
+        turnos,
+        cargos
+    } = store.getState();
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
 
     if (!container) {
         console.error("Container para renderizar a tabela não foi encontrado.");
         return;
     }
 
-    const getTurnoInfo = (turnoId) => (escala.snapshot?.turnos?.[turnoId]) || turnos.find(t => t.id === turnoId) || {};
+    const getTurnoInfo = (turnoId) => allTurnos.find(t => t.id === turnoId) || {};
     const getFuncInfo = (funcId) => (escala.snapshot?.funcionarios?.[funcId]) || funcionarios.find(f => f.id === funcId) || {};
 
     let cobertura = escala.cobertura || {};
@@ -114,25 +100,29 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     }
 
     const allFuncsInvolved = new Set();
-    escala.slots.forEach(s => { if(s.assigned) allFuncsInvolved.add(s.assigned) });
-    Object.keys(escala.excecoes).forEach(funcId => allFuncsInvolved.add(funcId));
+    escala.slots.forEach(s => {
+        if (s.assigned) allFuncsInvolved.add(s.assigned)
+    });
     Object.keys(escala.historico || {}).forEach(funcId => allFuncsInvolved.add(funcId));
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
-    
+
     const funcsDaEscala = [...allFuncsInvolved]
-        .map(funcId => ({ id: funcId, ...getFuncInfo(funcId) }))
+        .map(funcId => ({
+            id: funcId,
+            ...getFuncInfo(funcId)
+        }))
         .filter(f => f.nome)
         .sort((a, b) => {
             const primeiroDia = dateRange[0];
             const slotA = escala.slots.find(s => s.assigned === a.id && s.date === primeiroDia);
             const slotB = escala.slots.find(s => s.assigned === b.id && s.date === primeiroDia);
-            
+
             const turnoA = slotA ? getTurnoInfo(slotA.turnoId) : null;
             const turnoB = slotB ? getTurnoInfo(slotB.turnoId) : null;
 
-            if (turnoA && !turnoB) return -1;
-            if (!turnoA && turnoB) return 1;
+            if (turnoA?.isSystem && !turnoB?.isSystem) return -1;
+            if (!turnoA?.isSystem && turnoB?.isSystem) return 1;
 
             if (turnoA && turnoB && turnoA.inicio && turnoB.inicio) {
                 const inicioComparison = turnoA.inicio.localeCompare(turnoB.inicio);
@@ -147,12 +137,16 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     let tableHTML = `<table class="escala-final-table"><thead><tr><th>Funcionário</th>`;
     dateRange.forEach(date => {
         const d = new Date(date + 'T12:00:00');
-        const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+        const diaSemana = d.toLocaleDateString('pt-BR', {
+            weekday: 'short'
+        }).replace('.', '');
         const dia = d.getDate();
         const feriado = escala.feriados.find(f => f.date === date);
         const isFeriado = feriado ? 'feriado' : '';
         const isWeekend = (d.getUTCDay() === 0 || d.getUTCDay() === 6) ? 'weekend' : '';
-        tableHTML += `<th class="${isFeriado} ${isWeekend}" title="${feriado ? feriado.nome : ''}">${dia}<br>${diaSemana}</th>`;
+        // ALTERAÇÃO: Adiciona a classe 'feriado-folga' se o feriado for de folga geral.
+        const isFolgaGeral = feriado && !feriado.trabalha ? 'feriado-folga' : '';
+        tableHTML += `<th class="${isFeriado} ${isWeekend} ${isFolgaGeral}" title="${feriado ? feriado.nome : ''}">${dia}<br>${diaSemana}</th>`;
     });
     tableHTML += `</tr></thead><tbody>`;
 
@@ -160,10 +154,10 @@ function renderGenericEscalaTable(escala, container, options = {}) {
         const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
         const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
         const percentual = metaHoras > 0 ? (horasTrabalhadas / metaHoras) * 100 : 0;
-        
+
         let indicatorClass = '';
         let indicatorTitle = `Carga Horária: ${horasTrabalhadas.toFixed(1)}h de ${metaHoras.toFixed(1)}h (${percentual.toFixed(0)}%)`;
-        
+
         if (percentual >= 100) {
             indicatorClass = 'workload-ok';
         } else if (percentual >= 80) {
@@ -187,20 +181,8 @@ function renderGenericEscalaTable(escala, container, options = {}) {
         dateRange.forEach(date => {
             const dataAttrs = isInteractive ? `data-date="${date}" data-employee-id="${func.id}"` : '';
             let cellClass = isInteractive ? 'editable-cell' : '';
-            const excecoesFunc = escala.excecoes ? escala.excecoes[func.id] : null;
 
             const slot = escala.slots.find(s => s.date === date && s.assigned === func.id);
-            const folgaDoDia = excecoesFunc?.folgas.find(f => f.date === date);
-            const emFerias = excecoesFunc?.ferias.dates.includes(date);
-            
-            let afastamentoDoDia = null;
-            if (excecoesFunc?.afastamento) {
-                if (Array.isArray(excecoesFunc.afastamento)) {
-                    afastamentoDoDia = excecoesFunc.afastamento.find(a => a.date === date);
-                } else if (excecoesFunc.afastamento.dates?.includes(date)) {
-                    afastamentoDoDia = { date: date, motivo: excecoesFunc.afastamento.motivo || 'Afastado' };
-                }
-            }
 
             if (slot) {
                 const turno = getTurnoInfo(slot.turnoId);
@@ -210,17 +192,8 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 const textColor = getContrastingTextColor(turno.cor);
                 const extraClass = slot.isExtra ? 'celula-hora-extra' : '';
                 tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} ${draggableAttr} title="${turno.nome}">${turno.sigla || '?'}</td>`;
-            } else if (afastamentoDoDia) {
-                const motivo = afastamentoDoDia.motivo || "Afastado";
-                const sigla = TIPOS_AFASTAMENTO.find(a => a.nome === motivo)?.sigla || 'AF';
-                tableHTML += `<td class="celula-afastamento" data-tipo="afastamento" data-id="${motivo}" title="${motivo}">${sigla}</td>`;
-            } else if (emFerias) {
-                tableHTML += `<td class="celula-ferias-destaque" data-tipo="ferias" title="Férias">FÉ</td>`;
-            } else if (folgaDoDia) {
-                const sigla = TIPOS_FOLGA.find(tf => tf.nome === folgaDoDia.tipo)?.sigla || 'F';
-                tableHTML += `<td class="celula-excecao" data-tipo="folga" data-id="${folgaDoDia.tipo}" data-tipo-folga="${folgaDoDia.tipo}" title="${folgaDoDia.tipo}">${sigla}</td>`;
             } else {
-                 tableHTML += `<td class="${cellClass}" ${dataAttrs}></td>`;
+                tableHTML += `<td class="${cellClass}" ${dataAttrs}></td>`;
             }
         });
         tableHTML += `</tr>`;
@@ -237,11 +210,11 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             });
             tableHTML += `</tr>`;
         });
-        
+
         turnosDoCargo.forEach(turno => {
             let hasVagas = false;
             let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla}</strong></td>`;
-            
+
             dateRange.forEach(date => {
                 const coberturaNecessaria = cobertura[turno.id] || 0;
                 const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
@@ -267,7 +240,9 @@ function renderPainelDaEscala(escala) {
     const painelContainer = isGerador ? $('#gerador-painel-escala') : $('#salva-painel-escala');
     if (!painelContainer) return;
 
-    const { funcionarios } = store.getState();
+    const {
+        funcionarios
+    } = store.getState();
     const funcsDaEscala = funcionarios.filter(f => escala.historico && escala.historico[f.id]).sort((a, b) => a.nome.localeCompare(b.nome));
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const totalDias = dateRange.length;
@@ -307,7 +282,7 @@ function renderPainelDaEscala(escala) {
 
     let resumoHorasHTML = '<div class="painel-resumo-horas-list">';
     funcsDaEscala.forEach(func => {
-        const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60);
+        const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
         const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
         const saldo = horasTrabalhadas - metaHoras;
         const fazHoraExtra = func.fazHoraExtra;
@@ -328,7 +303,7 @@ function renderPainelDaEscala(escala) {
         let barColorClass = 'blue';
         if (progPrincipal < 40) barColorClass = 'red';
         else if (progPrincipal < 80) barColorClass = 'yellow';
-        
+
         resumoHorasHTML += `
             <div class="resumo-func-item">
                 <div class="resumo-func-nome" title="${func.nome}">${func.nome}</div>
@@ -347,7 +322,7 @@ function renderPainelDaEscala(escala) {
         `;
     });
     resumoHorasHTML += '</div>';
-    
+
     const feriadosNaEscala = escala.feriados || [];
     let feriadosHTML = '';
     if (feriadosNaEscala.length > 0) {
@@ -391,7 +366,7 @@ function renderPainelDaEscala(escala) {
         <div class="painel-tab-content active" data-tab-content="resumo">${resumoHorasHTML}</div>
         <div class="painel-tab-content" data-tab-content="stats">${statsHTML}</div>
     `;
-    
+
     const turnosLegendaContainer = $('.turnos-legenda', painelContainer);
     renderEscalaLegend(escala, turnosLegendaContainer);
 
@@ -452,7 +427,7 @@ function renderPainelDaEscala(escala) {
                     const cellTipo = cell.dataset.tipo;
                     const cellId = cell.dataset.id;
                     const cellTurnoId = cell.dataset.turnoId;
-                    
+
                     if ((cellTipo === tipo && cellId === id) || (tipo === 'turno' && cellTurnoId === id)) {
                         cell.classList.add('highlight');
                     }
@@ -473,18 +448,20 @@ function renderEscalaTable(escala) {
     currentEscala = escala;
     // Alterado para chamar a função de renderização completa na primeira vez
     const container = $(`#${escala.owner}-escalaTabelaWrap`);
-    renderGenericEscalaTable(escala, container, { isInteractive: true });
+    renderGenericEscalaTable(escala, container, {
+        isInteractive: true
+    });
     renderPainelDaEscala(escala);
 
 
     $(`#${escala.owner}-wizard-container`).classList.add('hidden');
     $(`#${escala.owner}-escalaView`).classList.remove('hidden');
-    
+
     const titleTextEl = $(`#${escala.owner}-escalaViewTitle`);
     const titleInputEl = $(`#${escala.owner}-escalaViewTitleInput`);
     if (titleTextEl) titleTextEl.textContent = escala.nome;
     if (titleInputEl) titleInputEl.value = escala.nome;
-    
+
     if (typeof initEditor === 'function') {
         initEditor();
     }
@@ -501,9 +478,12 @@ function updateTableCells(escala) {
     const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
     if (!table) return;
 
-    const { turnos } = store.getState();
-    const getTurnoInfo = (turnoId) => (escala.snapshot?.turnos?.[turnoId]) || turnos.find(t => t.id === turnoId) || {};
-    
+    const {
+        turnos
+    } = store.getState();
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
+    const getTurnoInfo = (turnoId) => allTurnos.find(t => t.id === turnoId) || {};
+
     // 1. Mapeia o estado atual da tabela para comparação
     const currentTableState = new Map();
     $$('tbody tr[data-employee-row-id]', table).forEach(row => {
@@ -519,20 +499,9 @@ function updateTableCells(escala) {
         const funcId = row.dataset.employeeRowId;
         $$('td.editable-cell', row).forEach(cell => {
             const date = cell.dataset.date;
-            
+
             // Lógica para gerar o conteúdo esperado da célula (similar à renderGenericEscalaTable)
-            const excecoesFunc = escala.excecoes ? escala.excecoes[funcId] : null;
             const slot = escala.slots.find(s => s.date === date && s.assigned === funcId);
-            const folgaDoDia = excecoesFunc?.folgas.find(f => f.date === date);
-            const emFerias = excecoesFunc?.ferias.dates.includes(date);
-            let afastamentoDoDia = null;
-            if (excecoesFunc?.afastamento) {
-                if (Array.isArray(excecoesFunc.afastamento)) {
-                    afastamentoDoDia = excecoesFunc.afastamento.find(a => a.date === date);
-                } else if (excecoesFunc.afastamento.dates?.includes(date)) {
-                    afastamentoDoDia = { date: date, motivo: excecoesFunc.afastamento.motivo || 'Afastado' };
-                }
-            }
 
             // Limpa a célula antes de adicionar novo conteúdo
             cell.innerHTML = '';
@@ -556,37 +525,22 @@ function updateTableCells(escala) {
                 cell.title = turno.nome;
                 cell.textContent = turno.sigla || '?';
                 if (slot.isExtra) cell.classList.add('celula-hora-extra');
-            } else if (afastamentoDoDia) {
-                const motivo = afastamentoDoDia.motivo || "Afastado";
-                const sigla = TIPOS_AFASTAMENTO.find(a => a.nome === motivo)?.sigla || 'AF';
-                cell.classList.add('celula-afastamento');
-                cell.dataset.tipo = 'afastamento';
-                cell.dataset.id = motivo;
-                cell.title = motivo;
-                cell.textContent = sigla;
-            } else if (emFerias) {
-                cell.classList.add('celula-ferias-destaque');
-                cell.dataset.tipo = 'ferias';
-                cell.title = 'Férias';
-                cell.textContent = 'FÉ';
-            } else if (folgaDoDia) {
-                const sigla = TIPOS_FOLGA.find(tf => tf.nome === folgaDoDia.tipo)?.sigla || 'F';
-                cell.classList.add('celula-excecao');
-                cell.dataset.tipo = 'folga';
-                cell.dataset.id = folgaDoDia.tipo;
-                cell.dataset.tipoFolga = folgaDoDia.tipo;
-                cell.title = folgaDoDia.tipo;
-                cell.textContent = sigla;
             }
         });
     });
 }
 
 
-async function salvarEscalaAtual(options = {}){
-    const { showToast: shouldShowToast = true } = options;
+async function salvarEscalaAtual(options = {}) {
+    const {
+        showToast: shouldShowToast = true
+    } = options;
     if (currentEscala) {
-        const { funcionarios, turnos } = store.getState();
+        const {
+            funcionarios,
+            turnos
+        } = store.getState();
+        const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
         const funcsInvolvedIds = new Set(Object.keys(currentEscala.historico || {}));
         const turnosInvolvedIds = new Set(currentEscala.slots.map(s => s.turnoId));
 
@@ -598,8 +552,8 @@ async function salvarEscalaAtual(options = {}){
         funcsInvolvedIds.forEach(id => {
             const func = funcionarios.find(f => f.id === id);
             if (func) {
-                currentEscala.snapshot.funcionarios[id] = { 
-                    nome: func.nome, 
+                currentEscala.snapshot.funcionarios[id] = {
+                    nome: func.nome,
                     documento: func.documento,
                     cargaHoraria: func.cargaHoraria,
                     periodoHoras: func.periodoHoras,
@@ -609,9 +563,15 @@ async function salvarEscalaAtual(options = {}){
         });
 
         turnosInvolvedIds.forEach(id => {
-            const turno = turnos.find(t => t.id === id);
+            const turno = allTurnos.find(t => t.id === id);
             if (turno) {
-                currentEscala.snapshot.turnos[id] = { nome: turno.nome, sigla: turno.sigla, cor: turno.cor, inicio: turno.inicio, fim: turno.fim };
+                currentEscala.snapshot.turnos[id] = {
+                    nome: turno.nome,
+                    sigla: turno.sigla,
+                    cor: turno.cor,
+                    inicio: turno.inicio,
+                    fim: turno.fim
+                };
             }
         });
 

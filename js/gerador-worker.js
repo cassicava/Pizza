@@ -6,9 +6,8 @@
 importScripts('constants.js', 'shared-utils.js');
 
 self.onmessage = function(e) {
-    // Adiciona verificação para a mensagem de cancelamento
     if (e.data.type === 'cancel') {
-        self.close(); // Encerra o worker
+        self.close(); 
         return;
     }
     
@@ -32,15 +31,14 @@ self.onmessage = function(e) {
         const todosFuncsDoCargo = funcionarios.filter(f => f.cargoId === cargoId && f.status !== 'arquivado');
         const excecoesMap = {};
         todosFuncsDoCargo.forEach(f => {
-            const f_excecoes = excecoes[f.id] || {};
-            const ferias_dates = f_excecoes.ferias?.dates || [];
-            // ALTERAÇÃO: Lógica ajustada para a nova estrutura de afastamentos
-            const afastamento_dates = Array.isArray(f_excecoes.afastamento) ? f_excecoes.afastamento.map(a => a.date) : [];
-            let folgas_dates = [];
-            if (Array.isArray(f_excecoes.folgas)) {
-                folgas_dates = f_excecoes.folgas.map(folga => folga.date);
+            const funcExcecoes = excecoes[f.id] || {};
+            let allAusencias = [];
+            for (const tipoId in funcExcecoes) {
+                if(Array.isArray(funcExcecoes[tipoId])) {
+                    allAusencias = allAusencias.concat(funcExcecoes[tipoId]);
+                }
             }
-            excecoesMap[f.id] = new Set([...ferias_dates, ...afastamento_dates, ...folgas_dates]);
+            excecoesMap[f.id] = new Set(allAusencias);
         });
 
         let slots = [];
@@ -49,9 +47,9 @@ self.onmessage = function(e) {
             const diaSemanaId = DIAS_SEMANA[diaSemana.getUTCDay()].id;
             const feriadoDoDia = feriados.find(f => f.date === date);
             
-            // CORREÇÃO: Pula a criação de vagas se for um feriado de folga geral.
+            // ALTERAÇÃO: Não cria vagas (slots) em dias de "Folga Geral"
             if (feriadoDoDia && !feriadoDoDia.trabalha) {
-                return; // Continua para o próximo dia do loop
+                return;
             }
 
             if (cargo.regras.dias.includes(diaSemanaId)) {
@@ -123,7 +121,7 @@ self.onmessage = function(e) {
 
         slots.filter(s => s.assigned).forEach(s => {
             const turno = turnosMap[s.turnoId];
-            if(turno && historico[s.assigned]) {
+            if(turno && !turno.isSystem && historico[s.assigned]) {
                 historico[s.assigned].horasTrabalhadas += calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
                 historico[s.assigned].turnosTrabalhados += 1;
             }
@@ -141,7 +139,7 @@ self.onmessage = function(e) {
             }
         });
         
-        postMessage({ type: 'progress', message: 'Ajustando feriados...'});
+        postMessage({ type: 'progress', message: 'Ajustando metas para feriados...'});
         feriados.filter(feriado => feriado.descontaMeta && !feriado.trabalha).forEach(feriado => {
             const funcsQueFolgaram = funcsIndividuais.filter(f => 
                 !slots.some(s => s.date === feriado.date && s.assigned === f.id) &&
@@ -150,14 +148,14 @@ self.onmessage = function(e) {
 
             funcsQueFolgaram.forEach(f => {
                 const medicao = f.medicaoCarga || 'horas';
-                const desconto = feriado.desconto || { tipo: 'horas', valor: 0 };
-
-                if (medicao === 'horas' && desconto.tipo === 'horas' && metaHorasMap.has(f.id)) {
+                
+                // ALTERAÇÃO: Adicionado 'else if' para descontar a meta de turnos também.
+                if (medicao === 'horas' && metaHorasMap.has(f.id)) {
                     const metaAtual = metaHorasMap.get(f.id);
-                    metaHorasMap.set(f.id, Math.max(0, metaAtual - desconto.valor));
-                } else if (medicao === 'turnos' && desconto.tipo === 'turnos' && metaTurnosMap.has(f.id)) {
+                    metaHorasMap.set(f.id, Math.max(0, metaAtual - (feriado.desconto.horas || 0)));
+                } else if (medicao === 'turnos' && metaTurnosMap.has(f.id)) {
                     const metaAtual = metaTurnosMap.get(f.id);
-                    metaTurnosMap.set(f.id, Math.max(0, metaAtual - desconto.valor));
+                    metaTurnosMap.set(f.id, Math.max(0, metaAtual - (feriado.desconto.turnos || 0)));
                 }
             });
         });
@@ -235,8 +233,10 @@ self.onmessage = function(e) {
                     const escolhido = candidatos[0].func;
                     slot.assigned = escolhido.id;
                     if (usarHoraExtra) slot.isExtra = true;
-                    historico[escolhido.id].horasTrabalhadas += calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
-                    historico[escolhido.id].turnosTrabalhados += 1;
+                    if (!turno.isSystem) {
+                        historico[escolhido.id].horasTrabalhadas += calcCarga(turno.inicio, turno.fim, turno.almocoMin, turno.diasDeDiferenca);
+                        historico[escolhido.id].turnosTrabalhados += 1;
+                    }
                 }
             });
         }

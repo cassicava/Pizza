@@ -144,9 +144,9 @@ html[data-theme="dark"] #editor-toolbox::before {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
-/* --- Cabeçalho de Conteúdo (título dinâmico) --- */
+/* --- Cabeçalho de Conteúdo (Compacto) --- */
 .toolbox-content-header {
-    padding: 20px 24px;
+    padding: 12px 24px; /* Reduzido */
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     position: relative;
     transition: background-color 0.3s ease-in-out;
@@ -158,13 +158,13 @@ html[data-theme="dark"] #editor-toolbox::before {
 }
 
 .toolbox-title {
-    font-size: 1.35rem;
+    font-size: 1.2rem; /* Reduzido */
     font-weight: 700;
-    margin: 0 0 4px 0;
+    margin: 0;
 }
 
 .toolbox-subtitle {
-    font-size: 0.95rem;
+    font-size: 0.85rem; /* Reduzido */
     color: var(--muted);
     margin: 0;
 }
@@ -284,45 +284,71 @@ html[data-theme="dark"] #editor-toolbox::before {
     border-radius: 16px;
     padding: 16px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.focused-employee-header {
+.employee-card-row1 {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 12px;
 }
 
 .employee-info {
-    flex-shrink: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
 }
 
 .employee-info h5 {
-    margin: 0 0 4px 0;
+    margin: 0;
     font-size: 1.2rem;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.employee-stats {
-    font-size: 0.9rem;
-    color: var(--muted);
+/* ALTERAÇÃO: Container para empilhar indicadores verticalmente. */
+.employee-indicators-stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    flex-shrink: 0;
+    min-width: 240px;
 }
 
 .shift-brushes-container {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    padding-bottom: 18px; /* Espaço para o nome do turno */
+}
+
+/* ALTERAÇÃO: Separador vertical para os pincéis */
+.shift-brushes-container .shift-brush:nth-child(3) {
+    margin-right: 12px;
+    position: relative;
+}
+.shift-brushes-container .shift-brush:nth-child(3)::after {
+    content: '';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 70%;
+    width: 1px;
+    background-color: var(--border);
 }
 
 .shift-brush {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    display: inline-flex;
+    display: flex;
+    flex-direction: column; 
     align-items: center;
     justify-content: center;
     font-weight: 700;
@@ -332,6 +358,28 @@ html[data-theme="dark"] #editor-toolbox::before {
     border: 2px solid rgba(255, 255, 255, 0.5);
     transition: all 0.25s ease-in-out;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: relative;
+    padding: 0;
+}
+
+.shift-brush-name {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--fg);
+    position: absolute;
+    bottom: -18px;
+    width: max-content;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: none;
+    /* ALTERAÇÃO: Opacidade garantida para ser sempre visível. */
+    opacity: 1;
+    transition: color 0.2s ease-in-out;
+}
+
+.shift-brush.selected .shift-brush-name {
+    color: var(--brand);
+    font-weight: 700;
 }
 
 .shift-brush:hover {
@@ -363,45 +411,7 @@ html[data-theme="dark"] #editor-toolbox::before {
     transform: scale(1.3);
 }
 
-/* --- Aba de Ausências --- */
-.absences-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 8px;
-}
-
-.absences-grid-container {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 16px;
-    align-items: center;
-}
-
-.absences-grid-container .toolbox-mode-buttons {
-    margin-left: 0;
-}
-
-.absence-reason-selector {
-    padding: 8px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.absence-reason-selector select {
-    border: none;
-    background: transparent;
-    padding: 0;
-}
-.absence-reason-selector select:focus {
-    box-shadow: none;
-}
-
 /* --- Estilos na Tabela --- */
-/* ALTERAÇÃO: O clique na primeira coluna agora tem um cursor diferente */
 .escala-final-table td:first-child {
     cursor: pointer;
 }
@@ -425,7 +435,7 @@ html[data-theme="dark"] #editor-toolbox::before {
 
 .escala-final-table tr.employee-row-highlight > td:first-child {
     border-left: 4px solid var(--brand);
-    background-color: #eef2ff; /* Cor de fundo para destacar o nome */
+    background-color: #eef2ff;
 }
 
 html[data-theme="dark"] .escala-final-table tr.employee-row-highlight > td:first-child {
@@ -449,25 +459,18 @@ html[data-theme="dark"] .escala-final-table tr.employee-row-highlight > td:first
 
 
 /* --- Indicadores Visuais --- */
-.employee-indicators {
-    display: grid;
-    grid-template-columns: 110px 1fr;
-    align-items: center;
-    gap: 8px 12px;
-    margin-top: 8px;
-}
-
 .indicator-label {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--muted);
-    text-align: right;
+    margin-right: 8px;
 }
-
-.workload-summary-compact {
+.workload-summary-compact,
+.consecutive-days-container {
     display: flex;
     align-items: center;
     gap: 8px;
+    width: 100%;
 }
 
 .progress-bar-container-compact {
@@ -504,9 +507,7 @@ html[data-theme="dark"] .escala-final-table tr.employee-row-highlight > td:first
 .progress-bar-green { background-color: #4ade80; }
 
 .consecutive-days-container {
-    display: flex;
     gap: 4px;
-    align-items: center;
 }
 
 .day-dot {
@@ -599,13 +600,12 @@ html[data-theme="dark"] .escala-final-table tr.employee-row-highlight > td:first
 .editable-cell.dragging { opacity: 0.4; transform: scale(0.9); }
 .editable-cell.drop-target { box-shadow: inset 0 0 0 3px var(--brand); }
 
-/* ALTERAÇÃO: Adicionado estilo para drop inválido */
 .escala-final-table .editable-cell.drop-target.drop-invalid {
     box-shadow: inset 0 0 0 3px var(--danger);
-    background-color: rgba(239, 68, 68, 0.1) !important; /* !important para sobrepor a cor do turno */
+    background-color: rgba(239, 68, 68, 0.1) !important; 
 }
 .escala-final-table .editable-cell.drop-target.drop-invalid::after {
-    display: none; /* Esconde o overlay de hover */
+    display: none; 
 }
 
 

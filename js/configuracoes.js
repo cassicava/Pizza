@@ -26,7 +26,7 @@ function saveConfig() {
 
 async function exportAllData() {
     showLoader("Preparando arquivo de backup...");
-    await new Promise(resolve => setTimeout(resolve, 50)); // Para dar tempo do loader aparecer
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
         const allData = {};
@@ -63,7 +63,6 @@ async function importAllData() {
             try {
                 const importedData = JSON.parse(event.target.result);
                 
-                // Validação básica para garantir que é um backup válido
                 if (!importedData || typeof importedData.turnos === 'undefined' || typeof importedData.cargos === 'undefined') {
                     throw new Error("Arquivo de backup inválido ou corrompido.");
                 }
@@ -83,7 +82,7 @@ async function importAllData() {
                             saveJSON(KEYS[key], importedData[key]);
                         }
                     }
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Pequena pausa
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     showToast("Dados importados com sucesso! A aplicação será reiniciada.");
                     setTimeout(() => location.reload(), 1500);
                 }
@@ -173,19 +172,18 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
     }
 }
 
-// NOVO: Função para exibir o modal de atalhos
 function exibirAtalhosDeTeclado() {
     const shortcuts = [
+        { keys: ['🖱️', 'Arrastar'], desc: 'Move um turno para uma célula vazia ou o troca com outro turno.' },
         { keys: ['↑', '↓', '←', '→'], desc: 'Navegam pela grade da escala.' },
         { keys: ['Q', 'E'], desc: 'Trocam o funcionário focado na Caixa de Ferramentas.' },
         { keys: ['1', '...', '9'], desc: 'Selecionam o pincel de turno correspondente.' },
-        { keys: ['Delete', 'Backspace'], desc: 'Apagam o turno da célula focada.' },
         { keys: ['Enter'], desc: 'Pinta a célula focada com o pincel selecionado.' },
+        { keys: ['Delete', 'Backspace'], desc: 'Apagam o turno da célula focada.' },
     ];
 
     const shortcutsHTML = `
         <div class="shortcuts-modal-content">
-            <p>Use estes atalhos no Editor Manual para agilizar seu trabalho:</p>
             <ul class="shortcuts-list">
                 ${shortcuts.map((sc, index) => `
                     <li class="shortcut-item" style="animation-delay: ${index * 0.15}s;">
@@ -204,13 +202,12 @@ function exibirAtalhosDeTeclado() {
         contentHTML: shortcutsHTML
     });
 
-    // Animação das teclas após o modal aparecer
     setTimeout(() => {
         const items = $$('.shortcut-item');
         items.forEach((item, index) => {
             setTimeout(() => {
                 item.classList.add('animate-keys');
-            }, (index * 200) + 300); // Atraso para iniciar a animação de cada linha
+            }, (index * 200) + 300);
         });
     }, 200);
 }
@@ -245,11 +242,9 @@ function initConfiguracoesPage() {
         };
     });
     
-    // Listeners para os novos botões de Backup
     $("#btn-export-data").onclick = exportAllData;
     $("#btn-import-data").onclick = importAllData;
 
-    // Listeners para o novo card "Gato do Dev"
     const btnCopyPix = $("#btn-copy-pix");
     const pixKeyText = $("#pix-key-text");
 

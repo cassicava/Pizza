@@ -54,6 +54,18 @@ const store = {
     mutations: {
         LOAD_STATE(state) {
             state.turnos = loadJSON(KEYS.turnos, []);
+            // Garante que os turnos de sistema estejam sempre presentes no estado
+            const systemTurnos = Object.values(TURNOS_SISTEMA_AUSENCIA);
+            systemTurnos.forEach(systemTurno => {
+                const index = state.turnos.findIndex(t => t.id === systemTurno.id);
+                if (index === -1) {
+                    state.turnos.push(systemTurno);
+                } else {
+                    // Atualiza o turno de sistema caso haja alguma alteração
+                    state.turnos[index] = systemTurno;
+                }
+            });
+
             state.cargos = loadJSON(KEYS.cargos, []);
             state.funcionarios = loadJSON(KEYS.funcs, []);
             state.equipes = loadJSON(KEYS.equipes, []);

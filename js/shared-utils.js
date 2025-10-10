@@ -111,7 +111,8 @@ function calculateConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMa
     let streak = 0;
     let currentDate = targetDate;
     while (true) {
-        if (turnosDoFuncMap.has(currentDate)) {
+        const currentSlot = turnosDoFuncMap.get(currentDate);
+        if (currentSlot && !turnosMap[currentSlot.turnoId]?.isSystem) {
             streak++;
         } else {
             const previousDay = addDays(currentDate, -1);
@@ -136,7 +137,7 @@ function calculateConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMa
  * FUNÇÃO CORRIGIDA: Verifica violações de descanso obrigatório para o passado E para o futuro.
  */
 function checkMandatoryRestViolation(employee, newShiftTurno, newShiftDate, allSlots, turnosMap) {
-    if (employee.tipoContrato !== 'clt' || (!newShiftTurno.descansoObrigatorioHoras && !allSlots.some(s => s.assigned === employee.id && turnosMap[s.turnoId]?.descansoObrigatorioHoras))) {
+    if (employee.tipoContrato !== 'clt' || newShiftTurno.isSystem) {
         return { violation: false, message: '' };
     }
 

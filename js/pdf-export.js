@@ -28,8 +28,9 @@ function generateVisaoGeralPDF(escala) {
     });
 
     const { funcionarios, turnos } = store.getState();
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const useSnapshot = !!escala.snapshot;
-    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : turnos.find(t => t.id === turnoId)) || {};
+    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : allTurnos.find(t => t.id === turnoId)) || {};
     const getFuncInfo = (funcId) => (useSnapshot ? escala.snapshot.funcionarios?.[funcId] : funcionarios.find(f => f.id === funcId)) || {};
 
     const funcsDaEscalaIds = Object.keys(escala.historico || {});
@@ -55,14 +56,8 @@ function generateVisaoGeralPDF(escala) {
         const nomeComDocumento = `${func.nome}\n${func.documento || '---'}`;
         const row = [nomeComDocumento];
         dateRange.forEach(date => {
-            const excecoesFunc = escala.excecoes ? escala.excecoes[func.id] : null;
             const slot = escala.slots.find(s => s.date === date && s.assigned === func.id);
-            const folgaDoDia = excecoesFunc?.folgas.find(f => f.date === date);
-            const emFerias = excecoesFunc?.ferias.dates.includes(date);
-
             if (slot) row.push(getTurnoInfo(slot.turnoId)?.sigla || '?');
-            else if (emFerias) row.push('FÉR');
-            else if (folgaDoDia) row.push(TIPOS_FOLGA.find(tf => tf.nome === folgaDoDia.tipo)?.sigla || 'F');
             else row.push('');
         });
         return row;
@@ -146,19 +141,14 @@ function generateVisaoGeralPDF(escala) {
         const t = getTurnoInfo(turnoId);
         if (t.sigla && t.nome) {
             const text = `${t.sigla} - ${t.nome}\n(${t.inicio} - ${t.fim})`;
-            legendItems.push({ color: t.cor, text: text });
+            legendItems.push({ color: t.cor, text: text, isSystem: t.isSystem, inicio: t.inicio });
         }
     });
-    legendItems.push({ color: '#f0fdf4', text: `FÉR - Férias` });
-    
-    TIPOS_FOLGA.forEach(tf => {
-        const hasFolga = escala.excecoes && Object.values(escala.excecoes).some(ex => ex.folgas && ex.folgas.some(f => f.tipo === tf.nome));
-        if (hasFolga) {
-            let color = '#eef2ff';
-            if (tf.nome === "Atestado Médico") color = '#fffbeb';
-            if (tf.nome === "Folga Aniversário") color = '#f3e8ff';
-            legendItems.push({ color, text: `${tf.sigla} - ${tf.nome}` });
-        }
+
+    legendItems.sort((a,b) => {
+        if(a.isSystem && !b.isSystem) return -1;
+        if(!a.isSystem && b.isSystem) return 1;
+        return a.inicio.localeCompare(b.inicio);
     });
 
     const rectSize = 10;
@@ -207,7 +197,7 @@ function generateVisaoGeralPDF(escala) {
 
     const resumoHead = [['Funcionário', 'Meta', 'Realizado', 'Saldo']];
     const resumoBody = funcsDaEscala.map(func => {
-        const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60);
+        const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60) || 0;
         
         let metaLabel = '';
         let realizadoLabel = '';
@@ -254,8 +244,9 @@ function generateRelatorioDiarioPDF(escala) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     
     const { funcionarios, turnos } = store.getState();
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const useSnapshot = !!escala.snapshot;
-    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : turnos.find(t => t.id === turnoId)) || {};
+    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : allTurnos.find(t => t.id === turnoId)) || {};
     const getFuncInfo = (funcId) => (useSnapshot ? escala.snapshot.funcionarios?.[funcId] : funcionarios.find(f => f.id === funcId)) || {};
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);

@@ -42,8 +42,11 @@ filtroCargosInput.addEventListener("input", () => {
 function renderTurnosSelects() {
     const { turnos } = store.getState();
     cargoTurnosContainer.innerHTML = '';
+    
+    // Filtra os turnos de sistema para que não apareçam na associação de cargos
+    const turnosEditaveis = turnos.filter(t => !t.isSystem);
 
-    if (turnos.length === 0) {
+    if (turnosEditaveis.length === 0) {
         const p = document.createElement('p');
         p.className = 'muted';
         p.innerHTML = `Nenhum turno cadastrado. <a href="#" onclick="go('turnos')">Cadastre um turno primeiro</a>.`;
@@ -51,7 +54,7 @@ function renderTurnosSelects() {
         return;
     }
 
-    const turnosOrdenados = [...turnos].sort((a, b) => a.nome.localeCompare(b.nome));
+    const turnosOrdenados = [...turnosEditaveis].sort((a, b) => a.nome.localeCompare(b.nome));
 
     turnosOrdenados.forEach(t => {
         const lbl = document.createElement("label");
@@ -225,6 +228,8 @@ function renderCargos() {
     const filtro = filtroCargosInput.value.toLowerCase();
 
     tblCargosBody.innerHTML = "";
+    
+    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
 
     const cargosFiltrados = cargos.filter(c => c.nome.toLowerCase().includes(filtro));
     const cargosOrdenados = [...cargosFiltrados].sort((a, b) => a.nome.localeCompare(b.nome));
@@ -247,7 +252,6 @@ function renderCargos() {
         return;
     }
 
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
 
     cargosOrdenados.forEach(c => {
         const numFuncionarios = funcionarios.filter(f => f.cargoId === c.id).length;

@@ -133,10 +133,21 @@ function renderTurnos() {
     const { turnos } = store.getState();
     const filtro = filtroTurnosInput.value.toLowerCase();
     tblTurnosBody.innerHTML = "";
-    const turnosFiltrados = turnos.filter(t => t.nome.toLowerCase().includes(filtro) || (t.sigla && t.sigla.toLowerCase().includes(filtro)));
+    
+    // Filtra os turnos de sistema para que não apareçam na tabela de edição
+    const turnosEditaveis = turnos.filter(t => !t.isSystem);
+
+    const turnosFiltrados = turnosEditaveis.filter(t => t.nome.toLowerCase().includes(filtro) || (t.sigla && t.sigla.toLowerCase().includes(filtro)));
     const turnosOrdenados = [...turnosFiltrados].sort((a, b) => a.nome.localeCompare(b.nome));
     if (turnosOrdenados.length === 0) {
-        tblTurnosBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">...</div></td></tr>`;
+        const isEmpty = filtro === '' && turnosEditaveis.length === 0;
+        const emptyStateText = isEmpty 
+            ? `<div class="empty-state"><div class="empty-state-icon">🕒</div>
+               <h3>Nenhum Turno Cadastrado</h3>
+               <p>Crie os turnos de trabalho da sua operação para começar.</p>
+               </div>`
+            : `<p class="muted center">Nenhum turno encontrado com o termo "${filtro}".</p>`;
+        tblTurnosBody.innerHTML = `<tr><td colspan="9">${emptyStateText}</td></tr>`;
         return;
     }
     turnosOrdenados.forEach(t => {
@@ -229,7 +240,7 @@ async function saveTurnoFromForm() {
 function editTurnoInForm(id) {
     const { turnos } = store.getState();
     const turno = turnos.find(t => t.id === id);
-    if (!turno) return;
+    if (!turno || turno.isSystem) return; // Impede a edição de turnos de sistema
     editingTurnoId = id;
     turnoNomeInput.value = turno.nome;
     turnoSiglaInput.value = turno.sigla || '';

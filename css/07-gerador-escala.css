@@ -170,7 +170,6 @@
   font-size: 0.85rem;
 }
 
-/* NOVO: Estilo para célula destacada pela legenda */
 .escala-final-table td.highlight {
     outline: 2px solid var(--brand);
     outline-offset: -2px;
@@ -207,6 +206,16 @@ html[data-theme="dark"] .escala-final-table th.weekend {
   background-color: #dbeafe;
   color: var(--brand);
 }
+
+/* ALTERAÇÃO: Estilo para feriado de folga geral na tabela final */
+.escala-final-table th.feriado-folga {
+    background-color: #e0e7ff;
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 6px);
+}
+html[data-theme="dark"] .escala-final-table th.feriado-folga {
+    background-color: #312e81;
+}
+
 
 html[data-theme="dark"] .escala-final-table th.feriado {
   background-color: var(--brand-2);
@@ -254,61 +263,6 @@ html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
 }
 
-.celula-ferias,
-.celula-afastamento,
-.celula-excecao {
-  font-style: italic;
-  font-weight: 500;
-  cursor: help;
-}
-
-.celula-ferias-destaque {
-  background-color: transparent !important;
-  color: #166534 !important;
-  font-weight: bold;
-}
-html[data-theme="dark"] .celula-ferias-destaque {
-  background-color: transparent !important;
-  color: #a7f3d0 !important;
-}
-
-.celula-afastamento {
-  background-color: #fef9c3;
-  color: #b45309;
-}
-html[data-theme="dark"] .celula-afastamento {
-  background-color: #78350f;
-  color: #fefce8;
-}
-
-.celula-excecao[data-tipo-folga="Folga Normal"],
-.celula-excecao[data-tipo-folga="Folga Abonada"] {
-  background-color: #eef2ff;
-  color: #3730a3;
-}
-html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Normal"],
-html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Abonada"] {
-  background-color: #312e81;
-  color: #e0e7ff;
-}
-
-.celula-excecao[data-tipo-folga="Atestado Médico"] {
-  background-color: #fffbeb;
-  color: #b45309;
-}
-html[data-theme="dark"] .celula-excecao[data-tipo-folga="Atestado Médico"] {
-  background-color: #78350f;
-  color: #fef3c7;
-}
-
-.celula-excecao[data-tipo-folga="Folga Aniversário"] {
-  background-color: #f3e8ff;
-  color: #7e22ce;
-}
-html[data-theme="dark"] .celula-excecao[data-tipo-folga="Folga Aniversário"] {
-  background-color: #6b21a8;
-  color: #f3e8ff;
-}
 
 @keyframes flash {
   from {
@@ -768,13 +722,13 @@ html[data-theme="dark"] .legenda-item:hover {
   border-color: #22c55e;
 }
 
-/* --- NOVOS ESTILOS PARA O ASSISTENTE DE GERAÇÃO REFATORADO --- */
+/* --- ESTILOS DO WIZARD DE GERAÇÃO --- */
 .wizard-tips-container {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: var(--card); /* ALTERADO */
+  background-color: var(--card);
   border-radius: 12px;
   padding: 24px;
   height: 100%;
@@ -799,7 +753,6 @@ html[data-theme="dark"] .legenda-item:hover {
   opacity: 0;
   transform: translateY(-10px);
 }
-/* ALTERADO: Estilo para as dicas, agora sem o h4 */
 .wizard-tip p {
   margin: 0;
   color: var(--fg);
@@ -811,26 +764,30 @@ html[data-theme="dark"] .wizard-tip p {
     color: var(--muted);
 }
 
-
-/* ALTERAÇÃO: Layout do passo de feriados e tamanho do calendário */
 .passo2-holiday-grid {
   display: grid;
-  grid-template-columns: 400px 1fr 280px; /* ALTERADO */
-  gap: 32px; /* ALTERADO */
+  grid-template-columns: 400px 1fr 280px;
+  gap: 32px;
   align-items: flex-start;
+}
+#ausencia-step-container {
+    grid-template-columns: 400px 1fr 280px;
+    gap: 32px;
+    align-items: flex-start;
 }
 .calendars-wrapper {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: 60vh;
+  max-height: 75vh;
   overflow-y: auto;
   padding-right: 12px;
 }
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 4px;
+  padding-bottom: 12px;
 }
 .calendar-header {
   font-weight: 500;
@@ -851,12 +808,18 @@ html[data-theme="dark"] .wizard-tip p {
   justify-content: center;
   align-items: center;
   position: relative;
-  aspect-ratio: 1 / 1;
   border-radius: 50%;
   cursor: pointer;
   background-color: var(--bg);
   transition: all 0.2s ease-in-out;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
+  width: 46px;
+  height: 46px;
+  box-sizing: border-box; 
+  border: 2px solid transparent;
+}
+.calendar-day .day-number {
+    line-height: 1;
 }
 .calendar-day:not(.empty):hover {
   background-color: #e0e7ff;
@@ -865,32 +828,32 @@ html[data-theme="dark"] .calendar-day:not(.empty):hover {
   background-color: rgba(99, 102, 241, 0.2);
 }
 .calendar-day.weekend .day-number {
-  color: #ef4444;
+  color: var(--danger);
   font-weight: 500;
 }
 .calendar-day.is-selected {
   background-color: var(--brand) !important;
-  color: white;
-  transform: scale(1.1);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  position: relative; /* ADICIONADO */
-  z-index: 2; /* ADICIONADO */
+  color: white !important;
+  border-color: var(--brand-2);
+  position: relative; 
+  z-index: 2; 
 }
-.calendar-day.is-holiday .day-number {
+.calendar-day.is-holiday .day-number,
+.calendar-day.is-ausencia .day-number {
   font-weight: bold;
 }
 .calendar-day.is-holiday::after {
   content: "";
   position: absolute;
-  bottom: 4px; /* ALTERADO */
+  bottom: 5px;
   left: 50%;
   transform: translateX(-50%);
-  width: 6px; /* ALTERADO */
-  height: 6px; /* ALTERADO */
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background-color: var(--brand);
 }
-.calendar-day.is-holiday.is-selected::after {
+.calendar-day.is-selected.is-holiday::after {
   background-color: white;
 }
 .calendar-day.is-holiday-off {
@@ -899,6 +862,14 @@ html[data-theme="dark"] .calendar-day:not(.empty):hover {
 html[data-theme="dark"] .calendar-day.is-holiday-off {
   background-color: rgba(59, 130, 246, 0.2);
 }
+.calendar-day.is-folga { background-color: #d1fae5; }
+.calendar-day.is-ferias { background-color: #cffafe; }
+.calendar-day.is-afastamento { background-color: #ffedd5; }
+
+html[data-theme="dark"] .calendar-day.is-folga { background-color: #064e3b; }
+html[data-theme="dark"] .calendar-day.is-ferias { background-color: #0e7490; }
+html[data-theme="dark"] .calendar-day.is-afastamento { background-color: #7c2d12; }
+
 
 .holiday-editor-wrapper {
   position: sticky;
@@ -910,6 +881,10 @@ html[data-theme="dark"] .calendar-day.is-holiday-off {
   padding: 48px 24px;
   border: 2px dashed var(--border);
   border-radius: 12px;
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  height: 100%; 
 }
 .holiday-editor-content {
   display: flex;
@@ -918,36 +893,41 @@ html[data-theme="dark"] .calendar-day.is-holiday-off {
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background-color: var(--bg);
+  background-color: var(--card); /* Fundo branco/card */
 }
-.holiday-editor-content h5 {
-  margin: 0;
-  font-size: 1.1rem;
+.holiday-editor-content > h5 {
+    margin: 0;
+    font-size: 1.3rem; /* AUMENTADO */
+    font-weight: 500;
 }
-.holiday-editor-content .form-group {
-  width: 100%;
+.holiday-editor-content > fieldset {
+    background-color: var(--bg); /* Fundo cinza para as seções internas */
+    border: 1px solid var(--border);
+    margin: 0;
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: opacity 0.3s, filter 0.3s;
 }
-.holiday-editor-content fieldset {
-  margin: 0;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.holiday-editor-content > fieldset:disabled,
+.holiday-editor-content > .form-group:has(input:disabled) {
+    opacity: 0.5;
+    filter: grayscale(50%);
+    pointer-events: none;
 }
-.holiday-editor-content fieldset legend {
+.holiday-editor-content > fieldset legend {
   font-size: 0.9rem;
   font-weight: 500;
 }
 .holiday-editor-actions {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
-  border-top: 1px solid var(--border);
+  margin-top: auto; /* Empurra para o final */
   padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
-/* NOVOS ESTILOS PARA O EDITOR DE FERIADOS */
 .holiday-config-row {
   display: flex;
   justify-content: space-between;
@@ -958,72 +938,87 @@ html[data-theme="dark"] .calendar-day.is-holiday-off {
   flex: 1;
 }
 
-/* NOVOS ESTILOS PARA A LISTA DE FERIADOS */
-#holiday-list-wrapper {
+#holiday-list-wrapper, #ausencia-list-wrapper {
   position: sticky;
   top: 24px;
-  max-height: 60vh;
+  max-height: 75vh;
 }
-#holiday-list-wrapper .fieldset-wrapper {
+#holiday-list-wrapper .fieldset-wrapper,
+#ausencia-list-wrapper .fieldset-wrapper {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
-.holiday-list {
+.summary-list {
   list-style: none;
   padding: 0;
   margin: 0;
   overflow-y: auto;
   flex-grow: 1;
 }
-.holiday-list-item {
+.summary-list-item {
   display: grid;
-  grid-template-columns: 50px 1fr auto;
-  gap: 12px;
-  align-items: center;
-  padding: 8px;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    "header header"
+    "body   body"
+    "footer footer";
+  gap: 4px 12px;
+  padding: 12px;
   border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  /* Animação */
-  opacity: 0;
-  animation: slideInFromLeft 0.5s ease-out forwards;
-}
-.holiday-list-item:hover {
   background-color: var(--bg);
+  margin-bottom: 8px;
+  border-left: 4px solid;
+  cursor: pointer;
 }
-.holiday-list-date {
+.summary-list-item:hover {
+  background-color: var(--border);
+}
+
+.summary-list-item-header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.summary-list-item-header .item-type {
   font-weight: 600;
-  color: var(--brand);
+  font-size: 1rem;
 }
-.holiday-list-name {
+.summary-list-item-header .item-name {
   font-weight: 500;
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.holiday-list-status {
+.summary-list-item-body {
+  grid-area: body;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.summary-list-item-footer {
+  grid-area: footer;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.summary-delete-btn {
+  background-color: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
   font-size: 0.8rem;
-  font-weight: 500;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 999px;
-  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.holiday-list-status.work {
-  background-color: #e0e7ff;
-  color: #4338ca;
-}
-.holiday-list-status.off {
-  background-color: #dcfce7;
-  color: #166534;
-}
-html[data-theme="dark"] .holiday-list-status.work {
-  background-color: #3730a3;
-  color: #c7d2fe;
-}
-html[data-theme="dark"] .holiday-list-status.off {
-  background-color: #166534;
-  color: #dcfce7;
+.summary-delete-btn:hover {
+  background-color: var(--danger);
+  color: #fff;
 }
 
 .painel-legendas-container {
@@ -1032,9 +1027,9 @@ html[data-theme="dark"] .holiday-list-status.off {
   gap: 8px;
 }
 
-
-@media (max-width: 1200px) { /* Novo breakpoint */
-  .passo2-holiday-grid {
+@media (max-width: 1200px) {
+  .passo2-holiday-grid,
+  #ausencia-step-container {
     grid-template-columns: 1fr 1fr;
     gap: 24px;
   }
@@ -1044,11 +1039,12 @@ html[data-theme="dark"] .holiday-list-status.off {
 }
 
 @media (max-width: 992px) {
-  .passo2-holiday-grid {
-    grid-template-columns: 1fr; /* Mantém 1 coluna */
+  .passo2-holiday-grid,
+  #ausencia-step-container {
+    grid-template-columns: 1fr;
   }
   .calendars-wrapper {
     max-height: none;
-    grid-column: auto; /* Reseta o span de coluna */
+    grid-column: auto;
   }
 }

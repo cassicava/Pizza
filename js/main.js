@@ -22,7 +22,7 @@ function updateWelcomeMessage() {
 
 function updateHomeScreenDashboard() {
     const { turnos, cargos, funcionarios, equipes } = store.getState();
-    if($("#home-turnos-count")) $("#home-turnos-count").textContent = turnos.length > 0 ? `${turnos.length} cadastrado(s)` : '';
+    if($("#home-turnos-count")) $("#home-turnos-count").textContent = turnos.filter(t => !t.isSystem).length > 0 ? `${turnos.filter(t => !t.isSystem).length} cadastrado(s)` : '';
     if($("#home-cargos-count")) $("#home-cargos-count").textContent = cargos.length > 0 ? `${cargos.length} cadastrado(s)` : '';
     if($("#home-funcionarios-count")) $("#home-funcionarios-count").textContent = funcionarios.length > 0 ? `${funcionarios.length} cadastrado(s)` : '';
     if($("#home-equipes-count")) $("#home-equipes-count").textContent = equipes.length > 0 ? `${equipes.length} cadastrada(s)` : '';

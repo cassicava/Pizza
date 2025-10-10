@@ -179,8 +179,9 @@ async function handleEscalaSelectChange(event) {
  */
 function calculateMetricsForScale(escala) {
     const { funcionarios, turnos } = store.getState();
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const funcionariosMap = Object.fromEntries(funcionarios.map(f => [f.id, f]));
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
+    const turnosMap = Object.fromEntries(allTurnos.map(t => [t.id, t]));
 
     const employeeMetrics = {};
     let totalHorasExtras = 0;
@@ -196,7 +197,7 @@ function calculateMetricsForScale(escala) {
         const funcionario = funcionariosMap[funcId];
         const medicao = funcionario.medicaoCarga || 'horas';
 
-        const horasTrabalhadas = (escala.historico[funcId].horasTrabalhadas / 60) || 0;
+        const horasTrabalhadas = (escala.historico[funcId]?.horasTrabalhadas / 60) || 0;
         const turnosTrabalhados = escala.historico[funcId].turnosTrabalhados || 0;
         
         const metaHoras = calcularMetaHoras(funcionario, escala.inicio, escala.fim);
@@ -221,21 +222,6 @@ function calculateMetricsForScale(escala) {
             if (diaSemana === 0) domingosTrabalhados++;
         });
 
-        const ausencias = { total: 0 };
-        const excecoes = escala.excecoes ? escala.excecoes[funcId] : null;
-        if (excecoes) {
-            if (excecoes.ferias && excecoes.ferias.dates) {
-                ausencias['Férias'] = excecoes.ferias.dates.length;
-                ausencias.total += excecoes.ferias.dates.length;
-            }
-            if (excecoes.folgas) {
-                excecoes.folgas.forEach(folga => {
-                    ausencias[folga.tipo] = (ausencias[folga.tipo] || 0) + 1;
-                    ausencias.total++;
-                });
-            }
-        }
-
         employeeMetrics[funcId] = {
             nome: funcionario.nome,
             medicaoCarga: medicao,
@@ -247,7 +233,6 @@ function calculateMetricsForScale(escala) {
             turnosCount,
             sabadosDeFolga: totalSabados - sabadosTrabalhados,
             domingosDeFolga: totalDomingos - domingosTrabalhados,
-            ausencias
         };
 
         totalHorasExtras += horasExtras;
@@ -331,7 +316,8 @@ function renderMetrics(metrics) {
 
 function renderTurnosChart(totalTurnosCount) {
     const { turnos } = store.getState();
-    const turnosMap = Object.fromEntries(turnos.map(t => [t.nome, t]));
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
+    const turnosMap = Object.fromEntries(allTurnos.map(t => [t.nome, t]));
 
     const turnosCtx = $('#turnosChart').getContext('2d');
     const labels = Object.keys(totalTurnosCount);
@@ -407,15 +393,11 @@ function renderAusenciasTable(employeeMetrics) {
     
     const allAusenciaTypes = new Set();
     employeeMetrics.forEach(emp => {
-        Object.keys(emp.ausencias).forEach(type => {
-            if(type !== 'total') allAusenciaTypes.add(type);
+        Object.keys(emp.turnosCount).forEach(turnoName => {
+            const turno = Object.values(TURNOS_SISTEMA_AUSENCIA).find(t => t.nome === turnoName);
+            if (turno) allAusenciaTypes.add(turno.nome);
         });
     });
-    
-    if(employeeMetrics.some(e => e.ausencias.total > 0)) {
-        allAusenciaTypes.add('Férias');
-        TIPOS_FOLGA.forEach(tf => allAusenciaTypes.add(tf.nome));
-    }
 
     if (allAusenciaTypes.size === 0) {
         container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma ausência registrada nesta escala.</p>`;
@@ -429,11 +411,14 @@ function renderAusenciasTable(employeeMetrics) {
     tableHTML += `<th>Total</th></tr></thead><tbody>`;
 
     employeeMetrics.forEach(emp => {
+        let totalAusencias = 0;
         tableHTML += `<tr><td>${emp.nome}</td>`;
         sortedTypes.forEach(type => {
-            tableHTML += `<td>${emp.ausencias[type] || 0}</td>`;
+            const count = emp.turnosCount[type] || 0;
+            totalAusencias += count;
+            tableHTML += `<td>${count}</td>`;
         });
-        tableHTML += `<td><strong>${emp.ausencias.total || 0}</strong></td>`;
+        tableHTML += `<td><strong>${totalAusencias}</strong></td>`;
         tableHTML += `</tr>`;
     });
     
