@@ -33,16 +33,20 @@ const PALETA_CORES = [
 
 function setTurnoFormDirty(isDirty) { dirtyForms.turnos = isDirty; }
 
+// ALTERADO: Adiciona validação visual para o campo de horário final
 function checkHorarioLogico() {
     const inicio = turnoInicioInput.value;
     const fim = turnoFimInput.value;
     const diasDeDiferenca = Number(turnoFimDiaSelect.value);
     if (inicio && fim && diasDeDiferenca === 0 && parseTimeToMinutes(fim) <= parseTimeToMinutes(inicio)) {
         showToast("Atenção: O horário final deve ser maior que o inicial no mesmo dia.");
+        validateInput(turnoFimInput, false); // Adiciona a borda vermelha
         return false;
     }
+    validateInput(turnoFimInput, true); // Garante que o campo volte ao normal se estiver correto
     return true;
 }
+
 
 [turnoNomeInput, turnoSiglaInput, turnoAlmocoInput, descansoHorasInput].forEach(input => {
     input.addEventListener("input", (e) => {
@@ -88,6 +92,7 @@ descansoToggleButtons.forEach(button => {
     });
 });
 
+// ALTERADO: Adiciona o seletor de cor personalizada
 function renderCorPalette() {
     const container = $("#turnoCorPalette");
     container.innerHTML = '';
@@ -99,12 +104,44 @@ function renderCorPalette() {
         swatch.onclick = () => { selectCor(cor); setTurnoFormDirty(true); };
         container.appendChild(swatch);
     });
+
+    // Cria o gatilho para o seletor de cor
+    const pickerTrigger = document.createElement('div');
+    pickerTrigger.className = 'color-swatch color-picker-trigger';
+    pickerTrigger.title = 'Escolher cor personalizada';
+    pickerTrigger.innerHTML = `
+        <span>🎨</span>
+        <input type="color" id="turnoCorPicker" value="#ffffff">
+    `;
+    container.appendChild(pickerTrigger);
+
+    const colorInput = $("#turnoCorPicker");
+    colorInput.addEventListener('input', (e) => {
+        selectCor(e.target.value);
+        setTurnoFormDirty(true);
+    });
 }
 
+// ALTERADO: Gerencia a seleção de cores personalizadas e da paleta
 function selectCor(cor) {
     turnoCorHiddenInput.value = cor;
-    $$('#turnoCorPalette .color-swatch').forEach(sw => sw.classList.toggle('selected', sw.dataset.cor === cor));
+
+    // Remove a seleção de todas as amostras da paleta
+    $$('#turnoCorPalette .color-swatch').forEach(sw => sw.classList.remove('selected'));
+
+    const pickerTrigger = $('.color-picker-trigger');
+    const isCustomColor = !PALETA_CORES.includes(cor);
+
+    if (isCustomColor) {
+        pickerTrigger.classList.add('selected');
+        pickerTrigger.style.backgroundColor = cor;
+    } else {
+        const swatch = $(`#turnoCorPalette .color-swatch[data-cor="${cor}"]`);
+        if (swatch) swatch.classList.add('selected');
+        pickerTrigger.style.backgroundColor = ''; // Reseta a cor de fundo do gatilho
+    }
 }
+
 
 function updateTurnoCargaPreview() {
     const i = turnoInicioInput.value;

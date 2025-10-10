@@ -322,7 +322,7 @@ html[data-theme="dark"] #editor-toolbox::before {
 .shift-brushes-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 16px; /* ALTERADO: Aumentado de 8px para 16px */
     justify-content: flex-start;
     padding-bottom: 18px; /* Espaço para o nome do turno */
 }

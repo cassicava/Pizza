@@ -47,7 +47,6 @@ self.onmessage = function(e) {
             const diaSemanaId = DIAS_SEMANA[diaSemana.getUTCDay()].id;
             const feriadoDoDia = feriados.find(f => f.date === date);
             
-            // ALTERAÇÃO: Não cria vagas (slots) em dias de "Folga Geral"
             if (feriadoDoDia && !feriadoDoDia.trabalha) {
                 return;
             }
@@ -72,6 +71,31 @@ self.onmessage = function(e) {
                 });
             }
         });
+        
+        // NOVO CÓDIGO PARA ADICIONAR AUSÊNCIAS DEFINIDAS
+        postMessage({ type: 'progress', message: 'Agendando ausências...' });
+        
+        todosFuncsDoCargo.forEach(func => {
+            // Verifica se existem exceções para este funcionário
+            if (excecoes[func.id]) {
+                // Itera sobre os tipos de ausência (folga, férias, etc.)
+                for (const tipoId in excecoes[func.id]) {
+                    const datasAusencia = excecoes[func.id][tipoId];
+                    // Se houver datas para este tipo de ausência, cria os slots
+                    if (datasAusencia && datasAusencia.length > 0) {
+                        datasAusencia.forEach(data => {
+                            slots.push({
+                                id: uid(),
+                                date: data,
+                                turnoId: tipoId, // ID do turno de sistema (folga, férias, etc.)
+                                assigned: func.id // Já atribui ao funcionário correto
+                            });
+                        });
+                    }
+                }
+            }
+        });
+        // FIM DO NOVO CÓDIGO
         
         postMessage({ type: 'progress', message: 'Alocando equipes fixas...' });
         const funcsEmEquipesAlocadas = new Set();
@@ -149,7 +173,6 @@ self.onmessage = function(e) {
             funcsQueFolgaram.forEach(f => {
                 const medicao = f.medicaoCarga || 'horas';
                 
-                // ALTERAÇÃO: Adicionado 'else if' para descontar a meta de turnos também.
                 if (medicao === 'horas' && metaHorasMap.has(f.id)) {
                     const metaAtual = metaHorasMap.get(f.id);
                     metaHorasMap.set(f.id, Math.max(0, metaAtual - (feriado.desconto.horas || 0)));

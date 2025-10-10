@@ -5,10 +5,7 @@
 let escalaParaEditar = null; // Armazena a escala selecionada para visualização ou edição
 
 function renderFiltroEscalasCargo() {
-    const {
-        escalas,
-        cargos
-    } = store.getState();
+    const { escalas, cargos } = store.getState();
     const filtroSelect = $("#filtroEscalasCargo");
     if (!filtroSelect) return;
     const valorAtual = filtroSelect.value;
@@ -25,27 +22,19 @@ function renderFiltroEscalasCargo() {
 }
 
 function renderEscalasList() {
-    const {
-        escalas
-    } = store.getState();
+    const { escalas } = store.getState();
     const filtroCargoSelect = $("#filtroEscalasCargo");
-    const filtroAnoSelect = $("#filtroEscalasAno");
     const container = $("#listaEscalas");
-    container.innerHTML = "";
-
-    renderFiltroEscalasCargo();
-    // Utiliza a nova função reutilizável
-    renderAnoSelect("#filtroEscalasAno");
+    container.innerHTML = ""; // Limpa a visualização anterior
 
     const cargoFiltro = filtroCargoSelect ? filtroCargoSelect.value : '';
-    const anoFiltro = filtroAnoSelect ? filtroAnoSelect.value : '';
 
     if (escalas.length === 0) {
         container.innerHTML = `<div class="empty-state" style="padding: 24px;">
-        <div class="empty-state-icon">🗂️</div>
-        <h3>Nenhuma Escala Salva</h3>
-        <p>As escalas que você gerar e salvar aparecerão aqui para consulta futura.</p>
-    </div>`;
+            <div class="empty-state-icon">🗂️</div>
+            <h3>Nenhuma Escala Salva</h3>
+            <p>As escalas que você gerar e salvar aparecerão aqui para consulta futura.</p>
+        </div>`;
         return;
     }
 
@@ -54,59 +43,87 @@ function renderEscalasList() {
         return;
     }
 
-    if (!anoFiltro) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Agora, selecione um ano.</p>`;
-        return;
-    }
-
-    const escalasFiltradas = escalas.filter(e => e.cargoId === cargoFiltro && e.inicio.startsWith(anoFiltro));
+    const escalasFiltradas = escalas.filter(e => e.cargoId === cargoFiltro);
 
     if (escalasFiltradas.length === 0) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma escala encontrada para o cargo e ano selecionados.</p>`;
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma escala encontrada para este cargo.</p>`;
         return;
     }
 
-    const escalasOrdenadas = [...escalasFiltradas].sort((a, b) => b.inicio.localeCompare(a.inicio));
+    // Agrupa primeiro por ANO, depois por MÊS
+    const escalasAgrupadas = escalasFiltradas.reduce((acc, esc) => {
+        const ano = esc.inicio.substring(0, 4);
+        const mes = esc.inicio.substring(5, 7);
+        if (!acc[ano]) {
+            acc[ano] = {};
+        }
+        if (!acc[ano][mes]) {
+            acc[ano][mes] = [];
+        }
+        acc[ano][mes].push(esc);
+        return acc;
+    }, {});
 
-    escalasOrdenadas.forEach(esc => {
-        const temVagas = esc.slots.some(s => !s.assigned);
-        const statusIcon = temVagas ? '⚠️' : '✅';
-        const statusClass = temVagas ? 'status-warning' : 'status-ok';
-        const statusTitle = temVagas ? 'Escala com turnos vagos' : 'Escala completa';
+    // Ordena os anos do mais recente para o mais antigo
+    const anosOrdenados = Object.keys(escalasAgrupadas).sort((a, b) => b.localeCompare(a));
 
-        const card = document.createElement("div");
-        card.className = "escala-card";
-        card.dataset.viewId = esc.id;
-        const periodo = `${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
+    anosOrdenados.forEach(ano => {
+        const fieldsetAno = document.createElement('fieldset');
+        fieldsetAno.className = 'year-group-fieldset';
+        fieldsetAno.innerHTML = `<legend>${ano}</legend>`;
+        container.appendChild(fieldsetAno);
 
-        card.innerHTML = `
-      <div class="escala-card-status ${statusClass}" title="${statusTitle}">${statusIcon}</div>
-      <div class="escala-card-content">
-        <h3>${esc.nome}</h3>
-        <p class="muted">${periodo}</p>
-      </div>
-    `;
-        container.appendChild(card);
+        const mesesDoAno = escalasAgrupadas[ano];
+        const mesesOrdenados = Object.keys(mesesDoAno).sort((a, b) => b.localeCompare(a));
+
+        mesesOrdenados.forEach(mesNumero => {
+            const nomeMes = new Date(ano, parseInt(mesNumero) - 1, 1).toLocaleString('pt-BR', { month: 'long' });
+            const tituloMes = document.createElement('h3');
+            tituloMes.className = 'home-section-title';
+            tituloMes.style.marginTop = '0';
+            tituloMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+            fieldsetAno.appendChild(tituloMes);
+
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'card-grid';
+            fieldsetAno.appendChild(gridContainer);
+            
+            const escalasDoMes = mesesDoAno[mesNumero].sort((a,b) => b.inicio.localeCompare(a.inicio));
+
+            escalasDoMes.forEach(esc => {
+                const temVagas = esc.slots.some(s => !s.assigned);
+                const statusIcon = temVagas ? '⚠️' : '✅';
+                const statusClass = temVagas ? 'status-warning' : 'status-ok';
+                const statusTitle = temVagas ? 'Escala com turnos vagos' : 'Escala completa';
+
+                const card = document.createElement("div");
+                card.className = "escala-card";
+                card.dataset.viewId = esc.id;
+                const periodo = `${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
+
+                card.innerHTML = `
+                    <div class="escala-card-status ${statusClass}" title="${statusTitle}">${statusIcon}</div>
+                    <div class="escala-card-content">
+                        <h3>${esc.nome}</h3>
+                        <p class="muted">${periodo}</p>
+                    </div>
+                `;
+                gridContainer.appendChild(card);
+            });
+        });
     });
 }
 
 function verEscalaSalva(id) {
-    const {
-        escalas
-    } = store.getState();
+    const { escalas } = store.getState();
     const escala = escalas.find(e => e.id === id);
     if (escala) {
         escalaParaEditar = escala;
         escala.owner = 'salva';
 
         $("#escalaSalvaViewTitle").textContent = escala.nome || 'Visualização da Escala';
-
-        renderGenericEscalaTable(escala, $("#escalaSalvaTabelaWrap"), {
-            isInteractive: false
-        });
-
+        renderGenericEscalaTable(escala, $("#escalaSalvaTabelaWrap"), { isInteractive: false });
         renderPainelDaEscala(escala);
-
         $("#btnExportarPDF").onclick = () => showExportModal(escala);
 
         $('#listaEscalasContainer').classList.add('hidden');
@@ -160,24 +177,20 @@ function initEscalasSalvasPage() {
         }
     };
 
-    const filtroCargoSelect = $("#filtroEscalasCargo");
-    if (filtroCargoSelect) {
-        filtroCargoSelect.onchange = () => {
-            renderEscalasList();
-            if (filtroCargoSelect.value) {
-                const anoSelect = $("#filtroEscalasAno");
-                if (anoSelect) anoSelect.showPicker();
-            }
-        };
-    }
-    const filtroAnoSelect = $("#filtroEscalasAno");
-    if (filtroAnoSelect) {
-        filtroAnoSelect.onchange = renderEscalasList;
-    }
+    // Ponto central de eventos para a página de escalas salvas
+    const pageContainer = $("#page-escalas-salvas");
+    if(pageContainer) {
+        // Listener para o seletor de CARGO
+        const filtroCargoSelect = $("#filtroEscalasCargo");
+        if (filtroCargoSelect) {
+            filtroCargoSelect.addEventListener('change', renderEscalasList);
+        }
 
-    const container = $("#listaEscalas");
-    if (container) {
-        container.onclick = handleEscalasSalvasContainerClick;
+        // Listener para os cliques nos cards de escala
+        const listaEscalas = $("#listaEscalas");
+        if(listaEscalas) {
+            listaEscalas.addEventListener('click', handleEscalasSalvasContainerClick);
+        }
     }
 }
 

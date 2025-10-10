@@ -108,7 +108,11 @@ function go(page, options = {}) {
                     break;
                 case 'gerar-escala': initGeradorPage(options); break;
                 case 'relatorios': renderRelatoriosPage(); break;
-                case 'escalas-salvas': renderEscalasList(); break;
+                // ALTERADO: Garante que os filtros sejam populados ao navegar para a página
+                case 'escalas-salvas': 
+                    renderFiltroEscalasCargo(); 
+                    renderEscalasList(); 
+                    break;
             }
 
             isNavigating = false; 

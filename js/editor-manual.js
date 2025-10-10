@@ -39,7 +39,7 @@ let lastEditedEmployeeId = null;
 
 
 function saveToolboxState() {
-    sessionStorage.setItem('ge_toolbox_state', JSON.stringify({
+    localStorage.setItem('ge_toolbox_state', JSON.stringify({
         isMinimized: toolboxState.isMinimized,
         pos: toolboxState.pos,
         enforceRules: editorState.enforceRules
@@ -49,9 +49,9 @@ function saveToolboxState() {
 function loadToolboxState() {
     let savedState = null;
     try {
-        savedState = JSON.parse(sessionStorage.getItem('ge_toolbox_state'));
+        savedState = JSON.parse(localStorage.getItem('ge_toolbox_state'));
     } catch (e) {
-        sessionStorage.removeItem('ge_toolbox_state');
+        localStorage.removeItem('ge_toolbox_state');
     }
 
     const toolbox = $("#editor-toolbox");

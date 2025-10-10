@@ -827,9 +827,10 @@ html[data-theme="dark"] .wizard-tip p {
 html[data-theme="dark"] .calendar-day:not(.empty):hover {
   background-color: rgba(99, 102, 241, 0.2);
 }
-.calendar-day.weekend .day-number {
-  color: var(--danger);
-  font-weight: 500;
+
+.calendar-header.weekend-header {
+    color: var(--danger);
+    font-weight: 500;
 }
 .calendar-day.is-selected {
   background-color: var(--brand) !important;
@@ -862,14 +863,6 @@ html[data-theme="dark"] .calendar-day:not(.empty):hover {
 html[data-theme="dark"] .calendar-day.is-holiday-off {
   background-color: rgba(59, 130, 246, 0.2);
 }
-.calendar-day.is-folga { background-color: #d1fae5; }
-.calendar-day.is-ferias { background-color: #cffafe; }
-.calendar-day.is-afastamento { background-color: #ffedd5; }
-
-html[data-theme="dark"] .calendar-day.is-folga { background-color: #064e3b; }
-html[data-theme="dark"] .calendar-day.is-ferias { background-color: #0e7490; }
-html[data-theme="dark"] .calendar-day.is-afastamento { background-color: #7c2d12; }
-
 
 .holiday-editor-wrapper {
   position: sticky;
@@ -1048,3 +1041,35 @@ html[data-theme="dark"] .calendar-day.is-afastamento { background-color: #7c2d12
     grid-column: auto;
   }
 }
+
+/* --- NOVO: Estilos para Indicadores de Ausência Múltipla --- */
+.ausencia-dots-container {
+    position: absolute;
+    bottom: 5px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    pointer-events: none; /* Garante que os dots não interfiram no clique */
+}
+
+.ausencia-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.2);
+}
+
+.calendar-day.is-selected .ausencia-dot {
+    border-color: rgba(255,255,255,0.5);
+}
+
+.is-folga-dot { background-color: #a7f3d0; }
+.is-ferias-dot { background-color: #a5f3fc; }
+.is-afastamento-dot { background-color: #fed7aa; }
+
+html[data-theme="dark"] .is-folga-dot { background-color: #059669; }
+html[data-theme="dark"] .is-ferias-dot { background-color: #0891b2; }
+html[data-theme="dark"] .is-afastamento-dot { background-color: #ea580c; }

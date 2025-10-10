@@ -209,13 +209,12 @@ function renderHolidayCalendar() {
             month: 'long',
             year: 'numeric'
         });
-        // CORREÇÃO: Usa Date.UTC para calcular o primeiro dia do mês, evitando bugs de fuso horário.
         const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 
         html += `<div class="calendar-instance">
                     <h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4>
                     <div class="calendar-grid">
-                        ${DIAS_SEMANA.map(d => `<div class="calendar-header">${d.abrev}</div>`).join('')}
+                        ${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}
                         ${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}
                 `;
 
@@ -548,27 +547,32 @@ function renderAusenciaCalendar() {
 
     const datesInRange = tempAusencia.start && tempAusencia.end ? dateRangeInclusive(tempAusencia.start, tempAusencia.end) : (tempAusencia.start ? [tempAusencia.start] : []);
 
-    // ALTERAÇÃO: Mapeia todas as ausências para exibição correta das cores
-    const allAusencias = {};
+    // ALTERADO: Mapeia todas as ausências por data para exibir múltiplos indicadores
+    const allAusenciasPorData = {};
     for (const funcId in geradorState.excecoes) {
-        const excecao = geradorState.excecoes[funcId];
-        // Define uma prioridade de cores (ex: Férias > Afastamento > Folga)
-        excecao[TURNO_FOLGA_ID]?.forEach(d => { if(!allAusencias[d]) allAusencias[d] = 'is-folga'; });
-        excecao[TURNO_AFASTAMENTO_ID]?.forEach(d => { if(allAusencias[d] !== 'is-ferias') allAusencias[d] = 'is-afastamento'; });
-        excecao[TURNO_FERIAS_ID]?.forEach(d => allAusencias[d] = 'is-ferias');
+        for (const tipoId in geradorState.excecoes[funcId]) {
+            const dates = geradorState.excecoes[funcId][tipoId];
+            if (dates && dates.length > 0) {
+                dates.forEach(d => {
+                    if (!allAusenciasPorData[d]) {
+                        allAusenciasPorData[d] = new Set();
+                    }
+                    allAusenciasPorData[d].add(tipoId);
+                });
+            }
+        }
     }
 
     let html = '';
     for (const monthKey in months) {
         const [year, month] = monthKey.split('-').map(Number);
         const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-        // CORREÇÃO: Usa Date.UTC para calcular o primeiro dia do mês, evitando bugs de fuso horário.
         const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 
         html += `<div class="calendar-instance">
                     <h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4>
                     <div class="calendar-grid">
-                        ${DIAS_SEMANA.map(d => `<div class="calendar-header">${d.abrev}</div>`).join('')}
+                        ${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}
                         ${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
 
         months[monthKey].forEach(date => {
@@ -577,15 +581,25 @@ function renderAusenciaCalendar() {
             const dayOfWeek = day.getUTCDay();
             let classes = 'calendar-day';
             if ([0, 6].includes(dayOfWeek)) classes += ' weekend';
-            
             if (datesInRange.includes(date)) classes += ' is-selected';
             
-            // ALTERAÇÃO: Aplica a classe de cor de ausência a partir do mapa criado
-            if(allAusencias[date]) {
-                classes += ` ${allAusencias[date]}`;
+            // NOVO: Gera os "dots" de ausência
+            let dotsHTML = '';
+            if (allAusenciasPorData[date]) {
+                classes += ' has-ausencia';
+                dotsHTML += '<div class="ausencia-dots-container">';
+                allAusenciasPorData[date].forEach(tipoId => {
+                    // Mapeia o ID do turno para uma classe CSS
+                    let dotClass = '';
+                    if (tipoId === TURNO_FOLGA_ID) dotClass = 'is-folga-dot';
+                    else if (tipoId === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot';
+                    else if (tipoId === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
+                    dotsHTML += `<div class="ausencia-dot ${dotClass}"></div>`;
+                });
+                dotsHTML += '</div>';
             }
             
-            html += `<div class="${classes}" data-date="${date}"><span class="day-number">${dayNumber}</span></div>`;
+            html += `<div class="${classes}" data-date="${date}"><span class="day-number">${dayNumber}</span>${dotsHTML}</div>`;
         });
         html += '</div></div>';
     }

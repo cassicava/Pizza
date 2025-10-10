@@ -26,17 +26,126 @@ function destroyCharts() {
 }
 
 /**
- * Inicializa a página de relatórios, adicionando os listeners de eventos.
+ * Lida com a mudança no seletor de CARGO, disparando a renderização da lista de escalas.
  */
-function initRelatoriosPage() {
-    const cargoSelect = $("#relatorioCargoSelect");
-    const anoSelect = $("#relatorioAnoSelect");
-    const escalaSelect = $("#relatorioEscalaSelect");
-
-    if (cargoSelect) cargoSelect.addEventListener("change", handleCargoSelectChange);
-    if (anoSelect) anoSelect.addEventListener("change", handleAnoSelectChange);
-    if (escalaSelect) escalaSelect.addEventListener("change", handleEscalaSelectChange);
+function handleRelatorioCargoChange() {
+    const cargoId = $("#relatorioCargoSelect").value;
+    renderRelatoriosEscalaList(cargoId);
 }
+
+/**
+ * Renderiza a lista de escalas disponíveis para o cargo selecionado.
+ * @param {string} cargoId - O ID do cargo selecionado.
+ */
+function renderRelatoriosEscalaList(cargoId) {
+    const { escalas } = store.getState();
+    const container = $("#relatoriosEscalaListContainer");
+    const reportsContainer = $("#relatorios-container");
+    
+    // Esconde os relatórios e limpa a lista anterior
+    reportsContainer.classList.add('hidden');
+    destroyCharts();
+    container.innerHTML = "";
+
+    if (!cargoId) {
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Selecione um cargo para listar as escalas disponíveis.</p>`;
+        return;
+    }
+
+    const escalasFiltradas = escalas.filter(e => e.cargoId === cargoId);
+
+    if (escalasFiltradas.length === 0) {
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma escala salva encontrada para este cargo.</p>`;
+        return;
+    }
+
+    // Agrupa por ano e mês (mesma lógica de escalas-salvas.js)
+    const escalasAgrupadas = escalasFiltradas.reduce((acc, esc) => {
+        const ano = esc.inicio.substring(0, 4);
+        const mes = esc.inicio.substring(5, 7);
+        if (!acc[ano]) acc[ano] = {};
+        if (!acc[ano][mes]) acc[ano][mes] = [];
+        acc[ano][mes].push(esc);
+        return acc;
+    }, {});
+
+    const anosOrdenados = Object.keys(escalasAgrupadas).sort((a, b) => b.localeCompare(a));
+
+    anosOrdenados.forEach(ano => {
+        const fieldsetAno = document.createElement('fieldset');
+        fieldsetAno.className = 'year-group-fieldset';
+        fieldsetAno.innerHTML = `<legend>${ano}</legend>`;
+        container.appendChild(fieldsetAno);
+
+        const mesesDoAno = escalasAgrupadas[ano];
+        const mesesOrdenados = Object.keys(mesesDoAno).sort((a, b) => b.localeCompare(a));
+
+        mesesOrdenados.forEach(mesNumero => {
+            const nomeMes = new Date(ano, parseInt(mesNumero) - 1, 1).toLocaleString('pt-BR', { month: 'long' });
+            const tituloMes = document.createElement('h3');
+            tituloMes.className = 'home-section-title';
+            tituloMes.style.marginTop = '0';
+            tituloMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+            fieldsetAno.appendChild(tituloMes);
+
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'card-grid';
+            fieldsetAno.appendChild(gridContainer);
+            
+            const escalasDoMes = mesesDoAno[mesNumero].sort((a,b) => b.inicio.localeCompare(a.inicio));
+
+            escalasDoMes.forEach(esc => {
+                const card = document.createElement("div");
+                card.className = "escala-card";
+                card.dataset.escalaId = esc.id;
+                const periodo = `${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
+                card.innerHTML = `<h3>${esc.nome}</h3><p class="muted">${periodo}</p>`;
+                gridContainer.appendChild(card);
+            });
+        });
+    });
+}
+
+
+/**
+ * Exibe o relatório para uma escala específica após o clique no card.
+ * @param {string} escalaId - O ID da escala a ser analisada.
+ */
+async function displayReportForEscala(escalaId) {
+    const container = $("#relatorios-container");
+    destroyCharts();
+
+    if (!escalaId) {
+        container.classList.add('hidden');
+        return;
+    }
+    
+    // Adiciona a classe 'active' ao card clicado
+    $$('#relatoriosEscalaListContainer .escala-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.escalaId === escalaId);
+    });
+
+    showLoader("Calculando métricas...");
+    await new Promise(res => setTimeout(res, 50));
+
+    try {
+        const { escalas } = store.getState();
+        const escalaSelecionada = escalas.find(e => e.id === escalaId);
+
+        if (escalaSelecionada) {
+            const metrics = calculateMetricsForScale(escalaSelecionada);
+            renderMetrics(metrics);
+            container.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error("Erro ao gerar relatório:", error);
+        showToast("Ocorreu um erro ao gerar este relatório.");
+        container.classList.add('hidden');
+    } finally {
+        hideLoader();
+    }
+}
+
 
 /**
  * É chamada quando o usuário navega para a página de relatórios.
@@ -44,19 +153,15 @@ function initRelatoriosPage() {
 function renderRelatoriosPage() {
     const { cargos, escalas } = store.getState();
     const cargoSelect = $("#relatorioCargoSelect");
-    const anoSelect = $("#relatorioAnoSelect");
-    const escalaSelect = $("#relatorioEscalaSelect");
     const container = $("#relatorios-container");
     const emptyState = $("#relatorios-empty-state");
+    const listContainer = $("#relatoriosEscalaListContainer");
 
     // Limpa e reseta a página
     destroyCharts();
     container.classList.add('hidden');
+    listContainer.innerHTML = "";
     cargoSelect.innerHTML = '<option value="">Selecione um cargo...</option>';
-    anoSelect.innerHTML = '<option value="">Ano</option>';
-    escalaSelect.innerHTML = '<option value="">Selecione cargo e ano...</option>';
-    anoSelect.disabled = true;
-    escalaSelect.disabled = true;
 
     const cargosComEscalasIds = [...new Set(escalas.map(e => e.cargoId))];
     
@@ -80,103 +185,33 @@ function renderRelatoriosPage() {
             option.textContent = cargo.nome;
             cargoSelect.appendChild(option);
         });
+        
+        // Inicia a tela com a mensagem para selecionar um cargo
+        handleRelatorioCargoChange();
     }
 }
 
-function handleCargoSelectChange() {
-    const cargoId = $("#relatorioCargoSelect").value;
-    const anoSelect = $("#relatorioAnoSelect");
-    const escalaSelect = $("#relatorioEscalaSelect");
+/**
+ * Inicializa a página de relatórios, adicionando os listeners de eventos.
+ */
+function initRelatoriosPage() {
+    const cargoSelect = $("#relatorioCargoSelect");
+    if (cargoSelect) cargoSelect.addEventListener("change", handleRelatorioCargoChange);
 
-    destroyCharts();
-    escalaSelect.innerHTML = '<option value="">Selecione o ano...</option>';
-    escalaSelect.disabled = true;
-    $("#relatorios-container").classList.add('hidden');
-
-    if (cargoId) {
-        // Utiliza a nova função reutilizável
-        renderAnoSelect("#relatorioAnoSelect");
-        anoSelect.disabled = false;
-        anoSelect.showPicker();
-    } else {
-        anoSelect.innerHTML = '<option value="">Ano</option>';
-        anoSelect.disabled = true;
-    }
-}
-
-function handleAnoSelectChange() {
-    const cargoId = $("#relatorioCargoSelect").value;
-    const ano = $("#relatorioAnoSelect").value;
-    const escalaSelect = $("#relatorioEscalaSelect");
-    const { escalas } = store.getState();
-
-    destroyCharts();
-    escalaSelect.innerHTML = '<option value="">Selecione a escala...</option>';
-    $("#relatorios-container").classList.add('hidden');
-
-    if (!cargoId || !ano) {
-        escalaSelect.disabled = true;
-        return;
-    }
-
-    const escalasFiltradas = escalas.filter(e => e.cargoId === cargoId && e.inicio.startsWith(ano))
-                                    .sort((a, b) => b.inicio.localeCompare(a.inicio));
-    
-    if (escalasFiltradas.length > 0) {
-        escalasFiltradas.forEach(escala => {
-            const option = document.createElement('option');
-            option.value = escala.id;
-            option.textContent = escala.nome;
-            escalaSelect.appendChild(option);
+    const listContainer = $("#relatoriosEscalaListContainer");
+    if (listContainer) {
+        listContainer.addEventListener('click', (event) => {
+            const card = event.target.closest('.escala-card');
+            if(card && card.dataset.escalaId) {
+                displayReportForEscala(card.dataset.escalaId);
+            }
         });
-        escalaSelect.disabled = false;
-        escalaSelect.showPicker();
-    } else {
-        escalaSelect.innerHTML = '<option value="">Nenhuma escala encontrada</option>';
-        escalaSelect.disabled = true;
     }
 }
 
 
-/**
- * Lida com a mudança no seletor de ESCALA, disparando os cálculos e a renderização.
- */
-async function handleEscalaSelectChange(event) {
-    const escalaId = event.target.value;
-    const container = $("#relatorios-container");
-    destroyCharts();
+// O restante do arquivo (calculateMetricsForScale, renderMetrics, etc.) permanece o mesmo
 
-    if (!escalaId) {
-        container.classList.add('hidden');
-        return;
-    }
-
-    showLoader("Calculando métricas...");
-    await new Promise(res => setTimeout(res, 50));
-
-    try {
-        const { escalas } = store.getState();
-        const escalaSelecionada = escalas.find(e => e.id === escalaId);
-
-        if (escalaSelecionada) {
-            const metrics = calculateMetricsForScale(escalaSelecionada);
-            renderMetrics(metrics);
-            container.classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error("Erro ao gerar relatório:", error);
-        showToast("Ocorreu um erro ao gerar este relatório.");
-        container.classList.add('hidden');
-    } finally {
-        hideLoader();
-    }
-}
-
-/**
- * Calcula as métricas para TODOS os funcionários de uma dada escala.
- * @param {object} escala - O objeto da escala salva.
- * @returns {object} - Um objeto contendo todas as métricas calculadas.
- */
 function calculateMetricsForScale(escala) {
     const { funcionarios, turnos } = store.getState();
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
@@ -245,10 +280,6 @@ function calculateMetricsForScale(escala) {
     };
 }
 
-/**
- * Renderiza os cards de resumo e os gráficos com as métricas calculadas.
- * @param {object} metrics - O objeto de métricas retornado por calculateMetricsForScale.
- */
 function renderMetrics(metrics) {
     const { employeeMetrics, totalHorasExtras, totalTurnosCount } = metrics;
     

@@ -443,13 +443,18 @@ function cancelEditCargo() {
 async function deleteCargo(id) {
     const { escalas } = store.getState();
     const escalasAfetadas = escalas.filter(e => e.cargoId === id);
-    let additionalInfo = 'Os funcionários associados a ele ficarão sem cargo definido.';
 
     if (escalasAfetadas.length > 0) {
         const plural = escalasAfetadas.length > 1;
-        additionalInfo += ` Além disso, <strong>${escalasAfetadas.length} escala${plural ? 's' : ''} salva${plural ? 's' : ''}</strong> associada${plural ? 's' : ''} a este cargo será${plural ? 'ão' : 'á'} <strong>excluída${plural ? 's' : ''} permanentemente.</strong>`;
+        showInfoModal({
+            title: "Exclusão Bloqueada",
+            contentHTML: `<p>Este cargo não pode ser excluído porque está sendo utilizado por <strong>${escalasAfetadas.length} escala${plural ? 's' : ''} salva${plural ? 's' : ''}</strong>.</p><p>Para preservar o histórico, a exclusão não é permitida. Se este cargo não é mais necessário, considere renomeá-lo para "Arquivado" ou "Inativo".</p>`
+        });
+        return;
     }
 
+    let additionalInfo = 'Os funcionários associados a ele ficarão sem cargo definido.';
+    
     await handleDeleteItem({
         id,
         itemName: 'Cargo',
@@ -457,6 +462,7 @@ async function deleteCargo(id) {
         additionalInfo
     });
 }
+
 
 function handleCargosTableClick(event) {
     const target = event.target.closest('button');

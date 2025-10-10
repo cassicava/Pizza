@@ -697,14 +697,11 @@
             <div id="listaEscalasContainer" class="card card-lista">
                 <h2>Lista de Escalas</h2>
                 <div class="form-row" style="margin-top:0; align-items: flex-end;">
-                    <label style="flex-grow: 0; flex-basis: 300px;">Filtrar por Cargo:
+                    <label style="flex-grow: 1; max-width: 400px;">Filtrar por Cargo:
                         <select id="filtroEscalasCargo"></select>
                     </label>
-                    <label style="flex-grow: 0;">Ano:
-                        <select id="filtroEscalasAno" style="min-width: 120px;"></select>
-                    </label>
                 </div>
-                <div id="listaEscalas" class="card-grid"></div>
+                <div id="listaEscalas"></div>
             </div>
 
             <div id="escalaSalvaView" class="hidden">
@@ -733,21 +730,18 @@
         </section>
 
         <section id="page-relatorios" class="page">
-            <div class="card">
-                <div class="form-row" style="align-items: flex-end;">
-                    <label style="flex-grow: 0; flex-basis: 300px;">Selecione o Cargo:
+            <div class="card card-lista">
+                <h2>Analisar Relatório de Escala</h2>
+                <div class="form-row" style="align-items: flex-end; margin-top: 0;">
+                    <label style="flex-grow: 1; max-width: 400px;">Selecione o Cargo:
                         <select id="relatorioCargoSelect"></select>
                     </label>
-                    <label style="flex-grow: 0;">Ano:
-                        <select id="relatorioAnoSelect" style="min-width: 120px;" disabled></select>
-                    </label>
-                    <label style="flex-grow: 1; flex-basis: 250px;">Selecione a Escala:
-                        <select id="relatorioEscalaSelect" disabled></select>
-                    </label>
                 </div>
+                <div id="relatoriosEscalaListContainer"></div>
             </div>
+
             <div id="relatorios-container" class="hidden">
-                <div class="relatorios-grid-3" style="margin-top: 16px; gap: 16px;">
+                <div class="relatorios-grid-3" style="margin-top: 24px; gap: 16px;">
                     <div class="card summary-card-small">
                         <h4>Total de Horas Extras</h4>
                         <p id="summary-horas-extras">0h</p>
