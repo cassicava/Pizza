@@ -64,7 +64,7 @@ function resetGeradorWizard() {
     const toolbox = $("#editor-toolbox");
     if (toolbox) toolbox.classList.add("hidden");
 
-    initAnimatedTips();
+    checkStep1Completion(); // Garante que o botão de início esteja oculto
     setGeradorFormDirty(false);
 }
 
@@ -94,38 +94,50 @@ function initGeradorPage(options = {}) {
     }
 }
 
-function initAnimatedTips() {
-    const tips = [
-        "Cansado de passar horas montando a escala manualmente?",
-        "Deixe que a gente faz o trabalho pesado para você.",
-        "Basta configurar as regras, e a escala fica pronta em minutos.",
-        "Menos planilhas, menos dor de cabeça e mais tempo livre!",
-        "Vamos começar? É rápido e fácil."
-    ];
-    const container = $('.wizard-tips-container');
+function checkStep1Completion() {
+    const startButton = $("#btn-gerador-goto-passo2");
+    if (!startButton) return;
+
+    const cargoId = $("#gerar-escCargo").value;
+    const inicio = $("#gerar-escIni").value;
+    const fim = $("#gerar-escFim").value;
+
+    const isComplete = cargoId && inicio && fim && fim >= inicio;
+
+    startButton.classList.toggle('hidden', !isComplete);
+}
+
+
+/* --- NOVO: LÓGICA DA ANIMAÇÃO DE EMOJIS --- */
+function initCatEmojiSpawner() {
+    const container = document.querySelector('#gerador-wizard-passo1 .wizard-tips-container');
     if (!container) return;
 
-    container.innerHTML = `
-        ${tips.map((tip, index) => `<div class="wizard-tip ${index === 0 ? 'active' : ''}"><p>${tip}</p></div>`).join('')}
-    `;
+    let canSpawn = true;
+    const catEmojis = ['😺', '😸', '😹', '😻', '😼', '😽', '🐾', '🧡'];
 
-    const tipElements = $$('.wizard-tip', container);
-    if (tipElements.length === 0) return;
+    container.addEventListener('mousemove', (e) => {
+        if (!canSpawn) return;
 
-    activeTipIndex = 0;
+        canSpawn = false;
+        setTimeout(() => { canSpawn = true; }, 150); // Controla a frequência
 
-    if (tipInterval) clearInterval(tipInterval);
-    tipInterval = setInterval(() => {
-        if (document.hidden) return;
-        const currentTip = tipElements[activeTipIndex];
-        currentTip.classList.add('is-exiting');
+        const rect = container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-        setTimeout(() => {
-            currentTip.classList.remove('active', 'is-exiting');
-            activeTipIndex = (activeTipIndex + 1) % tipElements.length;
-            tipElements[activeTipIndex].classList.add('active');
-        }, 600);
-    }, 4000);
+        const emoji = document.createElement('span');
+        emoji.className = 'cat-emoji';
+        emoji.textContent = catEmojis[Math.floor(Math.random() * catEmojis.length)];
+        emoji.style.left = `${x}px`;
+        emoji.style.top = `${y}px`;
+
+        container.appendChild(emoji);
+
+        emoji.addEventListener('animationend', () => {
+            emoji.remove();
+        });
+    });
 }
 
 
@@ -158,10 +170,11 @@ function handleGoToStep(step) {
     const inicio = $("#gerar-escIni").value;
     const fim = $("#gerar-escFim").value;
 
-    if (!cargoId || !inicio || !fim || fim < inicio) {
+    if (step > 1 && (!cargoId || !inicio || !fim || fim < inicio)) {
         showToast("Por favor, selecione o cargo e um período válido.");
         return;
     }
+
 
     geradorState.cargoId = cargoId;
     geradorState.inicio = inicio;
@@ -194,22 +207,26 @@ function renderHolidayCalendar() {
     const container = $("#holiday-calendars-container");
     if (!container) return;
 
-    const range = dateRangeInclusive(geradorState.inicio, geradorState.fim);
+    const rangeSet = new Set(dateRangeInclusive(geradorState.inicio, geradorState.fim));
     const months = {};
-    range.forEach(date => {
+    rangeSet.forEach(date => {
         const monthKey = date.substring(0, 7);
-        if (!months[monthKey]) months[monthKey] = [];
-        months[monthKey].push(date);
+        if (!months[monthKey]) {
+            months[monthKey] = true; // Use um objeto para obter meses únicos
+        }
     });
 
     let html = '';
-    for (const monthKey in months) {
+    const sortedMonthKeys = Object.keys(months).sort();
+
+    for (const monthKey of sortedMonthKeys) {
         const [year, month] = monthKey.split('-').map(Number);
         const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', {
             month: 'long',
             year: 'numeric'
         });
         const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
 
         html += `<div class="calendar-instance">
                     <h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4>
@@ -218,9 +235,15 @@ function renderHolidayCalendar() {
                         ${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}
                 `;
 
-        months[monthKey].forEach(date => {
+        for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
+            const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+
+            if (!rangeSet.has(date)) {
+                html += '<div class="calendar-day empty"></div>';
+                continue;
+            }
+            
             const day = new Date(date + 'T12:00:00');
-            const dayNumber = day.getUTCDate();
             const dayOfWeek = day.getUTCDay();
             const holiday = geradorState.feriados.find(f => f.date === date);
 
@@ -233,7 +256,7 @@ function renderHolidayCalendar() {
             }
 
             html += `<div class="${classes}" data-date="${date}"><span class="day-number">${dayNumber}</span></div>`;
-        });
+        }
 
         html += '</div></div>';
     }
@@ -479,17 +502,8 @@ function renderAusenciasStep() {
             <div id="ausencia-calendars-container" class="calendars-wrapper"></div>
             <div id="ausencia-editor-container" class="holiday-editor-wrapper">
                 <div class="holiday-editor-content">
-                    <fieldset>
-                        <legend>1. Tipo de Ausência</legend>
-                        <div class="toggle-group" id="ausencia-tipo-toggle">
-                            <button type="button" class="toggle-btn" data-value="${TURNO_FOLGA_ID}">Folga</button>
-                            <button type="button" class="toggle-btn active" data-value="${TURNO_FERIAS_ID}">Férias</button>
-                            <button type="button" class="toggle-btn" data-value="${TURNO_AFASTAMENTO_ID}">Afastamento</button>
-                        </div>
-                    </fieldset>
-                    
                     <fieldset id="ausencia-funcs-fieldset">
-                        <legend>2. Funcionário(s)</legend>
+                        <legend>1. Selecione o(s) Funcionário(s)</legend>
                         <div id="ausencia-funcionario-list" class="check-container">
                             ${funcs.length > 0 ? funcs.map(f => `
                                 <label class="check-inline" data-func-id="${f.id}">
@@ -499,9 +513,18 @@ function renderAusenciasStep() {
                             `).join('') : '<p class="muted">Nenhum funcionário para este cargo.</p>'}
                         </div>
                     </fieldset>
+
+                    <fieldset id="ausencia-tipo-fieldset" disabled>
+                        <legend>2. Escolha o Tipo de Ausência</legend>
+                        <div class="toggle-group" id="ausencia-tipo-toggle">
+                            <button type="button" class="toggle-btn" data-value="${TURNO_FOLGA_ID}">Folga</button>
+                            <button type="button" class="toggle-btn active" data-value="${TURNO_FERIAS_ID}">Férias</button>
+                            <button type="button" class="toggle-btn" data-value="${TURNO_AFASTAMENTO_ID}">Afastamento</button>
+                        </div>
+                    </fieldset>
                     
                     <fieldset id="ausencia-dates-fieldset" disabled>
-                         <legend>3. Período</legend>
+                         <legend>3. Defina o Período</legend>
                         <div id="ausencia-date-selector" class="form-row" style="margin: 0;">
                             <div class="form-row form-row-vcenter" style="margin:0; flex-grow: 1;">
                                 <label>Início <input type="date" id="ausencia-date-ini" min="${geradorState.inicio}" max="${geradorState.fim}" class="input-sm"></label>
@@ -537,17 +560,17 @@ function renderAusenciaCalendar() {
     const container = $("#ausencia-calendars-container");
     if (!container) return;
 
-    const range = dateRangeInclusive(geradorState.inicio, geradorState.fim);
+    const rangeSet = new Set(dateRangeInclusive(geradorState.inicio, geradorState.fim));
     const months = {};
-    range.forEach(date => {
+    rangeSet.forEach(date => {
         const monthKey = date.substring(0, 7);
-        if (!months[monthKey]) months[monthKey] = [];
-        months[monthKey].push(date);
+        if (!months[monthKey]) {
+            months[monthKey] = true; // Use um objeto para obter meses únicos
+        }
     });
 
     const datesInRange = tempAusencia.start && tempAusencia.end ? dateRangeInclusive(tempAusencia.start, tempAusencia.end) : (tempAusencia.start ? [tempAusencia.start] : []);
 
-    // ALTERADO: Mapeia todas as ausências por data para exibir múltiplos indicadores
     const allAusenciasPorData = {};
     for (const funcId in geradorState.excecoes) {
         for (const tipoId in geradorState.excecoes[funcId]) {
@@ -564,10 +587,13 @@ function renderAusenciaCalendar() {
     }
 
     let html = '';
-    for (const monthKey in months) {
+    const sortedMonthKeys = Object.keys(months).sort();
+
+    for (const monthKey of sortedMonthKeys) {
         const [year, month] = monthKey.split('-').map(Number);
         const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
         const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
 
         html += `<div class="calendar-instance">
                     <h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4>
@@ -575,32 +601,48 @@ function renderAusenciaCalendar() {
                         ${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}
                         ${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
 
-        months[monthKey].forEach(date => {
+        for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
+            const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+            
+            if (!rangeSet.has(date)) {
+                html += '<div class="calendar-day empty"></div>';
+                continue;
+            }
+
             const day = new Date(date + 'T12:00:00');
-            const dayNumber = day.getUTCDate();
             const dayOfWeek = day.getUTCDay();
             let classes = 'calendar-day';
             if ([0, 6].includes(dayOfWeek)) classes += ' weekend';
             if (datesInRange.includes(date)) classes += ' is-selected';
             
-            // NOVO: Gera os "dots" de ausência
             let dotsHTML = '';
-            if (allAusenciasPorData[date]) {
+            const ausenciasDoDia = allAusenciasPorData[date];
+            if (ausenciasDoDia) {
                 classes += ' has-ausencia';
                 dotsHTML += '<div class="ausencia-dots-container">';
-                allAusenciasPorData[date].forEach(tipoId => {
-                    // Mapeia o ID do turno para uma classe CSS
+                
+                if (ausenciasDoDia.size > 2) {
+                    const firstType = ausenciasDoDia.values().next().value;
                     let dotClass = '';
-                    if (tipoId === TURNO_FOLGA_ID) dotClass = 'is-folga-dot';
-                    else if (tipoId === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot';
-                    else if (tipoId === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
-                    dotsHTML += `<div class="ausencia-dot ${dotClass}"></div>`;
-                });
+                    if (firstType === TURNO_FOLGA_ID) dotClass = 'is-folga-dot';
+                    else if (firstType === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot';
+                    else if (firstType === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
+                    dotsHTML += `<div class="ausencia-dot ${dotClass}"></div><span class="ausencia-plus-symbol">+</span>`;
+                } else {
+                    ausenciasDoDia.forEach(tipoId => {
+                        let dotClass = '';
+                        if (tipoId === TURNO_FOLGA_ID) dotClass = 'is-folga-dot';
+                        else if (tipoId === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot';
+                        else if (tipoId === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
+                        dotsHTML += `<div class="ausencia-dot ${dotClass}"></div>`;
+                    });
+                }
+                
                 dotsHTML += '</div>';
             }
             
             html += `<div class="${classes}" data-date="${date}"><span class="day-number">${dayNumber}</span>${dotsHTML}</div>`;
-        });
+        }
         html += '</div></div>';
     }
     container.innerHTML = html;
@@ -650,7 +692,6 @@ function renderAusenciaList() {
         const d_end = new Date(aus.end + 'T12:00:00');
         const dateStr = aus.start === aus.end ? d_start.toLocaleDateString('pt-BR', {dateStyle: 'long'}) : `${d_start.toLocaleDateString()} a ${d_end.toLocaleDateString()}`;
 
-        // ALTERAÇÃO: Cor da borda agora reflete corretamente o tipo de ausência.
         return `
             <li class="summary-list-item" style="border-color: ${TURNOS_SISTEMA_AUSENCIA[aus.tipoId].cor};">
                 <div class="summary-list-item-header">
@@ -679,14 +720,21 @@ function handleAusenciaTipoToggle(e) {
     btn.classList.add('active');
     tempAusencia.tipo = btn.dataset.value;
     $('#ausencia-date-fim-label').style.display = tempAusencia.tipo === TURNO_FOLGA_ID ? 'none' : 'flex';
-    resetAusenciaFuncsAndDates();
+
+    $('#ausencia-dates-fieldset').disabled = false;
+    resetAusenciaDates(); 
 }
 
 function handleAusenciaFuncionarioChange() {
     tempAusencia.funcionarios = new Set($$('input[name="ausencia-funcionario-check"]:checked').map(chk => chk.value));
     const hasSelection = tempAusencia.funcionarios.size > 0;
-    $('#ausencia-dates-fieldset').disabled = !hasSelection;
-    if(!hasSelection) resetAusenciaDates();
+    
+    $('#ausencia-tipo-fieldset').disabled = !hasSelection;
+    
+    if(!hasSelection) {
+        $('#ausencia-dates-fieldset').disabled = true;
+        resetAusenciaDates();
+    }
 }
 
 function handleAusenciaDateChange() {
@@ -770,6 +818,7 @@ function resetAusenciaDates() {
 }
 
 function resetAusenciaFuncsAndDates() {
+    $('#ausencia-tipo-fieldset').disabled = true;
     $('#ausencia-dates-fieldset').disabled = true;
     tempAusencia.funcionarios.clear();
     $$('input[name="ausencia-funcionario-check"]').forEach(chk => chk.checked = false);
@@ -990,9 +1039,18 @@ function setupInlineTitleEditor() {
 
 
 function setupGeradorPage() {
-    $("#btn-gerador-goto-passo2").addEventListener('click', () => handleGoToStep(2));
-    $("#btn-gerador-goto-passo3").addEventListener('click', () => handleGoToStep(3));
-    $("#btn-gerador-goto-passo4").addEventListener('click', () => handleGoToStep(4));
+    $("#btn-gerador-goto-passo2").addEventListener('click', (event) => {
+        playEmojiBurst(event);
+        handleGoToStep(2);
+    });
+    $("#btn-gerador-goto-passo3").addEventListener('click', (event) => {
+        playEmojiBurst(event);
+        handleGoToStep(3);
+    });
+    $("#btn-gerador-goto-passo4").addEventListener('click', (event) => {
+        playEmojiBurst(event);
+        handleGoToStep(4);
+    });
 
     $$('[data-wizard-back-to][data-wizard="gerador"]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1001,7 +1059,10 @@ function setupGeradorPage() {
         });
     });
 
-    $("#btnGerarEscala").addEventListener('click', handleStartGeneration);
+    $("#btnGerarEscala").addEventListener('click', (event) => {
+        playStarBurst(event);
+        handleStartGeneration();
+    });
 
     const escCargoSelect = $("#gerar-escCargo");
     const escIniInput = $("#gerar-escIni");
@@ -1012,6 +1073,7 @@ function setupGeradorPage() {
         if (e.target.value) try {
             escIniInput.showPicker();
         } catch (e) {}
+        checkStep1Completion();
         setGeradorFormDirty(true);
     });
 
@@ -1027,11 +1089,13 @@ function setupGeradorPage() {
             escFimInput.value = '';
         }
         updateGeradorResumoDias();
+        checkStep1Completion();
         setGeradorFormDirty(true);
     });
 
     escFimInput.addEventListener('change', () => {
         updateGeradorResumoDias();
+        checkStep1Completion();
         setGeradorFormDirty(true);
     });
 
@@ -1067,6 +1131,7 @@ function setupGeradorPage() {
     });
 
     setupInlineTitleEditor();
+    initCatEmojiSpawner();
 }
 
 document.addEventListener("DOMContentLoaded", setupGeradorPage);

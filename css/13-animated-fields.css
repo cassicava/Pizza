@@ -53,14 +53,7 @@
     pointer-events: none;
     transition: all 0.2s ease-in-out;
     font-size: 1rem;
-    background-color: var(--card);
-    padding: 0 4px;
-}
-
-/* NOVA REGRA: Ajusta o fundo da label para campos dentro de fieldsets */
-.fieldset-wrapper .animated-field label,
-.regras-fieldset .animated-field label {
-    background-color: var(--bg);
+    background-color: transparent;
 }
 
 
@@ -71,7 +64,15 @@
     transform: translateY(0);
     font-size: 0.8rem;
     color: var(--brand);
+    background-color: var(--bg);
+    padding: 0 4px;
 }
+
+.card .animated-field input:focus + label,
+.card .animated-field input:not(:placeholder-shown) + label {
+    background-color: var(--card);
+}
+
 
 /* --- Fieldset para Seletores e Itens não-texto --- */
 .fieldset-wrapper {

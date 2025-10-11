@@ -141,6 +141,35 @@
     }
 
     /* --- Gerador de Escala --- */
+    .wizard-header {
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+    }
+
+    .wizard-header h3 {
+        order: -1;
+        width: 100%;
+        font-size: 1.2rem;
+    }
+
+    .wizard-header .button-voltar,
+    .wizard-header .primary {
+        flex-grow: 1;
+    }
+
+    /* NOVO: Garante que o botão no passo 1 ocupe a largura toda em telas pequenas */
+    #gerador-wizard-passo1 .wizard-tips-container .primary {
+        width: 100%;
+    }
+
+    /* NOVO: Ajusta o cabeçalho do passo 1 que não tem botão de voltar */
+    #gerador-wizard-passo1 .wizard-header {
+        justify-content: center;
+    }
+    
     .dias-semana-container {
         flex-wrap: wrap;
         justify-content: center;

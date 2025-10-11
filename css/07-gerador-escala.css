@@ -21,11 +21,39 @@
   display: none;
   flex-direction: column;
   gap: 12px;
+  padding-top: 24px;
+  padding-bottom: 24px;
 }
 
 #page-gerar-escala .wizard-step.active {
   display: flex;
 }
+
+/* NOVO: Estilos para o cabeçalho unificado do wizard */
+.wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+}
+
+.wizard-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    text-align: center;
+    flex-grow: 1;
+}
+
+.wizard-header .button-voltar,
+.wizard-header .primary,
+.wizard-header .ml-auto {
+    margin: 0;
+    flex-shrink: 0;
+}
+
 
 #feriado-data-input {
   flex-grow: 0;
@@ -63,16 +91,11 @@
   min-width: 130px;
 }
 
+/* ALTERADO: Remove a rolagem do container principal do passo 3 */
 #gerador-excecoes-funcionarios-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-height: 50vh;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  display: contents; /* Faz o container se comportar como se não existisse para o layout */
 }
+
 
 .excecao-func-card {
   background-color: var(--bg);
@@ -207,7 +230,6 @@ html[data-theme="dark"] .escala-final-table th.weekend {
   color: var(--brand);
 }
 
-/* ALTERAÇÃO: Estilo para feriado de folga geral na tabela final */
 .escala-final-table th.feriado-folga {
     background-color: #e0e7ff;
     background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 6px);
@@ -310,13 +332,22 @@ html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
   margin-left: 8px;
 }
 
+/* NOVO: Espaçamento inferior para o conteúdo dos cards do wizard */
+#page-gerar-escala .passo1-grid,
+#page-gerar-escala .passo2-holiday-grid,
+#page-gerar-escala #ausencia-step-container,
+#page-gerar-escala .passo2-grid {
+    margin-bottom: 16px;
+}
+
+
 .passo1-grid,
 .passo2-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
   align-items: start;
-  margin: 16px 0;
+  margin-top: 0;
 }
 
 .regra-item {
@@ -735,44 +766,44 @@ html[data-theme="dark"] .legenda-item:hover {
   text-align: center;
   position: relative;
   overflow: hidden;
-  min-height: 150px;
+  min-height: 250px;
 }
-.wizard-tip {
-  position: absolute;
-  left: 10%;
-  width: 80%;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+
+/* NOVO: Animação de Emojis de Gato */
+@keyframes floatAndFade {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-60px) scale(1.5);
+        opacity: 0;
+    }
 }
-.wizard-tip.active {
-  opacity: 1;
-  transform: translateY(0);
+
+.cat-emoji {
+    position: absolute;
+    font-size: 2rem;
+    pointer-events: none;
+    animation: floatAndFade 1.5s ease-out forwards;
+    z-index: 1;
 }
-.wizard-tip.is-exiting {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-.wizard-tip p {
-  margin: 0;
-  color: var(--fg);
-  font-size: 1.4rem;
-  font-weight: 500;
-  line-height: 1.4;
-}
-html[data-theme="dark"] .wizard-tip p {
-    color: var(--muted);
+
+/* Centraliza o botão de início e garante que fique acima dos emojis */
+.wizard-tips-container > button {
+    z-index: 2;
 }
 
 .passo2-holiday-grid {
   display: grid;
   grid-template-columns: 400px 1fr 280px;
-  gap: 32px;
+  gap: 24px;
   align-items: flex-start;
 }
 #ausencia-step-container {
+    display: grid;
     grid-template-columns: 400px 1fr 280px;
-    gap: 32px;
+    gap: 24px;
     align-items: flex-start;
 }
 .calendars-wrapper {
@@ -818,6 +849,10 @@ html[data-theme="dark"] .wizard-tip p {
   box-sizing: border-box; 
   border: 2px solid transparent;
 }
+.calendar-day.empty {
+  cursor: default;
+  background-color: transparent;
+}
 .calendar-day .day-number {
     line-height: 1;
 }
@@ -840,7 +875,7 @@ html[data-theme="dark"] .calendar-day:not(.empty):hover {
   z-index: 2; 
 }
 .calendar-day.is-holiday .day-number,
-.calendar-day.is-ausencia .day-number {
+.calendar-day.has-ausencia .day-number {
   font-weight: bold;
 }
 .calendar-day.is-holiday::after {
@@ -905,7 +940,7 @@ html[data-theme="dark"] .calendar-day.is-holiday-off {
     transition: opacity 0.3s, filter 0.3s;
 }
 .holiday-editor-content > fieldset:disabled,
-.holiday-editor-content > .form-group:has(input:disabled) {
+#ausencia-editor-container fieldset:disabled {
     opacity: 0.5;
     filter: grayscale(50%);
     pointer-events: none;
@@ -1073,3 +1108,13 @@ html[data-theme="dark"] .calendar-day.is-holiday-off {
 html[data-theme="dark"] .is-folga-dot { background-color: #059669; }
 html[data-theme="dark"] .is-ferias-dot { background-color: #0891b2; }
 html[data-theme="dark"] .is-afastamento-dot { background-color: #ea580c; }
+
+.ausencia-plus-symbol {
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+    color: var(--fg);
+}
+.calendar-day.is-selected .ausencia-plus-symbol {
+    color: white;
+}

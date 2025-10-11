@@ -76,34 +76,28 @@ function showToast(message, type = 'info') {
     const toast = $("#toast");
     const toastMessage = $("#toastMessage");
 
-    // Limpa qualquer animação de saída anterior
     if (toastTimeoutId) {
         clearTimeout(toastTimeoutId);
         toastTimeoutId = null;
-        // Força a remoção imediata para a nova notificação aparecer
         toast.classList.remove("visible", "hiding", "success", "error", "info");
         toast.classList.add("hidden");
     }
     
-    // Adiciona a classe de tipo e a de visibilidade
     toast.classList.remove("hidden");
     toast.classList.add(type, "visible");
     
-    // Define a mensagem
     toastMessage.textContent = message;
 
-    // Agenda o início da animação de saída após 4.5s
     toastTimeoutId = setTimeout(() => {
         toast.classList.remove("visible");
         toast.classList.add("hiding");
         
-        // Esconde o elemento completamente após a animação de saída
         setTimeout(() => {
             toast.classList.add("hidden");
             toast.classList.remove("hiding", type);
             toastTimeoutId = null;
-        }, 400); // Duração da animação de saída em CSS
-    }, 4500); // Tempo de exibição de 4.5 segundos
+        }, 400); 
+    }, 4500); 
 }
 
 function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "Cancelar" }) {
@@ -370,4 +364,72 @@ function renderAnoSelect(selector, startYear = 2025, futureYears = 2) {
     }
     
     selectEl.value = currentValue;
+}
+
+function playEmojiBurst(event) {
+    const button = event.currentTarget;
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+    const catEmojis = ['😺', '😸', '😻', '🐾', '😽', '🧡', '✨'];
+    const burstCount = 12;
+
+    for (let i = 0; i < burstCount; i++) {
+        const emoji = document.createElement('span');
+        emoji.className = 'burst-emoji';
+        emoji.textContent = catEmojis[Math.floor(Math.random() * catEmojis.length)];
+        
+        emoji.style.left = `${rect.left + rect.width / 2}px`;
+        emoji.style.top = `${rect.top + rect.height / 2}px`;
+
+        const angle = Math.random() * 360;
+        const distance = Math.random() * 60 + 50;
+        const tx = Math.cos(angle * Math.PI / 180) * distance;
+        const ty = Math.sin(angle * Math.PI / 180) * distance;
+        const rotation = Math.random() * 360 - 180;
+
+        emoji.style.setProperty('--tx', `${tx}px`);
+        emoji.style.setProperty('--ty', `${ty}px`);
+        emoji.style.setProperty('--r', `${rotation}deg`);
+
+        document.body.appendChild(emoji);
+
+        emoji.addEventListener('animationend', () => {
+            emoji.remove();
+        });
+    }
+}
+
+/* --- NOVO: Efeito de Explosão de Estrelas --- */
+function playStarBurst(event) {
+    const button = event.currentTarget;
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+    const burstCount = 15;
+
+    for (let i = 0; i < burstCount; i++) {
+        const star = document.createElement('span');
+        star.className = 'star-burst-particle';
+        star.textContent = '✨';
+        
+        star.style.left = `${rect.left + rect.width / 2}px`;
+        star.style.top = `${rect.top + rect.height / 2}px`;
+
+        const angle = Math.random() * 360;
+        const distance = Math.random() * 70 + 60; // Voa um pouco mais longe
+        const tx = Math.cos(angle * Math.PI / 180) * distance;
+        const ty = Math.sin(angle * Math.PI / 180) * distance;
+        const rotation = Math.random() * 360 - 180;
+
+        star.style.setProperty('--tx', `${tx}px`);
+        star.style.setProperty('--ty', `${ty}px`);
+        star.style.setProperty('--r', `${rotation}deg`);
+
+        document.body.appendChild(star);
+
+        star.addEventListener('animationend', () => {
+            star.remove();
+        });
+    }
 }

@@ -582,8 +582,10 @@
             <div id="gerador-wizard-container">
                 
                 <div id="gerador-wizard-passo1" class="wizard-step card card-animated-border">
-                    <h3>Passo 1: Selecione o Cargo e o Período da Escala</h3>
-                    <div class="passo1-grid" style="margin: 0;">
+                    <div class="wizard-header">
+                        <h3>Passo 1: Defina o Básico</h3>
+                    </div>
+                    <div class="passo1-grid">
                         <fieldset class="regras-fieldset">
                             <legend>Informações Essenciais</legend>
                             <select id="gerar-escCargo" style="width: 100%; margin-bottom: 16px;"></select>
@@ -597,16 +599,17 @@
                             <span id="gerar-escResumoDias" class="dias-resumo-box">Selecione o período para ver a duração da escala.</span>
                         </fieldset>
                         <div class="wizard-tips-container">
+                             <button id="btn-gerador-goto-passo2" class="primary hidden" style="font-size: 1.2rem; padding: 12px 28px;">Vamos começar</button>
                         </div>
-                    </div>
-                    <div class="form-row">
-                         <button id="btn-gerador-goto-passo2" class="primary ml-auto">Próximo Passo <b>&gt;</b></button>
                     </div>
                 </div>
 
                 <div id="gerador-wizard-passo2" class="wizard-step card card-animated-border">
-                    <button class="secondary button-voltar" data-wizard-back-to="1" data-wizard="gerador"><b>&lt;</b> Voltar</button>
-                    <h3>Passo 2: Marque os Feriados e Dias de Folga Geral</h3>
+                    <div class="wizard-header">
+                        <button class="secondary button-voltar" data-wizard-back-to="1" data-wizard="gerador"><b>&lt;</b> Voltar</button>
+                        <h3>Passo 2: Marque Feriados e Folgas Gerais</h3>
+                        <button id="btn-gerador-goto-passo3" class="primary">Próximo Passo <b>&gt;</b></button>
+                    </div>
                     <div id="holiday-step-container" class="passo2-holiday-grid">
                         <div id="holiday-calendars-container" class="calendars-wrapper">
                         </div>
@@ -614,23 +617,23 @@
                         </div>
                         <div id="holiday-list-wrapper"></div>
                     </div>
-                     <div class="form-row">
-                         <button id="btn-gerador-goto-passo3" class="primary ml-auto">Próximo Passo <b>&gt;</b></button>
-                    </div>
                 </div>
 
                 <div id="gerador-wizard-passo3" class="wizard-step card card-animated-border">
-                    <button class="secondary button-voltar" data-wizard-back-to="2" data-wizard="gerador"><b>&lt;</b> Voltar</button>
-                    <h3>Passo 3: Configure Férias, Folgas e Afastamentos Individuais</h3>
-                    <div id="gerador-excecoes-funcionarios-container"></div>
-                     <div class="form-row">
-                         <button id="btn-gerador-goto-passo4" class="primary ml-auto">Próximo Passo <b>&gt;</b></button>
+                    <div class="wizard-header">
+                        <button class="secondary button-voltar" data-wizard-back-to="2" data-wizard="gerador"><b>&lt;</b> Voltar</button>
+                        <h3>Passo 3: Configure Férias e Afastamentos</h3>
+                        <button id="btn-gerador-goto-passo4" class="primary">Próximo Passo <b>&gt;</b></button>
                     </div>
+                    <div id="gerador-excecoes-funcionarios-container"></div>
                 </div>
 
                 <div id="gerador-wizard-passo4" class="wizard-step card card-animated-border">
-                    <button class="secondary button-voltar" data-wizard-back-to="3" data-wizard="gerador"><b>&lt;</b> Voltar</button>
-                    <h3>Passo 4: Defina a Cobertura e Regras Finais</h3>
+                    <div class="wizard-header">
+                        <button class="secondary button-voltar" data-wizard-back-to="3" data-wizard="gerador"><b>&lt;</b> Voltar</button>
+                        <h3>Passo 4: Defina a Cobertura e Regras Finais</h3>
+                        <button id="btnGerarEscala" class="primary">✨ Gerar Escala ✨</button>
+                    </div>
                     <div class="passo2-grid">
                         <fieldset class="regras-fieldset">
                             <legend>Cobertura de Turnos</legend>
@@ -660,9 +663,6 @@
                                 </div>
                             </div>
                         </fieldset>
-                    </div>
-                    <div class="form-row">
-                        <button id="btnGerarEscala" class="primary ml-auto">✨ Gerar Escala ✨</button>
                     </div>
                 </div>
             </div>
