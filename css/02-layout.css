@@ -183,10 +183,13 @@ main.container {
   animation: fadeOut 0.2s ease-out forwards;
 }
 
-/* --- TELA DE INÍCIO --- */
+/* --- TELA DE INÍCIO (MOVIDO DE 11-home-screen.css) --- */
 #page-home {
     padding-top: 96px;
+    padding-left: 192px;
+    padding-right: 192px;
 }
+
 
 .home-section-title {
     font-size: 1rem;

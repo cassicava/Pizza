@@ -147,10 +147,9 @@ function updateCargoRegrasExplicacao() {
             const turnosSelecionados = turnos.filter(t => turnosIdsSelecionados.includes(t.id));
             
             if (turnosSelecionados.length > 0) {
-                const minStartMinutes = Math.min(...turnosSelecionados.map(t => parseTimeToMinutes(t.inicio)));
                 const maxEndMinutesTotal = Math.max(...turnosSelecionados.map(t => parseTimeToMinutes(t.fim) + (t.diasDeDiferenca || 0) * 1440));
                 
-                if (maxEndMinutesTotal >= 1440 && maxEndMinutesTotal > minStartMinutes) {
+                if (maxEndMinutesTotal >= 1440) {
                      const diasDepois = Math.floor(maxEndMinutesTotal / 1440);
                      if (diasDepois === 1) {
                         sufixo = " (termina no dia seguinte)";
@@ -175,57 +174,21 @@ function updateAutomaticoHorario() {
     const turnosIdsSelecionados = $$('input[name="cargoTurno"]:checked').map(chk => chk.value);
     const turnosSelecionados = turnos.filter(t => turnosIdsSelecionados.includes(t.id));
 
-    if (turnosSelecionados.length === 0) {
+    const result = mergeTimeIntervals(turnosSelecionados);
+
+    if (!result) {
         cargoInicioInput.value = '';
         cargoFimInput.value = '';
-        updateCargoRegrasExplicacao();
-        return;
+    } else if (result.is24h) {
+        $(`.toggle-btn[data-value="24h"]`, cargoHorarioToggle).click();
+    } else {
+        cargoInicioInput.value = result.inicio;
+        cargoFimInput.value = result.fim;
     }
-
-    const minutosEm24h = 1440;
-    let intervalos = turnosSelecionados.map(t => {
-        const start = parseTimeToMinutes(t.inicio);
-        const end = parseTimeToMinutes(t.fim) + (t.diasDeDiferenca || 0) * minutosEm24h;
-        return { start, end };
-    });
-
-    const intervalosCiclicos = [...intervalos];
-    intervalos.forEach(iv => {
-        intervalosCiclicos.push({ start: iv.start + minutosEm24h, end: iv.end + minutosEm24h });
-    });
-    intervalosCiclicos.sort((a, b) => a.start - b.start);
-
-    const merged = [];
-    if (intervalosCiclicos.length > 0) {
-        merged.push(JSON.parse(JSON.stringify(intervalosCiclicos[0])));
-        for (let i = 1; i < intervalosCiclicos.length; i++) {
-            const last = merged[merged.length - 1];
-            const current = intervalosCiclicos[i];
-            if (current.start <= last.end) {
-                last.end = Math.max(last.end, current.end);
-            } else {
-                merged.push(JSON.parse(JSON.stringify(current)));
-            }
-        }
-    }
-
-    for (const iv of merged) {
-        if (iv.end - iv.start >= minutosEm24h) {
-            $(`.toggle-btn[data-value="24h"]`, cargoHorarioToggle).click();
-            return;
-        }
-    }
-
-    const minStartMinutes = Math.min(...turnosSelecionados.map(t => parseTimeToMinutes(t.inicio)));
-    const maxEndMinutesTotal = Math.max(...turnosSelecionados.map(t => parseTimeToMinutes(t.fim) + (t.diasDeDiferenca || 0) * 1440));
-    
-    cargoInicioInput.value = minutesToHHMM(minStartMinutes);
-    
-    const fimModulo = maxEndMinutesTotal % minutosEm24h;
-    cargoFimInput.value = minutesToHHMM(fimModulo);
     
     updateCargoRegrasExplicacao();
 }
+
 
 function renderCargos() {
     const { cargos, funcionarios, turnos } = store.getState();

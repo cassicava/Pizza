@@ -150,7 +150,6 @@ function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "
         modalConfirmBtn.style.display = 'inline-flex';
         modalCancelBtn.style.display = 'inline-flex';
 
-        modal.classList.add("modal--toast-style");
         backdrop.classList.remove("hidden");
 
         const cleanupAndResolve = (value) => {
@@ -161,7 +160,6 @@ function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "
             modalConfirmBtn.onclick = null;
             modalCancelBtn.onclick = null;
             modalMessageEl.innerHTML = '';
-            modal.classList.remove("modal--toast-style");
             backdrop.classList.add("hidden");
             resolve(result);
         };
@@ -543,4 +541,24 @@ function setupTabbedPanel(panelSelector, onTabSwitch = null) {
     });
 
     return switchTab;
+}
+
+/**
+ * NOVA FUNÇÃO: Agrupa uma lista de escalas por ano e depois por mês.
+ * @param {Array} escalas - A lista de objetos de escala.
+ * @returns {Object} Um objeto aninhado com as escalas agrupadas.
+ */
+function groupEscalasByMonth(escalas) {
+    return escalas.reduce((acc, esc) => {
+        const ano = esc.inicio.substring(0, 4);
+        const mes = esc.inicio.substring(5, 7);
+        if (!acc[ano]) {
+            acc[ano] = {};
+        }
+        if (!acc[ano][mes]) {
+            acc[ano][mes] = [];
+        }
+        acc[ano][mes].push(esc);
+        return acc;
+    }, {});
 }

@@ -27,34 +27,21 @@ function renderEscalaLegend(escala, container) {
     turnosDoCargo.forEach(turno => {
         allLegendItems.push({
             id: turno.id,
-            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
+            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor || '#e2e8f0'}"></span><strong>${turno.sigla || '??'}</strong> - ${turno.nome}</div>`,
         });
     });
 
     const activeTurnos = new Set(escala.slots.map(s => s.turnoId));
     
     // Adiciona os turnos de sistema se houverem na escala.
-    if(activeTurnos.has(TURNO_FERIAS_ID)) {
-        const turno = TURNOS_SISTEMA_AUSENCIA[TURNO_FERIAS_ID];
-        allLegendItems.push({
-            id: turno.id,
-            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
-        });
-    }
-    if(activeTurnos.has(TURNO_FOLGA_ID)) {
-        const turno = TURNOS_SISTEMA_AUSENCIA[TURNO_FOLGA_ID];
-        allLegendItems.push({
-            id: turno.id,
-            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
-        });
-    }
-    if(activeTurnos.has(TURNO_AFASTAMENTO_ID)) {
-        const turno = TURNOS_SISTEMA_AUSENCIA[TURNO_AFASTAMENTO_ID];
-        allLegendItems.push({
-            id: turno.id,
-            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor}"></span><strong>${turno.sigla}</strong> - ${turno.nome}</div>`,
-        });
-    }
+    Object.values(TURNOS_SISTEMA_AUSENCIA).forEach(turnoSistema => {
+        if(activeTurnos.has(turnoSistema.id)) {
+            allLegendItems.push({
+                id: turnoSistema.id,
+                html: `<div class="legenda-item" data-tipo="turno" data-id="${turnoSistema.id}"><span class="color-dot" style="background-color: ${turnoSistema.cor}"></span><strong>${turnoSistema.sigla}</strong> - ${turnoSistema.nome}</div>`,
+            });
+        }
+    });
 
     const finalHTML = allLegendItems.map(item => {
         const isActive = activeTurnos.has(item.id);
@@ -133,20 +120,9 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     tableHTML += `</tr></thead><tbody>`;
 
     funcsDaEscala.forEach(func => {
-        const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
-        const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
-        const percentual = metaHoras > 0 ? (horasTrabalhadas / metaHoras) * 100 : 0;
-        let indicatorClass = '';
-        let indicatorTitle = `Carga Horária: ${horasTrabalhadas.toFixed(1)}h de ${metaHoras.toFixed(1)}h (${percentual.toFixed(0)}%)`;
-        if (percentual >= 100) indicatorClass = 'workload-ok';
-        else if (percentual >= 80) indicatorClass = 'workload-good';
-        else if (percentual >= 40) indicatorClass = 'workload-warning';
-        else if (horasTrabalhadas > 0) indicatorClass = 'workload-danger';
-
-        const indicatorHTML = `<span class="workload-indicator ${indicatorClass}" title="${indicatorTitle}"></span>`;
         const nomeHtml = `
             <td>
-                ${indicatorHTML} ${func.nome}
+                ${func.nome}
                 <br>
                 <small class="muted">${func.documento || '---'}</small>
             </td>
@@ -167,10 +143,9 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 const turno = getTurnoInfo(slot.turnoId);
                 const slotAttr = isInteractive ? `data-slot-id="${slot.id}" data-turno-id="${slot.turnoId}"` : '';
                 const equipeAttr = isInteractive && slot.equipeId ? `data-equipe-id="${slot.equipeId}"` : '';
-                const draggableAttr = isInteractive && !turno.isSystem ? `draggable="true"` : '';
                 const textColor = getContrastingTextColor(turno.cor);
                 const extraClass = slot.isExtra ? 'celula-hora-extra' : '';
-                tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} ${draggableAttr} title="${turno.nome}">${turno.sigla || '?'}</td>`;
+                tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} title="${turno.nome}">${turno.sigla || '?'}</td>`;
             } else if (feriadoFolga) {
                 tableHTML += `<td class="celula-feriado-folga" title="${feriadoFolga.nome}">FOLGA</td>`;
             } else if (isCargoDiaNaoUtil) {
@@ -186,7 +161,7 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     if (isInteractive) {
         tableHTML += `<tfoot>`;
         turnosDoCargo.forEach(turno => {
-            tableHTML += `<tr class="total-row"><td><strong>Total ${turno.sigla}</strong></td>`;
+            tableHTML += `<tr class="total-row"><td><strong>Total ${turno.sigla || '??'}</strong></td>`;
             dateRange.forEach(date => {
                 const total = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
                 tableHTML += `<td>${total}</td>`;
@@ -195,7 +170,7 @@ function renderGenericEscalaTable(escala, container, options = {}) {
         });
         turnosDoCargo.forEach(turno => {
             let hasVagas = false;
-            let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla}</strong></td>`;
+            let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
             dateRange.forEach(date => {
                 const d = new Date(date + 'T12:00:00');
                 const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
@@ -279,7 +254,11 @@ function renderPainelDaEscala(escala) {
         
         if (medicao === 'turnos') {
             realizado = escala.historico[func.id]?.turnosTrabalhados || 0;
-            meta = calcularMetaTurnos(func, escala.inicio, escala.fim);
+            const { cargos } = store.getState();
+            const cargo = cargos.find(c => c.id === escala.cargoId);
+            const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
+            meta = calcularMetaTurnos(func, escala.inicio, escala.fim, cargoDiasOperacionais);
+
             saldo = realizado - meta;
             unidade = ' turnos';
             saldoLabel = 'Saldo';
@@ -368,8 +347,6 @@ function renderPainelDaEscala(escala) {
         <div class="painel-legendas-container">
             <h5 style="margin-top: 24px; margin-bottom: 8px; color: var(--muted);">Legenda de Turnos e Ausências</h5>
             <div class="escala-legenda turnos-legenda"></div>
-            <h5 style="margin-top: 16px; margin-bottom: 8px; color: var(--muted);">Legenda de Status do Funcionário</h5>
-            <div class="escala-legenda status-legenda"></div>
         </div>
     `;
 
@@ -380,29 +357,6 @@ function renderPainelDaEscala(escala) {
 
     const turnosLegendaContainer = $('.turnos-legenda', painelContainer);
     renderEscalaLegend(escala, turnosLegendaContainer);
-
-    const statusLegendaContainer = $('.status-legenda', painelContainer);
-    const legendaStatusHTML = `
-        <div class="legenda-item" data-tipo="workload" data-id="workload-danger" title="Carga horária muito abaixo da meta (<40%)">
-            <span class="workload-indicator workload-danger"></span>
-            <span>Abaixo da Meta</span>
-        </div>
-        <div class="legenda-item" data-tipo="workload" data-id="workload-warning" title="Carga horária se aproximando da meta (40% a 79%)">
-            <span class="workload-indicator workload-warning"></span>
-            <span>Em Progresso</span>
-        </div>
-        <div class="legenda-item" data-tipo="workload" data-id="workload-good" title="Carga horária adequada (80% a 99%)">
-            <span class="workload-indicator workload-good"></span>
-            <span>Meta Próxima</span>
-        </div>
-        <div class="legenda-item" data-tipo="workload" data-id="workload-ok" title="Carga horária atingida ou excedida (≥100%)">
-            <span class="workload-indicator workload-ok"></span>
-            <span>Meta Atingida</span>
-        </div>
-    `;
-    if (statusLegendaContainer) {
-        statusLegendaContainer.innerHTML = legendaStatusHTML;
-    }
 
     $$('.painel-tab-btn', painelContainer).forEach(btn => {
         btn.onclick = () => {
@@ -426,24 +380,15 @@ function renderPainelDaEscala(escala) {
 
             $$('td.highlight', table).forEach(cell => cell.classList.remove('highlight'));
 
-            if (tipo === 'workload') {
-                const statusClass = id;
-                $$(`tr[data-employee-row-id]`, table).forEach(row => {
-                    if ($(`.workload-indicator.${statusClass}`, row)) {
-                        row.querySelectorAll('td').forEach(cell => cell.classList.add('highlight'));
-                    }
-                });
-            } else {
-                $$('td', table).forEach(cell => {
-                    const cellTipo = cell.dataset.tipo;
-                    const cellId = cell.dataset.id;
-                    const cellTurnoId = cell.dataset.turnoId;
+            $$('td', table).forEach(cell => {
+                const cellTipo = cell.dataset.tipo;
+                const cellId = cell.dataset.id;
+                const cellTurnoId = cell.dataset.turnoId;
 
-                    if ((cellTipo === tipo && cellId === id) || (tipo === 'turno' && cellTurnoId === id)) {
-                        cell.classList.add('highlight');
-                    }
-                });
-            }
+                if ((cellTipo === tipo && cellId === id) || (tipo === 'turno' && cellTurnoId === id)) {
+                    cell.classList.add('highlight');
+                }
+            });
         });
 
         legendasWrapper.addEventListener('mouseout', (event) => {
@@ -513,14 +458,13 @@ function updateTableCells(escala) {
             
             const slot = escala.slots.find(s => s.date === date && s.assigned === funcId);
 
-            // Reseta a célula
+            // Reseta a célula completamente
             cell.innerHTML = '';
             cell.style.backgroundColor = '';
             cell.style.color = '';
             cell.className = '';
             cell.title = '';
             Object.keys(cell.dataset).forEach(key => delete cell.dataset[key]);
-            cell.draggable = false;
             
             cell.dataset.date = date;
             cell.dataset.employeeId = funcId;
@@ -533,7 +477,6 @@ function updateTableCells(escala) {
                 cell.dataset.slotId = slot.id;
                 cell.dataset.turnoId = slot.turnoId;
                 if (slot.equipeId) cell.dataset.equipeId = slot.equipeId;
-                if(!turno.isSystem) cell.draggable = true;
                 cell.style.backgroundColor = turno.cor;
                 cell.style.color = getContrastingTextColor(turno.cor);
                 cell.title = turno.nome;
@@ -563,8 +506,17 @@ async function salvarEscalaAtual(options = {}) {
             turnos
         } = store.getState();
         const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
-        const funcsInvolvedIds = new Set(Object.keys(currentEscala.historico || {}));
-        const turnosInvolvedIds = new Set(currentEscala.slots.map(s => s.turnoId));
+        
+        const allSlotsToSnapshot = currentEscala.slots.filter(s => s.assigned).map(s => {
+            const turno = allTurnos.find(t => t.id === s.turnoId);
+            if(turno && turno.isSystem) {
+                // Se for um turno de sistema, o nome e a sigla precisam estar no snapshot
+            }
+            return s;
+        });
+
+        const funcsInvolvedIds = new Set(allSlotsToSnapshot.map(s => s.assigned));
+        const turnosInvolvedIds = new Set(allSlotsToSnapshot.map(s => s.turnoId));
 
         currentEscala.snapshot = {
             funcionarios: {},

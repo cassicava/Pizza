@@ -20,6 +20,8 @@ self.onmessage = function(e) {
 
         const cargo = cargos.find(c => c.id === cargoId);
         if (!cargo) throw new Error("Cargo selecionado não foi encontrado.");
+        
+        const cargoDiasOperacionais = cargo.regras.dias || DIAS_SEMANA.map(d => d.id); // NOVO: Pega dias do cargo
 
         const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
         const equipesMap = Object.fromEntries(equipes.map(eq => [eq.id, eq]));
@@ -76,19 +78,16 @@ self.onmessage = function(e) {
         postMessage({ type: 'progress', message: 'Agendando ausências...' });
         
         todosFuncsDoCargo.forEach(func => {
-            // Verifica se existem exceções para este funcionário
             if (excecoes[func.id]) {
-                // Itera sobre os tipos de ausência (folga, férias, etc.)
                 for (const tipoId in excecoes[func.id]) {
                     const datasAusencia = excecoes[func.id][tipoId];
-                    // Se houver datas para este tipo de ausência, cria os slots
                     if (datasAusencia && datasAusencia.length > 0) {
                         datasAusencia.forEach(data => {
                             slots.push({
                                 id: uid(),
                                 date: data,
-                                turnoId: tipoId, // ID do turno de sistema (folga, férias, etc.)
-                                assigned: func.id // Já atribui ao funcionário correto
+                                turnoId: tipoId, 
+                                assigned: func.id 
                             });
                         });
                     }
@@ -109,7 +108,8 @@ self.onmessage = function(e) {
                 if (startIndex === -1) return;
 
                 dateRange.forEach((date, index) => {
-                    const diaSemanaId = DIAS_SEMANA[new Date(date + 'T12:00:00').getUTCDay()].id;
+                    const diaSemana = new Date(date + 'T12:00:00');
+                    const diaSemanaId = DIAS_SEMANA[diaSemana.getUTCDay()].id;
                     const ciclo = regra.work + regra.off;
                     const diaNoCiclo = (index - startIndex) % ciclo;
 
@@ -117,7 +117,7 @@ self.onmessage = function(e) {
                         const todosMembrosDisponiveis = equipe.funcionarioIds.every(funcId => {
                             const func = funcionariosMap.get(funcId);
                             return func && 
-                                   !excecoesMap[funcId]?.has(date) &&
+                                   !excecoesMap[funcId]?.has(date) && // Verifica se o dia não é exceção (folga, férias, etc)
                                    func.disponibilidade?.[turnoId]?.includes(diaSemanaId);
                         });
 
@@ -159,7 +159,7 @@ self.onmessage = function(e) {
         // CORREÇÃO: A meta agora é calculada para todos, não apenas individuais
         todosFuncsDoCargo.forEach(f => {
             if (f.medicaoCarga === 'turnos') {
-                metaTurnosMap.set(f.id, calcularMetaTurnos(f, inicio, fim));
+                metaTurnosMap.set(f.id, calcularMetaTurnos(f, inicio, fim, cargoDiasOperacionais)); // NOVO: Passa dias operacionais
             } else {
                 metaHorasMap.set(f.id, calcularMetaHoras(f, inicio, fim));
             }
@@ -167,7 +167,7 @@ self.onmessage = function(e) {
         
         postMessage({ type: 'progress', message: 'Ajustando metas para feriados...'});
         feriados.filter(feriado => feriado.descontaMeta && !feriado.trabalha).forEach(feriado => {
-            // CORREÇÃO: O filtro agora usa todosFuncsDoCargo para incluir membros de equipes
+            // CORREÇÃO: Filtra funcionários que folgaram E não estavam em exceção (evita dupla contagem)
             const funcsQueFolgaram = todosFuncsDoCargo.filter(f => 
                 !slots.some(s => s.date === feriado.date && s.assigned === f.id) &&
                 !excecoesMap[f.id].has(feriado.date)
@@ -207,15 +207,18 @@ self.onmessage = function(e) {
                 const slotMonth = slot.date.substring(0, 7);
 
                 const candidatos = funcsIndividuais.map(f => {
+                    // CORREÇÃO: Cria uma lista de slots temporária para o cálculo de descanso e dias consecutivos
                     const tempSlots = [...slots, { date: slot.date, turnoId: slot.turnoId, assigned: f.id }];
 
                     if (excecoesMap[f.id].has(slot.date)) return null;
                     if (!f.disponibilidade[turno.id]?.includes(slotDiaSemanaId)) return null;
                     if (slots.some(s => s.assigned === f.id && s.date === slot.date)) return null;
+                    
+                    // Validações
                     if (checkMandatoryRestViolation(f, turno, slot.date, tempSlots, turnosMap).violation) return null;
-                    // CORREÇÃO: Utiliza a nova função que olha para frente e para trás
                     if (calculateFullConsecutiveWorkDays(f.id, tempSlots, slot.date, turnosMap) > maxDiasConsecutivos) return null;
 
+                    // Regra de Folga de Fim de Semana
                     if (slotDate.getUTCDay() === 6 || slotDate.getUTCDay() === 0) {
                         const workedWeekends = slots.filter(s => s.assigned === f.id && s.date.startsWith(slotMonth))
                             .reduce((acc, cur) => {
@@ -226,8 +229,10 @@ self.onmessage = function(e) {
                             }, { saturdays: 0, sundays: 0 });
 
                         const monthData = weekendDataByMonth[slotMonth];
-                        if (slotDate.getUTCDay() === 6 && (monthData.totalSaturdays - workedWeekends.saturdays) <= minFolgasSabados) return null;
-                        if (slotDate.getUTCDay() === 0 && (monthData.totalSundays - workedWeekends.sundays) <= minFolgasDomingos) return null;
+                        
+                        // CORREÇÃO: A lógica de folga de fim de semana deve ser "Se o funcionário TRABALHAR, ele viola a folga mínima".
+                        if (slotDate.getUTCDay() === 6 && (monthData.totalSaturdays - (workedWeekends.saturdays + 1)) < minFolgasSabados) return null;
+                        if (slotDate.getUTCDay() === 0 && (monthData.totalSundays - (workedWeekends.sundays + 1)) < minFolgasDomingos) return null;
                     }
                     
                     let score;
@@ -279,7 +284,7 @@ self.onmessage = function(e) {
         // --- INÍCIO DA CORREÇÃO ---
         // Recalcula o objeto de cobertura para incluir a contagem das equipes,
         // garantindo que a linha "Faltam" na tabela de visualização seja precisa.
-        const coberturaFinal = { ...cobertura }; // Começa com a cobertura individual/complementar
+        const coberturaFinal = { ...cobertura }; 
 
         for (const turnoId in coberturaPorEquipe) {
             if (!coberturaFinal[turnoId]) {
@@ -299,7 +304,7 @@ self.onmessage = function(e) {
             id: uid(), nome: nomeEscala, cargoId, inicio, fim, slots, historico,
             excecoes: JSON.parse(JSON.stringify(excecoes)),
             feriados: [...geradorState.feriados],
-            cobertura: coberturaFinal, // <-- USA O OBJETO CORRIGIDO
+            cobertura: coberturaFinal, 
             regras: { maxDiasConsecutivos, minFolgasSabados, minFolgasDomingos }
         };
         

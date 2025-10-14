@@ -62,6 +62,14 @@ function resetGeradorWizard() {
     if ($("#holiday-list-wrapper")) $("#holiday-list-wrapper").innerHTML = '';
     if ($("#gerador-excecoes-funcionarios-container")) $("#gerador-excecoes-funcionarios-container").innerHTML = '';
     if ($("#gerador-cobertura-turnos-container")) $("#gerador-cobertura-turnos-container").innerHTML = '';
+    
+    // Limpeza dos inputs do passo 4 (para garantir estado inicial)
+    const maxDiasInput = $('#gerar-maxDiasConsecutivos');
+    if(maxDiasInput) maxDiasInput.value = 6;
+    const sabadosInput = $('#gerar-minFolgasSabados');
+    if(sabadosInput) sabadosInput.value = 1;
+    const domingosInput = $('#gerar-minFolgasDomingos');
+    if(domingosInput) domingosInput.value = 1;
 
     const toolbox = $("#editor-toolbox");
     if (toolbox) toolbox.classList.add("hidden");
@@ -76,12 +84,17 @@ function resetGeradorWizard() {
 function initGeradorPage(options = {}) {
     const { cargos } = store.getState();
     if (cargos.length === 0) {
-        showInfoModal({
+        showActionModal({
             title: "Cadastro de Cargos Necessário",
-            contentHTML: `<p>Para usar a geração automática, você precisa primeiro cadastrar pelo menos um cargo no sistema.</p>
-                          <p>Clique em "Ir para Cargos" para começar.</p>`
+            message: "<p>Para usar a geração automática, você precisa primeiro cadastrar pelo menos um cargo no sistema.</p>",
+            actions: [{ id: 'go-cargos', text: 'Ir para Cargos', class: 'primary' }]
+        }).then(actionId => {
+            if (actionId === 'go-cargos') {
+                go('cargos');
+            } else {
+                go('home'); // Se o usuário fechar o modal, volta para o início
+            }
         });
-        setTimeout(() => go('cargos'), 100);
         return;
     }
 
@@ -101,6 +114,7 @@ function initGeradorPage(options = {}) {
         renderGeradorCargoSelect();
     }
 }
+
 
 function renderGeradorCargoSelect() {
     const sel = $("#gerar-escCargo");
@@ -269,7 +283,9 @@ function handleCalendarDayClick(event) {
     if (newDate === geradorState.selectedDate) return;
     geradorState.selectedDate = newDate;
     const existingHoliday = geradorState.feriados.find(f => f.date === geradorState.selectedDate);
-    tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : { date: newDate, nome: '', trabalha: true, descontaMeta: false, desconto: { horas: 8, turnos: 1 } };
+    const defaultDesconto = { horas: 8, turnos: 1 };
+    tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : { date: newDate, nome: '', trabalha: true, descontaMeta: false, desconto: defaultDesconto };
+    if (!tempHolidayData.desconto) tempHolidayData.desconto = defaultDesconto;
     renderHolidayStep();
 }
 
@@ -317,7 +333,9 @@ function renderHolidayList() {
             if (date !== geradorState.selectedDate) {
                 geradorState.selectedDate = date;
                 const existingHoliday = geradorState.feriados.find(f => f.date === date);
-                tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : {};
+                const defaultDesconto = { horas: 8, turnos: 1 };
+                tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : { date: date, nome: '', trabalha: true, descontaMeta: false, desconto: defaultDesconto };
+                if (!tempHolidayData.desconto) tempHolidayData.desconto = defaultDesconto;
                 renderHolidayStep();
             }
         };
@@ -395,6 +413,16 @@ function renderAusenciasStep() {
     const funcs = funcionarios.filter(f => f.cargoId === geradorState.cargoId && f.status !== 'arquivado').sort((a,b) => a.nome.localeCompare(b.nome));
     const container = $("#gerador-excecoes-funcionarios-container");
     if(!container) return;
+    
+    const tipoActive = tempAusencia.tipo;
+    const folgaActive = tipoActive === TURNO_FOLGA_ID ? 'active' : '';
+    const feriasActive = tipoActive === TURNO_FERIAS_ID ? 'active' : '';
+    const afastamentoActive = tipoActive === TURNO_AFASTAMENTO_ID ? 'active' : '';
+    const dateFimStyle = tipoActive === TURNO_FOLGA_ID ? 'style="display: none;"' : '';
+    const hasFuncsSelected = tempAusencia.funcionarios.size > 0;
+    const tipoFieldsetDisabled = hasFuncsSelected ? '' : 'disabled';
+    const datesFieldsetDisabled = (hasFuncsSelected && tipoActive) ? '' : 'disabled';
+
 
     let html = `
         <div class="passo2-holiday-grid" id="ausencia-step-container">
@@ -404,23 +432,23 @@ function renderAusenciasStep() {
                     <fieldset id="ausencia-funcs-fieldset">
                         <legend>1. Selecione o(s) Funcionário(s)</legend>
                         <div id="ausencia-funcionario-list" class="check-container" style="max-height: 150px; overflow-y: auto; padding: 8px;">
-                            ${funcs.length > 0 ? funcs.map(f => `<label class="check-inline" data-func-id="${f.id}"><input type="checkbox" name="ausencia-funcionario-check" value="${f.id}">${f.nome}</label>`).join('') : '<p class="muted">Nenhum funcionário para este cargo.</p>'}
+                            ${funcs.length > 0 ? funcs.map(f => `<label class="check-inline" data-func-id="${f.id}"><input type="checkbox" name="ausencia-funcionario-check" value="${f.id}" ${tempAusencia.funcionarios.has(f.id) ? 'checked' : ''}>${f.nome}</label>`).join('') : '<p class="muted">Nenhum funcionário para este cargo.</p>'}
                         </div>
                     </fieldset>
-                    <fieldset id="ausencia-tipo-fieldset" disabled>
+                    <fieldset id="ausencia-tipo-fieldset" ${tipoFieldsetDisabled}>
                         <legend>2. Escolha o Tipo de Ausência</legend>
                         <div class="toggle-group" id="ausencia-tipo-toggle">
-                            <button type="button" class="toggle-btn" data-value="${TURNO_FOLGA_ID}">Folga</button>
-                            <button type="button" class="toggle-btn active" data-value="${TURNO_FERIAS_ID}">Férias</button>
-                            <button type="button" class="toggle-btn" data-value="${TURNO_AFASTAMENTO_ID}">Afastamento</button>
+                            <button type="button" class="toggle-btn ${folgaActive}" data-value="${TURNO_FOLGA_ID}">Folga</button>
+                            <button type="button" class="toggle-btn ${feriasActive}" data-value="${TURNO_FERIAS_ID}">Férias</button>
+                            <button type="button" class="toggle-btn ${afastamentoActive}" data-value="${TURNO_AFASTAMENTO_ID}">Afastamento</button>
                         </div>
                     </fieldset>
-                    <fieldset id="ausencia-dates-fieldset" disabled>
+                    <fieldset id="ausencia-dates-fieldset" ${datesFieldsetDisabled}>
                          <legend>3. Defina o Período</legend>
                         <div id="ausencia-date-selector" class="form-row" style="margin: 0;">
                             <div class="form-row form-row-vcenter" style="margin:0; flex-grow: 1;">
-                                <label>Início <input type="date" id="ausencia-date-ini" min="${geradorState.inicio}" max="${geradorState.fim}" class="input-sm"></label>
-                                <label id="ausencia-date-fim-label">Fim <input type="date" id="ausencia-date-fim" min="${geradorState.inicio}" max="${geradorState.fim}" class="input-sm"></label>
+                                <label>Início <input type="date" id="ausencia-date-ini" min="${geradorState.inicio}" max="${geradorState.fim}" class="input-sm" value="${tempAusencia.start || ''}"></label>
+                                <label id="ausencia-date-fim-label" ${dateFimStyle}>Fim <input type="date" id="ausencia-date-fim" min="${geradorState.inicio}" max="${geradorState.fim}" class="input-sm" value="${tempAusencia.end || ''}"></label>
                             </div>
                             <button id="ausencia-save-btn" class="success" disabled>💾 Adicionar</button>
                         </div>
@@ -434,6 +462,7 @@ function renderAusenciasStep() {
     addAusenciaListeners();
     renderAusenciaCalendar();
     renderAusenciaList();
+    updateAusenciaSaveButtonState();
     parseEmojisInElement(container);
 }
 
@@ -510,34 +539,9 @@ function renderAusenciaCalendar() {
     container.innerHTML = html;
 }
 
-function renderAusenciaList() {
-    const container = $('#ausencia-list-wrapper');
-    if(!container) return;
-    const { funcionarios } = store.getState();
-    const funcsMap = Object.fromEntries(funcionarios.map(f => [f.id, f.nome]));
-    const allAusencias = [];
-    for (const funcId in geradorState.excecoes) {
-        for (const tipoId in geradorState.excecoes[funcId]) {
-            const dates = geradorState.excecoes[funcId][tipoId];
-            if (dates && dates.length > 0) {
-                const ranges = dates.reduce((acc, date) => { if (acc.length > 0 && date === addDays(acc[acc.length - 1].end, 1)) { acc[acc.length - 1].end = date; } else { acc.push({ start: date, end: date }); } return acc; }, []);
-                ranges.forEach(range => { allAusencias.push({ funcId, funcNome: funcsMap[funcId] || "Funcionário Removido", tipoId, tipoNome: TURNOS_SISTEMA_AUSENCIA[tipoId].nome, ...range }); });
-            }
-        }
-    }
-    allAusencias.sort((a,b) => a.start.localeCompare(b.start) || a.funcNome.localeCompare(b.funcNome));
-    if (allAusencias.length === 0) {
-        container.innerHTML = `<fieldset class="fieldset-wrapper" style="height: 100%;"><legend>Ausências Agendadas</legend><p class="muted" style="text-align:center; padding: 1rem;">Nenhuma ausência agendada.</p></fieldset>`;
-        return;
-    }
-    const listItems = allAusencias.map(aus => {
-        const d_start = new Date(aus.start + 'T12:00:00');
-        const d_end = new Date(aus.end + 'T12:00:00');
-        const dateStr = aus.start === aus.end ? d_start.toLocaleDateString('pt-BR', {dateStyle: 'long'}) : `${d_start.toLocaleDateString()} a ${d_end.toLocaleDateString()}`;
-        return `<li class="summary-list-item" style="border-color: ${TURNOS_SISTEMA_AUSENCIA[aus.tipoId].cor};"><div class="summary-list-item-header"><span class="item-type">${aus.tipoNome}</span><span class="item-name">${aus.funcNome}</span></div><div class="summary-list-item-body">${dateStr}</div><div class="summary-list-item-footer"><button class="summary-delete-btn" data-remove-func-id="${aus.funcId}" data-remove-tipo-id="${aus.tipoId}" data-remove-start="${aus.start}" data-remove-end="${aus.end}">Excluir</button></div></li>`;
-    }).join('');
-    container.innerHTML = `<fieldset class="fieldset-wrapper"><legend>Ausências Agendadas</legend><ul class="summary-list">${listItems}</ul></fieldset>`;
-    $$('.summary-delete-btn', container).forEach(btn => btn.onclick = removeAusencia);
+function updateAusenciaSaveButtonState() {
+    const saveBtn = $('#ausencia-save-btn');
+    if(saveBtn) saveBtn.disabled = !(tempAusencia.start && (tempAusencia.end || tempAusencia.tipo === TURNO_FOLGA_ID) && tempAusencia.funcionarios.size > 0);
 }
 
 function handleAusenciaTipoToggle(e) {
@@ -562,7 +566,12 @@ function handleAusenciaFuncionarioChange() {
         const datesFieldset = $('#ausencia-dates-fieldset');
         if(datesFieldset) datesFieldset.disabled = true;
         resetAusenciaDates();
+    } else {
+        const tipoActive = $('.toggle-btn.active', $('#ausencia-tipo-toggle'));
+        const datesFieldset = $('#ausencia-dates-fieldset');
+        if(datesFieldset) datesFieldset.disabled = !tipoActive;
     }
+    updateAusenciaSaveButtonState();
 }
 
 function handleAusenciaDateChange() {
@@ -570,8 +579,13 @@ function handleAusenciaDateChange() {
     const fimInput = $('#ausencia-date-fim');
     tempAusencia.start = iniInput ? iniInput.value : null;
     tempAusencia.end = tempAusencia.tipo === TURNO_FOLGA_ID ? tempAusencia.start : (fimInput ? fimInput.value : null);
-    const saveBtn = $('#ausencia-save-btn');
-    if(saveBtn) saveBtn.disabled = !(tempAusencia.start && tempAusencia.end && tempAusencia.end >= tempAusencia.start && tempAusencia.funcionarios.size > 0);
+    
+    if (tempAusencia.start && tempAusencia.end && tempAusencia.end < tempAusencia.start) {
+        tempAusencia.end = tempAusencia.start;
+        if(fimInput) fimInput.value = tempAusencia.start;
+    }
+
+    updateAusenciaSaveButtonState();
     renderAusenciaCalendar();
 }
 
@@ -580,20 +594,28 @@ function handleAusenciaCalendarClick(e) {
     const datesFieldset = $('#ausencia-dates-fieldset');
     if (!dayEl || (datesFieldset && datesFieldset.disabled)) return;
     const date = dayEl.dataset.date;
-    if (tempAusencia.tipo === TURNO_FOLGA_ID) {
+    
+    if (!tempAusencia.start) {
+        tempAusencia.start = date;
+        tempAusencia.end = tempAusencia.tipo === TURNO_FOLGA_ID ? date : null;
+    } 
+    else if (tempAusencia.tipo === TURNO_FOLGA_ID) {
         tempAusencia.start = date;
         tempAusencia.end = date;
-    } else {
-        if (!tempAusencia.start || (tempAusencia.start && tempAusencia.end)) {
-            tempAusencia.start = date;
-            tempAusencia.end = null;
-        } else if (date < tempAusencia.start) {
+    }
+    else if (tempAusencia.start && tempAusencia.end) {
+        tempAusencia.start = date;
+        tempAusencia.end = null;
+    } 
+    else {
+        if (date < tempAusencia.start) {
             tempAusencia.end = tempAusencia.start;
             tempAusencia.start = date;
         } else {
             tempAusencia.end = date;
         }
     }
+    
     const iniInput = $('#ausencia-date-ini');
     if(iniInput) iniInput.value = tempAusencia.start;
     const fimInput = $('#ausencia-date-fim');
@@ -606,11 +628,13 @@ function saveAusenciaPeriodo() {
     const range = dateRangeInclusive(tempAusencia.start, tempAusencia.end);
     tempAusencia.funcionarios.forEach(funcId => {
         if (!geradorState.excecoes[funcId]) geradorState.excecoes[funcId] = {};
+        
         Object.keys(TURNOS_SISTEMA_AUSENCIA).forEach(tipoId => {
             if(geradorState.excecoes[funcId][tipoId]) {
                 geradorState.excecoes[funcId][tipoId] = geradorState.excecoes[funcId][tipoId].filter(d => !range.includes(d));
             }
         });
+        
         const currentDates = geradorState.excecoes[funcId][tempAusencia.tipo] || [];
         geradorState.excecoes[funcId][tempAusencia.tipo] = [...new Set([...currentDates, ...range])].sort();
     });
@@ -638,8 +662,7 @@ function resetAusenciaDates() {
     if(iniInput) iniInput.value = '';
     const fimInput = $('#ausencia-date-fim');
     if(fimInput) fimInput.value = '';
-    const saveBtn = $('#ausencia-save-btn');
-    if(saveBtn) saveBtn.disabled = true;
+    updateAusenciaSaveButtonState();
     renderAusenciaCalendar();
 }
 
@@ -653,6 +676,85 @@ function resetAusenciaForm() {
     resetAusenciaDates();
 }
 
+/**
+ * NOVA FUNÇÃO: Renderiza a lista de ausências adicionadas.
+ */
+function renderAusenciaList() {
+    const container = $('#ausencia-list-wrapper');
+    if (!container) return;
+
+    const { funcionarios } = store.getState();
+    const funcionariosMap = new Map(funcionarios.map(f => [f.id, f.nome]));
+    let allAusencias = [];
+
+    for (const funcId in geradorState.excecoes) {
+        for (const tipoId in geradorState.excecoes[funcId]) {
+            const dates = geradorState.excecoes[funcId][tipoId];
+            if (dates && dates.length > 0) {
+                // Agrupa datas consecutivas
+                const ranges = dates.reduce((acc, date) => {
+                    if (acc.length > 0 && addDays(acc[acc.length - 1].end, 1) === date) {
+                        acc[acc.length - 1].end = date;
+                    } else {
+                        acc.push({ start: date, end: date });
+                    }
+                    return acc;
+                }, []);
+                
+                ranges.forEach(range => {
+                    allAusencias.push({
+                        funcId,
+                        tipoId,
+                        ...range
+                    });
+                });
+            }
+        }
+    }
+    
+    allAusencias.sort((a,b) => a.start.localeCompare(b.start) || a.funcId.localeCompare(b.funcId));
+    
+    if (allAusencias.length === 0) {
+        container.innerHTML = `<fieldset class="fieldset-wrapper" style="height: 100%;"><legend>Ausências Adicionadas</legend><p class="muted" style="text-align:center; padding: 1rem;">Nenhuma ausência registrada.</p></fieldset>`;
+        return;
+    }
+    
+    const listItems = allAusencias.map(aus => {
+        const funcName = funcionariosMap.get(aus.funcId) || 'Funcionário Desconhecido';
+        const tipoInfo = TURNOS_SISTEMA_AUSENCIA[aus.tipoId] || { nome: 'Ausência', cor: '#cccccc' };
+        
+        let dateStr;
+        if (aus.start === aus.end) {
+            dateStr = new Date(aus.start + 'T12:00:00').toLocaleDateString('pt-BR', { dateStyle: 'long' });
+        } else {
+            const start = new Date(aus.start + 'T12:00:00').toLocaleDateString();
+            const end = new Date(aus.end + 'T12:00:00').toLocaleDateString();
+            dateStr = `De ${start} a ${end}`;
+        }
+        
+        return `<li class="summary-list-item" style="border-color: ${tipoInfo.cor}">
+                    <div class="summary-list-item-header">
+                        <span class="item-type">${tipoInfo.nome}</span>
+                        <span class="item-name">${funcName}</span>
+                    </div>
+                    <div class="summary-list-item-body">${dateStr}</div>
+                    <div class="summary-list-item-footer">
+                        <button class="summary-delete-btn" 
+                                data-remove-func-id="${aus.funcId}"
+                                data-remove-tipo-id="${aus.tipoId}"
+                                data-remove-start="${aus.start}"
+                                data-remove-end="${aus.end}">
+                            Excluir
+                        </button>
+                    </div>
+                </li>`;
+    }).join('');
+    
+    container.innerHTML = `<fieldset class="fieldset-wrapper"><legend>Ausências Adicionadas</legend><ul class="summary-list">${listItems}</ul></fieldset>`;
+    $$('.summary-delete-btn', container).forEach(btn => btn.onclick = removeAusencia);
+}
+
+
 // --- PASSO 4: LÓGICA DE COBERTURA ---
 function renderPasso4_Cobertura() {
     const { cargos, turnos, equipes } = store.getState();
@@ -665,6 +767,33 @@ function renderPasso4_Cobertura() {
         container.innerHTML = `<p class="muted">Este cargo não possui turnos associados.</p>`;
         return;
     }
+    
+    const cargoDias = cargo.regras.dias || [];
+    const trabalhaSabado = cargoDias.includes('sab');
+    const trabalhaDomingo = cargoDias.includes('dom');
+
+    const maxDiasInput = $('#gerar-maxDiasConsecutivos');
+    const sabadosInput = $('#gerar-minFolgasSabados');
+    const domingosInput = $('#gerar-minFolgasDomingos');
+
+    let maxDiasValue = MAX_DIAS_CONSECUTIVOS;
+    if (!trabalhaSabado && !trabalhaDomingo) {
+        maxDiasValue = 5;
+    }
+    
+    maxDiasInput.max = MAX_DIAS_CONSECUTIVOS;
+    maxDiasInput.value = Math.min(maxDiasInput.value, maxDiasValue);
+    maxDiasInput.closest('.regra-item').querySelector('.animated-field label').textContent = `Máx. dias de trabalho consecutivos (máx: ${maxDiasValue})`;
+
+    sabadosInput.disabled = !trabalhaSabado;
+    domingosInput.disabled = !trabalhaDomingo;
+
+    sabadosInput.value = trabalhaSabado ? sabadosInput.value : 0;
+    domingosInput.value = trabalhaDomingo ? domingosInput.value : 0;
+    
+    if (trabalhaSabado) sabadosInput.max = 4;
+    if (trabalhaDomingo) domingosInput.max = 4;
+
 
     const turnosDoCargo = turnos.filter(t => cargo.turnosIds.includes(t.id)).sort((a,b)=>a.inicio.localeCompare(b.inicio));
     turnosDoCargo.forEach(turno => {

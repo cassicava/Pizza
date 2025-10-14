@@ -5,6 +5,8 @@
 
 const uid = () => Math.random().toString(36).slice(2,10);
 
+const MAX_DIAS_CONSECUTIVOS = 7; // Valor máximo razoável para dias consecutivos
+
 function parseTimeToMinutes(t) {
     if (!t || typeof t !== 'string') return 0;
     const parts = t.split(":");
@@ -20,7 +22,6 @@ function calcCarga(inicio, fim, almocoMin, diasDeDiferenca = 0) {
   const fimMin = parseTimeToMinutes(fim);
   const minutosEmUmDia = 1440;
   let duracaoMin = (fimMin - inicioMin) + (diasDeDiferenca * minutosEmUmDia);
-  // ALTERAÇÃO: Garante que a carga horária nunca seja negativa.
   return Math.max(0, duracaoMin - (almocoMin || 0));
 }
 
@@ -50,7 +51,6 @@ function calcularMetaHoras(funcionario, inicioEscala, fimEscala) {
 
     if (funcionario.periodoHoras === 'semanal') {
         const meta = (horasContratadasBase / 7) * totalDiasEscala;
-        // Se a escala for muito curta, arredonda para cima para garantir que haja uma meta mínima.
         return totalDiasEscala < 7 ? Math.ceil(meta) : meta;
     } 
 
@@ -66,27 +66,34 @@ function calcularMetaHoras(funcionario, inicioEscala, fimEscala) {
         const diasDaEscalaNesseMes = mesesNaEscala[mesAno];
         metaHoras += (horasContratadasBase / diasNoMesCalendario) * diasDaEscalaNesseMes;
     }
-    // Arredonda para cima também para metas mensais em períodos curtos.
     return totalDiasEscala < 15 ? Math.ceil(metaHoras) : metaHoras;
 }
 
-/**
- * NOVA FUNÇÃO: Calcula a meta de turnos proporcional para o período da escala.
- * @param {object} funcionario - O objeto do funcionário.
- * @param {string} inicioEscala - Data de início da escala (ISO).
- * @param {string} fimEscala - Data de fim da escala (ISO).
- * @returns {number} - A meta de turnos para o período.
- */
-function calcularMetaTurnos(funcionario, inicioEscala, fimEscala) {
+
+function calcularMetaTurnos(funcionario, inicioEscala, fimEscala, cargoDiasOperacionais = DIAS_SEMANA.map(d => d.id)) {
     const metaBase = parseFloat(funcionario.cargaHoraria) || 0;
     if (metaBase === 0) return 0;
     
     const dateRange = dateRangeInclusive(inicioEscala, fimEscala);
-    const totalDiasEscala = dateRange.length;
+    
+    let diasElegiveis = 0;
+    dateRange.forEach(date => {
+        const d = new Date(date + 'T12:00:00');
+        const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
+        if (cargoDiasOperacionais.includes(diaSemanaId)) {
+            diasElegiveis++;
+        }
+    });
 
+    if (diasElegiveis === 0) return 0;
+    
     if (funcionario.periodoHoras === 'semanal') {
-        const meta = (metaBase / 7) * totalDiasEscala;
-        return totalDiasEscala < 7 ? Math.ceil(meta) : meta;
+        const diasElegiveisBase = DIAS_SEMANA.filter(d => cargoDiasOperacionais.includes(d.id)).length;
+        if (diasElegiveisBase === 0) return 0;
+        
+        const meta = (metaBase / diasElegiveisBase) * diasElegiveis;
+        return Math.round(meta);
+
     } 
     
     let metaFinal = 0;
@@ -99,89 +106,142 @@ function calcularMetaTurnos(funcionario, inicioEscala, fimEscala) {
     for (const mesAno in mesesNaEscala) {
         const [ano, mes] = mesAno.split('-').map(Number);
         const diasNoMesCalendario = new Date(ano, mes, 0).getDate();
-        const diasDaEscalaNesseMes = mesesNaEscala[mesAno];
-        metaFinal += (metaBase / diasNoMesCalendario) * diasDaEscalaNesseMes;
-    }
-    return totalDiasEscala < 15 ? Math.ceil(metaFinal) : metaFinal;
-}
-
-
-function calculateConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMap) {
-    const turnosDoFuncMap = new Map(allSlots.filter(s => s.assigned === employeeId).map(s => [s.date, s]));
-    let streak = 0;
-    let currentDate = targetDate;
-    while (true) {
-        const currentSlot = turnosDoFuncMap.get(currentDate);
-        if (currentSlot && !turnosMap[currentSlot.turnoId]?.isSystem) {
-            streak++;
-        } else {
-            const previousDay = addDays(currentDate, -1);
-            const previousShiftSlot = turnosDoFuncMap.get(previousDay);
-            if (previousShiftSlot && previousShiftSlot.turnoId && turnosMap[previousShiftSlot.turnoId]) {
-                const turnoInfo = turnosMap[previousShiftSlot.turnoId];
-                if (parseTimeToMinutes(turnoInfo.fim) + (turnoInfo.diasDeDiferenca * 1440) > 1440) {
-                    // Turno noturno que terminou no dia 'currentDate', a sequência não é quebrada.
-                } else {
-                    break;
-                }
-            } else {
-                break;
+        
+        let diasUteisNaEscalaNesseMes = 0;
+        const diasDaEscala = dateRange.filter(d => d.startsWith(mesAno));
+        diasDaEscala.forEach(date => {
+             const d = new Date(date + 'T12:00:00');
+             const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
+             if (cargoDiasOperacionais.includes(diaSemanaId)) {
+                diasUteisNaEscalaNesseMes++;
+            }
+        });
+        
+        let diasUteisNoMesCalendario = 0;
+        for (let day = 1; day <= diasNoMesCalendario; day++) {
+            const date = new Date(Date.UTC(ano, mes - 1, day));
+            const diaSemanaId = DIAS_SEMANA[date.getUTCDay()].id;
+             if (cargoDiasOperacionais.includes(diaSemanaId)) {
+                diasUteisNoMesCalendario++;
             }
         }
-        currentDate = addDays(currentDate, -1);
+        
+        if (diasUteisNoMesCalendario === 0) continue;
+
+        metaFinal += (metaBase / diasUteisNoMesCalendario) * diasUteisNaEscalaNesseMes;
     }
-    return streak;
+    return Math.round(metaFinal);
 }
 
+function mergeTimeIntervals(turnos) {
+    if (!turnos || turnos.length === 0) return null;
+
+    const minutosEm24h = 1440;
+    let intervalos = turnos.map(t => {
+        const start = parseTimeToMinutes(t.inicio);
+        const end = parseTimeToMinutes(t.fim) + (t.diasDeDiferenca || 0) * minutosEm24h;
+        return { start, end };
+    });
+
+    const intervalosCiclicos = [...intervalos];
+    intervalos.forEach(iv => {
+        intervalosCiclicos.push({ start: iv.start + minutosEm24h, end: iv.end + minutosEm24h });
+    });
+    intervalosCiclicos.sort((a, b) => a.start - b.start);
+
+    const merged = [];
+    if (intervalosCiclicos.length > 0) {
+        merged.push({ ...intervalosCiclicos[0] });
+        for (let i = 1; i < intervalosCiclicos.length; i++) {
+            const last = merged[merged.length - 1];
+            const current = intervalosCiclicos[i];
+            if (current.start <= last.end) {
+                last.end = Math.max(last.end, current.end);
+            } else {
+                merged.push({ ...current });
+            }
+        }
+    }
+
+    for (const iv of merged) {
+        if (iv.end - iv.start >= minutosEm24h) {
+            return { is24h: true };
+        }
+    }
+
+    const minStartMinutes = Math.min(...turnos.map(t => parseTimeToMinutes(t.inicio)));
+    const maxEndMinutesTotal = Math.max(...turnos.map(t => parseTimeToMinutes(t.fim) + (t.diasDeDiferenca || 0) * 1440));
+    
+    const inicio = minutesToHHMM(minStartMinutes);
+    const fimModulo = maxEndMinutesTotal % minutosEm24h;
+    const fim = minutesToHHMM(fimModulo);
+
+    return { is24h: false, inicio, fim };
+}
+
+
 /**
- * CORREÇÃO: Nova função que calcula a sequência completa de dias de trabalho (para frente e para trás).
+ * FUNÇÃO REESCRITA: Calcula a sequência completa de dias de trabalho, contando corretamente os turnos noturnos.
  */
 function calculateFullConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMap) {
-    const turnosDoFuncMap = new Map(allSlots.filter(s => s.assigned === employeeId).map(s => [s.date, s]));
+    const employeeShifts = allSlots
+        .filter(s => s.assigned === employeeId && turnosMap[s.turnoId] && !turnosMap[s.turnoId].isSystem)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (employeeShifts.length === 0) return 0;
+
+    const targetShiftIndex = employeeShifts.findIndex(s => s.date === targetDate);
     
-    // Função auxiliar para verificar se um dia é um dia de trabalho.
-    const isWorkDay = (date) => {
-        const slot = turnosDoFuncMap.get(date);
-        if (slot && !turnosMap[slot.turnoId]?.isSystem) {
-            return true;
+    // Se a data alvo não tiver um turno, não há sequência a partir dela
+    if (targetShiftIndex === -1) return 0;
+
+    let firstShiftIndex = targetShiftIndex;
+    // Anda para trás para encontrar o início da sequência
+    for (let i = targetShiftIndex; i > 0; i--) {
+        const currentShift = employeeShifts[i];
+        const prevShift = employeeShifts[i - 1];
+        
+        const prevTurnoInfo = turnosMap[prevShift.turnoId];
+        const prevShiftEndDate = addDays(prevShift.date, (prevTurnoInfo.diasDeDiferenca || 0));
+        
+        // A data seguinte ao fim do turno anterior
+        const dayAfterPrevShiftEnd = addDays(prevShiftEndDate, 1);
+        
+        // Se a data de início do turno atual for posterior ao primeiro dia livre após o turno anterior,
+        // significa que houve uma folga (gap) e a sequência foi quebrada.
+        if (currentShift.date > dayAfterPrevShiftEnd) {
+            break;
         }
-        // Verifica se é um dia de "descanso" coberto por um turno noturno anterior.
-        const prevDate = addDays(date, -1);
-        const prevSlot = turnosDoFuncMap.get(prevDate);
-        if (prevSlot && turnosMap[prevSlot.turnoId]) {
-            const turnoInfo = turnosMap[prevSlot.turnoId];
-            if (!turnoInfo.isSystem && (parseTimeToMinutes(turnoInfo.fim) + (turnoInfo.diasDeDiferenca || 0) * 1440) > 1440) {
-                return true;
-            }
-        }
-        return false;
-    };
-    
-    if (!isWorkDay(targetDate)) {
-        return 0;
+        
+        firstShiftIndex = i - 1;
     }
 
-    let firstDay = targetDate;
-    while (isWorkDay(addDays(firstDay, -1))) {
-        firstDay = addDays(firstDay, -1);
-    }
+    let lastShiftIndex = targetShiftIndex;
+    // Anda para frente para encontrar o fim da sequência
+    for (let i = targetShiftIndex; i < employeeShifts.length - 1; i++) {
+        const currentShift = employeeShifts[i];
+        const nextShift = employeeShifts[i + 1];
 
-    let lastDay = targetDate;
-    while (isWorkDay(addDays(lastDay, 1))) {
-        lastDay = addDays(lastDay, 1);
+        const currentTurnoInfo = turnosMap[currentShift.turnoId];
+        const currentShiftEndDate = addDays(currentShift.date, (currentTurnoInfo.diasDeDiferenca || 0));
+        
+        const dayAfterCurrentShiftEnd = addDays(currentShiftEndDate, 1);
+
+        // Se a data de início do próximo turno for posterior ao primeiro dia livre, a sequência quebrou.
+        if (nextShift.date > dayAfterCurrentShiftEnd) {
+            break;
+        }
+        
+        lastShiftIndex = i + 1;
     }
     
-    // A sequência é o número de dias entre o primeiro e o último dia de trabalho, inclusive.
-    return dateRangeInclusive(firstDay, lastDay).length;
+    // A contagem de dias consecutivos é o número de turnos na sequência encontrada.
+    return (lastShiftIndex - firstShiftIndex + 1);
 }
 
 
-/**
- * FUNÇÃO CORRIGIDA: Verifica violações de descanso obrigatório para o passado E para o futuro.
- */
+
 function checkMandatoryRestViolation(employee, newShiftTurno, newShiftDate, allSlots, turnosMap) {
-    // A verificação de tipo de contrato foi removida para que a regra de descanso
-    // seja aplicada a todos os funcionários, independentemente do tipo de contrato.
     if (newShiftTurno.isSystem) {
         return { violation: false, message: '' };
     }
@@ -190,10 +250,12 @@ function checkMandatoryRestViolation(employee, newShiftTurno, newShiftDate, allS
     const newShiftStart = new Date(`${newShiftDate}T${newShiftTurno.inicio}`);
     
     // 1. Verificação para trás (o novo turno viola o descanso de um turno anterior?)
-    const previousShift = allEmployeeShifts.filter(s => s.date < newShiftDate).pop();
+    const shiftsBefore = allEmployeeShifts.filter(s => s.date < newShiftDate);
+    const previousShift = shiftsBefore.pop();
+    
     if (previousShift) {
         const prevTurnoInfo = turnosMap[previousShift.turnoId];
-        if (prevTurnoInfo && prevTurnoInfo.descansoObrigatorioHoras) {
+        if (prevTurnoInfo && !prevTurnoInfo.isSystem && prevTurnoInfo.descansoObrigatorioHoras) {
             const prevShiftEnd = new Date(`${previousShift.date}T${prevTurnoInfo.fim}`);
             prevShiftEnd.setDate(prevShiftEnd.getDate() + (prevTurnoInfo.diasDeDiferenca || 0));
             const diffHours = (newShiftStart - prevShiftEnd) / (1000 * 60 * 60);
@@ -206,9 +268,10 @@ function checkMandatoryRestViolation(employee, newShiftTurno, newShiftDate, allS
     // 2. Verificação para frente (o novo turno impõe um descanso que é violado por um turno futuro?)
     if (newShiftTurno.descansoObrigatorioHoras) {
         const nextShift = allEmployeeShifts.find(s => s.date > newShiftDate);
+        
         if (nextShift) {
             const nextTurnoInfo = turnosMap[nextShift.turnoId];
-            if (nextTurnoInfo) {
+            if (nextTurnoInfo && !nextTurnoInfo.isSystem) {
                 const newShiftEnd = new Date(`${newShiftDate}T${newShiftTurno.fim}`);
                 newShiftEnd.setDate(newShiftEnd.getDate() + (newShiftTurno.diasDeDiferenca || 0));
                 

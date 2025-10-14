@@ -434,7 +434,6 @@ html[data-theme="dark"] .brush-separator {
   100% { transform: translateX(calc(-100% + 50px)); } /* Pausa no final */
 }
 
-/* CORREÇÃO: Aplica a animação APENAS quando a classe .should-marquee está presente */
 .shift-brush:hover .brush-name.should-marquee {
     animation: marquee 3s linear infinite;
 }
@@ -519,7 +518,6 @@ html[data-theme="dark"] .brush-separator {
     line-height: 1.2;
 }
 
-/* CARD DE ATALHOS (CORRIGIDO) */
 .action-row-card {
     justify-content: center;
     text-align: center;
@@ -566,7 +564,6 @@ html[data-theme="dark"] .action-row-card {
     pointer-events: none;
 }
 
-/* NOVO: Estilo para a célula com foco de teclado */
 .escala-final-table td:focus {
     box-shadow: inset 0 0 0 3px var(--brand);
     outline: none;
@@ -578,11 +575,20 @@ html[data-theme="dark"] .action-row-card {
     cursor: pointer;
 }
 
-
 .escala-final-table tr.employee-row-highlight td:first-child {
     border-left: 4px solid var(--brand);
     background-color: #eef2ff;
 }
+
+/* NOVO: Estilo para indicar que o nome do funcionário é clicável */
+.escala-final-table tbody tr[data-employee-row-id] td:first-child:hover {
+    cursor: pointer;
+    background-color: #e0e7ff;
+}
+html[data-theme="dark"] .escala-final-table tbody tr[data-employee-row-id] td:first-child:hover {
+    background-color: rgba(99, 102, 241, 0.2);
+}
+
 
 html[data-theme="dark"] .escala-final-table tr.employee-row-highlight td:first-child {
     background-color: rgba(37, 99, 235, 0.15);
@@ -677,16 +683,4 @@ html[data-theme="dark"] .escala-final-table tr.employee-row-highlight td:first-c
     border-width: 5px;
     border-style: solid;
     border-color: var(--danger) transparent transparent transparent;
-}
-
-.editable-cell.dragging {
-    opacity: 0.4;
-}
-
-.editable-cell.drop-target {
-    box-shadow: inset 0 0 0 3px var(--brand);
-}
-
-.escala-final-table .editable-cell.drop-target.drop-invalid {
-    box-shadow: inset 0 0 0 3px var(--danger);
 }

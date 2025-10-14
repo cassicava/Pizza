@@ -59,16 +59,8 @@ function renderRelatoriosEscalaList(cargoId) {
         return;
     }
 
-    // Agrupa por ano e mês (mesma lógica de escalas-salvas.js)
-    const escalasAgrupadas = escalasFiltradas.reduce((acc, esc) => {
-        const ano = esc.inicio.substring(0, 4);
-        const mes = esc.inicio.substring(5, 7);
-        if (!acc[ano]) acc[ano] = {};
-        if (!acc[ano][mes]) acc[ano][mes] = [];
-        acc[ano][mes].push(esc);
-        return acc;
-    }, {});
-
+    // Usa a função utilitária para agrupar as escalas
+    const escalasAgrupadas = groupEscalasByMonth(escalasFiltradas);
     const anosOrdenados = Object.keys(escalasAgrupadas).sort((a, b) => b.localeCompare(a));
 
     anosOrdenados.forEach(ano => {

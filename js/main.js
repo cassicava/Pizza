@@ -42,39 +42,39 @@ function go(page, options = {}) {
 
     (async () => {
         if (dirtyForms[currentPageId]) {
-            const confirmado = await showConfirm({
+            const { confirmed } = await showConfirm({
                 title: "Descartar Alterações?",
                 message: "Você tem alterações não salvas. Deseja sair e perdê-las?",
                 confirmText: "Sim, Sair"
             });
-            if (!confirmado) return;
+            if (!confirmed) return;
         }
 
         isNavigating = true; 
 
-        if (currentPageEl) {
-            currentPageEl.style.animation = 'fadeOut 0.2s ease-out forwards';
-        }
-
-        setTimeout(() => {
+        const transitionLogic = () => {
             if (currentPageEl) {
                 currentPageEl.classList.remove('active');
-                currentPageEl.style.animation = '';
+                currentPageEl.classList.remove('fading-out'); // Limpa a classe de animação
                 // Lógica de limpeza para a página que está saindo
                 switch (currentPageId) {
                     case 'turnos': cancelEditTurno(); break;
                     case 'cargos': cancelEditCargo(); break;
                     case 'funcionarios': cancelEditFunc(); break;
                     case 'equipes': cancelEditEquipe(); break;
-                    case 'gerar-escala': resetGeradorWizard(); break;
+                    case 'gerar-escala': 
+                        resetGeradorWizard(); 
+                        currentEscala = null; // Garante que a escala atual seja limpa
+                        if (typeof editorState !== 'undefined') {
+                            editorState.focusedEmployeeId = null; 
+                        }
+                        break;
                 }
             }
             
             const nextPageEl = $(`#page-${page}`);
             if (nextPageEl) {
                 nextPageEl.classList.add('active');
-                nextPageEl.style.animation = 'fadeIn 0.2s ease-in forwards';
-                setTimeout(() => { if (nextPageEl) nextPageEl.style.animation = ''; }, 200);
             }
             
             $$(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -108,7 +108,6 @@ function go(page, options = {}) {
                     break;
                 case 'gerar-escala': initGeradorPage(options); break;
                 case 'relatorios': renderRelatoriosPage(); break;
-                // ALTERADO: Garante que os filtros sejam populados ao navegar para a página
                 case 'escalas-salvas': 
                     renderFiltroEscalasCargo(); 
                     renderEscalasList(); 
@@ -116,7 +115,14 @@ function go(page, options = {}) {
             }
             parseEmojisInElement(document.body);
             isNavigating = false; 
-        }, 200); 
+        };
+
+        if (currentPageEl) {
+            currentPageEl.addEventListener('animationend', transitionLogic, { once: true });
+            currentPageEl.classList.add('fading-out');
+        } else {
+            transitionLogic();
+        }
     })();
 }
 

@@ -53,24 +53,39 @@ const store = {
     // 5. MUTATIONS: Funções puras que efetivamente alteram o estado.
     mutations: {
         LOAD_STATE(state) {
+            const DATA_VERSION = "1.1";
+            const currentVersion = localStorage.getItem('ge_data_version');
+
             state.turnos = loadJSON(KEYS.turnos, []);
-            // Garante que os turnos de sistema estejam sempre presentes no estado
+            state.cargos = loadJSON(KEYS.cargos, []);
+            state.equipes = loadJSON(KEYS.equipes, []);
+            state.escalas = loadJSON(KEYS.escalas, []);
+            state.config = loadJSON(KEYS.config, { nome: '', theme: 'light' });
+
+            // Lógica de Migração de Dados
+            if (currentVersion !== DATA_VERSION) {
+                // Migração v1.0 -> v1.1: Garante que todos os funcionários tenham um status.
+                const loadedFuncs = loadJSON(KEYS.funcs, []);
+                state.funcionarios = loadedFuncs.map(f => ({ ...f, status: f.status || 'ativo' }));
+                saveJSON(KEYS.funcs, state.funcionarios); // Salva os dados migrados de volta
+                
+                // Atualiza a versão dos dados no localStorage
+                localStorage.setItem('ge_data_version', DATA_VERSION);
+            } else {
+                // Se a versão for a mais recente, apenas carrega os dados normalmente.
+                state.funcionarios = loadJSON(KEYS.funcs, []);
+            }
+            
+            // Garante que os turnos de sistema (folga, férias) estejam sempre presentes e atualizados no estado
             const systemTurnos = Object.values(TURNOS_SISTEMA_AUSENCIA);
             systemTurnos.forEach(systemTurno => {
                 const index = state.turnos.findIndex(t => t.id === systemTurno.id);
                 if (index === -1) {
                     state.turnos.push(systemTurno);
                 } else {
-                    // Atualiza o turno de sistema caso haja alguma alteração
                     state.turnos[index] = systemTurno;
                 }
             });
-
-            state.cargos = loadJSON(KEYS.cargos, []);
-            state.funcionarios = loadJSON(KEYS.funcs, []);
-            state.equipes = loadJSON(KEYS.equipes, []);
-            state.escalas = loadJSON(KEYS.escalas, []);
-            state.config = loadJSON(KEYS.config, { nome: '', theme: 'light' });
         },
 
         SAVE_TURNO(state, turno) {

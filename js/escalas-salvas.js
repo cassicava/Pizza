@@ -51,19 +51,7 @@ function renderEscalasList() {
         return;
     }
 
-    const escalasAgrupadas = escalasFiltradas.reduce((acc, esc) => {
-        const ano = esc.inicio.substring(0, 4);
-        const mes = esc.inicio.substring(5, 7);
-        if (!acc[ano]) {
-            acc[ano] = {};
-        }
-        if (!acc[ano][mes]) {
-            acc[ano][mes] = [];
-        }
-        acc[ano][mes].push(esc);
-        return acc;
-    }, {});
-
+    const escalasAgrupadas = groupEscalasByMonth(escalasFiltradas);
     const anosOrdenados = Object.keys(escalasAgrupadas).sort((a, b) => b.localeCompare(a));
 
     anosOrdenados.forEach(ano => {

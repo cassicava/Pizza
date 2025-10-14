@@ -24,6 +24,9 @@ function generateVisaoGeralPDF(escala) {
     if (!escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
         throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
     }
+    const { cargos } = store.getState();
+    const cargo = cargos.find(c => c.id === escala.cargoId);
+    const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
@@ -105,31 +108,54 @@ function generateVisaoGeralPDF(escala) {
             }
         },
         didDrawCell: (data) => {
+            const func = funcsDaEscala[data.row.index];
+            const date = dateRange[data.column.index - 1];
+            
             if (data.section === 'body' && data.column.index > 0) {
-                const func = funcsDaEscala[data.row.index];
-                const date = dateRange[data.column.index - 1];
+                const d = new Date(date + 'T12:00:00');
+                const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
+                const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
+                const isCargoDiaNaoUtil = !cargoDiasOperacionais.has(diaSemanaId);
+
                 const slot = escala.slots.find(s => s.date === date && s.assigned === func.id);
                 const turnoInfo = slot ? getTurnoInfo(slot.turnoId) : null;
+                
+                let text = data.cell.text.toString().trim();
+                let bgColor = '';
+                let textColor = [0, 0, 0];
+                let fontStyle = 'normal';
 
-                if (turnoInfo?.cor) {
-                    doc.setFillColor(turnoInfo.cor);
+                if (slot && turnoInfo) {
+                    bgColor = turnoInfo.cor;
+                    textColor = getContrastingTextColor(turnoInfo.cor) === '#FFFFFF' ? [255, 255, 255] : [0, 0, 0];
+                    fontStyle = 'bold';
+                    text = turnoInfo.sigla;
+                } else if (feriadoFolga) {
+                    bgColor = '#eef2ff'; // Light Blue/Gray (cor da celula-feriado-folga)
+                    textColor = [67, 56, 202]; // Dark Blue (cor do texto)
+                    text = 'FOLGA';
+                } else if (isCargoDiaNaoUtil) {
+                    bgColor = '#f1f5f9'; // Light Gray (cor da celula-fechada)
+                    text = '';
+                } else {
+                    bgColor = '#ffffff';
+                }
+
+                if (bgColor) {
+                    doc.setFillColor(bgColor);
                     doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-                    
-                    doc.setTextColor(getContrastingTextColor(turnoInfo.cor));
-                    doc.setFont(undefined, 'bold');
-                    doc.setFontSize(data.cell.styles.fontSize);
+                }
+                
+                doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+                doc.setFont(undefined, fontStyle);
+                doc.setFontSize(data.cell.styles.fontSize);
 
-                    const text = data.cell.text.toString().trim();
-                    const textWidth = doc.getTextWidth(text);
-                    const textX = data.cell.x + (data.cell.width - textWidth) / 2;
-                    const textY = data.cell.y + (data.cell.height / 2);
+                if (text) {
+                     const textWidth = doc.getTextWidth(text);
+                     const textX = data.cell.x + (data.cell.width - textWidth) / 2;
+                     const textY = data.cell.y + (data.cell.height / 2);
 
-                    doc.text(
-                        text, 
-                        textX, 
-                        textY,
-                        { valign: 'middle' }
-                    );
+                     doc.text(text, textX, textY, { valign: 'middle' });
                 }
             }
         },
@@ -137,6 +163,7 @@ function generateVisaoGeralPDF(escala) {
 
     let finalY = doc.lastAutoTable.finalY || 60;
     
+    // --- LEGENDAS ---
     const legendItems = [];
     const turnosNaEscalaIds = [...new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId))];
     
@@ -195,6 +222,7 @@ function generateVisaoGeralPDF(escala) {
         legendX += rectSize + textSpacing + maxWidth + spacing;
     });
 
+    // --- SEGUNDA PÁGINA (RESUMO) ---
     doc.addPage();
     doc.setFontSize(16);
     doc.text('Resumo de Carga Horária no Período', 40, 40);
@@ -206,7 +234,11 @@ function generateVisaoGeralPDF(escala) {
         let saldoLabel = '';
 
         if (func.medicaoCarga === 'turnos') {
-            const metaTurnos = calcularMetaTurnos(func, escala.inicio, escala.fim);
+            const { cargos } = store.getState();
+            const cargo = cargos.find(c => c.id === escala.cargoId);
+            const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
+            
+            const metaTurnos = calcularMetaTurnos(func, escala.inicio, escala.fim, cargoDiasOperacionais);
             const realizadoTurnos = escala.historico[func.id]?.turnosTrabalhados || 0;
             const saldo = realizadoTurnos - metaTurnos;
             
@@ -246,6 +278,10 @@ function generateRelatorioDiarioPDF(escala) {
     if (!escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
         throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
     }
+    const { cargos } = store.getState();
+    const cargo = cargos.find(c => c.id === escala.cargoId);
+    const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
+
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
@@ -272,57 +308,110 @@ function generateRelatorioDiarioPDF(escala) {
         const d = new Date(date + 'T12:00:00');
         const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'long' });
         const diaFormatado = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        const fullDateString = `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)}, ${diaFormatado}`;
-        doc.setFontSize(20);
-        doc.text(fullDateString, pageWidth / 2, 110, { align: 'center' });
-
-        let yPos = 160;
-        const turnosDoDiaIds = [...new Set(escala.slots.filter(s => s.date === date).map(s => s.turnoId))];
-        const turnosOrdenados = turnosDoDiaIds
-            .map(id => ({ id, ...getTurnoInfo(id) }))
-            .sort((a,b) => {
-                if(!a.inicio || !b.inicio) return 0;
-                return a.inicio.localeCompare(b.inicio);
-            });
         
-        turnosOrdenados.forEach(turno => {
-            if (!turno.id) return;
-            
-            const funcionariosAlocados = escala.slots
-                .filter(s => s.date === date && s.turnoId === turno.id && s.assigned)
-                .map(s => getFuncInfo(s.assigned)?.nome);
-            
-            const cardHeight = 25 + (funcionariosAlocados.length * 30);
-            doc.setFillColor(turno.cor || '#cccccc');
-            doc.rect(leftMargin, yPos, 8, cardHeight, 'F');
+        const feriadoDoDia = escala.feriados.find(f => f.date === date);
+        const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
+        const isCargoDiaNaoUtil = !cargoDiasOperacionais.has(diaSemanaId);
 
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text(`${turno.nome} (${turno.inicio} - ${turno.fim})`, leftMargin + 20, yPos + 18);
-            
-            yPos += 25 + 15;
-
-            if (funcionariosAlocados.length > 0) {
-                doc.setFontSize(16);
-                doc.setFont(undefined, 'normal');
-                funcionariosAlocados.forEach(nome => {
-                    doc.text(`\u2022 ${nome || 'Funcionário Removido'}`, leftMargin + 25, yPos);
-                    
-                    doc.setDrawColor(220, 220, 220); 
-                    doc.setLineWidth(0.5);
-                    doc.line(leftMargin + 25, yPos + 8, rightMargin, yPos + 8);
-
-                    yPos += 30;
-                });
-            } else {
-                doc.setFontSize(12);
-                doc.setTextColor(150);
-                doc.text('Nenhum funcionário alocado.', leftMargin + 25, yPos);
-                doc.setTextColor(0);
-                yPos += 30;
+        let statusDia = '';
+        if (feriadoDoDia) {
+            statusDia = ` - FERIADO: ${feriadoDoDia.nome}`;
+            if (!feriadoDoDia.trabalha) {
+                statusDia += ' (FOLGA GERAL)';
             }
-            yPos += 15;
-        });
+        } else if (isCargoDiaNaoUtil) {
+            statusDia = ' - CARGO FECHADO';
+        }
+        
+        const fullDateString = `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)}, ${diaFormatado}${statusDia}`;
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text(fullDateString, pageWidth / 2, 110, { align: 'center' });
+        doc.setFont(undefined, 'normal');
+
+
+        let yPos = 140;
+        
+        // Se o dia for fechado ou folga geral, exibe a mensagem e pula os turnos.
+        if (statusDia.includes('FECHADO') || statusDia.includes('FOLGA GERAL')) {
+            doc.setFontSize(12);
+            doc.setTextColor(150);
+            doc.text(`Dia não operacional para este cargo.`, pageWidth / 2, yPos, { align: 'center' });
+            yPos += 20;
+        } else {
+             const turnosDoDiaIds = [...new Set(escala.slots.filter(s => s.date === date).map(s => s.turnoId))];
+             const turnosOrdenados = turnosDoDiaIds
+                .map(id => ({ id, ...getTurnoInfo(id) }))
+                .filter(t => t.id)
+                .sort((a,b) => {
+                    if(!a.inicio || !b.inicio) return 0;
+                    return a.inicio.localeCompare(b.inicio);
+                });
+            
+            turnosOrdenados.forEach(turno => {
+                if (!turno.id) return;
+                
+                const funcionariosAlocados = escala.slots
+                    .filter(s => s.date === date && s.turnoId === turno.id && s.assigned)
+                    .map(s => {
+                        const func = getFuncInfo(s.assigned);
+                        const isExtra = s.isExtra ? ' (H. Extra)' : '';
+                        return `${func.nome || 'Funcionário Removido'}${isExtra}`;
+                    });
+                
+                // Se for um turno de sistema (Folga/Férias), o funcionário já está atribuído no slot.
+                if (turno.isSystem && funcionariosAlocados.length === 0) {
+                     // Isso deve ser raro, mas garante que não quebre.
+                    return; 
+                }
+
+                const turnoSistemaTitulo = turno.isSystem ? `(${turno.nome})` : `(${turno.inicio} - ${turno.fim})`;
+                
+                const cardHeight = 30 + (funcionariosAlocados.length * 20); // Ajusta altura para evitar quebra
+                const cardY = yPos;
+
+                // Desenha a linha lateral de cor
+                doc.setFillColor(turno.cor || '#cccccc');
+                doc.rect(leftMargin, cardY, 8, cardHeight, 'F');
+
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text(`${turno.nome} ${turnoSistemaTitulo}`, leftMargin + 20, cardY + 18);
+                
+                yPos += 25;
+
+                if (funcionariosAlocados.length > 0) {
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'normal');
+                    doc.setTextColor(0);
+                    
+                    funcionariosAlocados.forEach(nome => {
+                        doc.text(`\u2022 ${nome}`, leftMargin + 25, yPos);
+                        
+                        doc.setDrawColor(220, 220, 220); 
+                        doc.setLineWidth(0.5);
+                        doc.line(leftMargin + 25, yPos + 6, rightMargin, yPos + 6);
+
+                        yPos += 20;
+                    });
+                } else {
+                    doc.setFontSize(10);
+                    doc.setTextColor(150);
+                    doc.text('Nenhum funcionário alocado.', leftMargin + 25, yPos);
+                    doc.setTextColor(0);
+                    yPos += 20;
+                }
+                yPos += 15;
+
+                // Quebra de página se o próximo turno não couber
+                if (yPos > pageHeight - 60) {
+                    doc.setFontSize(8);
+                    doc.text(`Página ${index + 1} de ${dateRange.length}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
+                    doc.addPage();
+                    yPos = 60; // Reinicia a posição Y na nova página
+                }
+            });
+        }
         
         doc.setFontSize(8);
         doc.text(`Página ${index + 1} de ${dateRange.length}`, pageWidth / 2, pageHeight - 30, { align: 'center' });

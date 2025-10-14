@@ -410,6 +410,14 @@ html[data-theme="dark"] .is-afastamento-dot { background-color: #ea580c; }
     color: white;
 }
 
+/* NOVO: Estilo para corrigir sobreposição no container de cobertura complementar */
+.cobertura-complementar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
 /* --- ESTILOS DA VISUALIZAÇÃO DA ESCALA --- */
 
 #escalaView.hidden,
