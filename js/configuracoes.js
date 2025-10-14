@@ -104,22 +104,25 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
     const termosDeUsoHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
             <p><strong>Última atualização:</strong> 14 de Outubro de 2025</p>
-            <h4>1. Introdução e Aceitação dos Termos</h4>
-            <p>Bem-vindo(a) ao Escala Fácil ("Software"). Estes Termos de Uso ("Termos") representam um contrato legal entre você ("Usuário") e o desenvolvedor do Escala Fácil. Ao adquirir e/ou utilizar o Software, você confirma que leu, entendeu e concorda em estar vinculado a estes Termos.</p>
-            <h4>2. Licença de Uso</h4>
-            <p>Sujeito ao pagamento do valor aplicável, concedemos a você uma licença limitada, não exclusiva e intransferível para usar o Software para seus fins pessoais ou de negócios internos. Você concorda em não revender, redistribuir ou fazer engenharia reversa do Software.</p>
-            <h4>3. Descrição do Serviço</h4>
-            <p>O Escala Fácil é uma ferramenta de software que funciona inteiramente no seu navegador. Todos os dados inseridos são armazenados exclusivamente no seu dispositivo local. Nós não temos acesso, não coletamos e não armazenamos nenhuma de suas informações.</p>
-            <h4>4. Responsabilidades do Usuário</h4>
-            <p>Ao utilizar o Software, você concorda que é o único responsável por garantir a exatidão dos dados inseridos e por proteger e fazer cópias de segurança (backup) regulares de seus dados, pois não temos como recuperá-los em caso de perda.</p>
+            <h4>1. Aceitação dos Termos</h4>
+            <p>Bem-vindo(a) ao Escala Fácil ("Software"). Ao utilizar este Software, você ("Usuário") concorda integralmente com estes Termos de Uso ("Termos"). Se você не concorda com qualquer parte destes Termos, não deve utilizar o Software.</p>
+            
+            <h4>2. Natureza do Software e Armazenamento de Dados</h4>
+            <p>O Escala Fácil é uma aplicação que opera <strong>exclusivamente no seu navegador de internet</strong>. Todos os dados inseridos — incluindo, mas не se limitando a, informações de funcionários, turnos, cargos e escalas — são armazenados localmente no seu dispositivo, através da tecnologia <code>localStorage</code> do navegador.</p>
+            <p><strong>Nenhum dado inserido por você é enviado, coletado ou armazenado em servidores externos.</strong> O desenvolvedor do Software не tem acesso a nenhuma de suas informações.</p>
+
+            <h4>3. Responsabilidade do Usuário</h4>
+            <p><strong>Segurança e Backup:</strong> Você é o único responsável pela segurança e manutenção dos seus dados. O Software oferece uma funcionalidade de exportação ("backup") que deve ser utilizada regularmente para prevenir a perda de dados, que pode ocorrer ao limpar o cache do navegador, trocar de computador ou por falhas no dispositivo.</p>
+            <p><strong>Conformidade Legal:</strong> As escalas geradas pelo Software são baseadas nas regras que você define. É sua responsabilidade garantir que as escalas finais estejam em conformidade com todas as leis trabalhistas, acordos coletivos e regulamentações aplicáveis à sua operação.</p>
+
+            <h4>4. Licença de Uso</h4>
+            <p>Concedemos a você uma licença limitada, não exclusiva e intransferível para usar o Software para fins pessoais ou de negócios internos. É expressamente proibido redistribuir, revender, modificar ou fazer engenharia reversa do Software.</p>
+
             <h4>5. Limitação de Responsabilidade e Isenção de Garantias</h4>
-            <p>O Software é fornecido "COMO ESTÁ", sem garantias de qualquer tipo. O desenvolvedor NÃO SERÁ RESPONSÁVEL POR QUAISQUER DANOS diretos ou indiretos decorrentes do uso ou da incapacidade de usar o Software.</p>
-            <h4>6. Modificações nos Termos</h4>
-            <p>Reservamo-nos o direito de modificar estes Termos a qualquer momento. O uso continuado do Software após quaisquer alterações constitui sua aceitação dos novos Termos.</p>
-            <h4>7. Disposições Gerais</h4>
-            <p>Estes Termos serão regidos pelas leis da República Federativa do Brasil.</p>
-            <h4>8. Contato</h4>
-            <p>Se você tiver alguma dúvida sobre estes Termos de Uso, entre em contato conosco através do e-mail: <strong>escalafacil.contato@gmail.com</strong>.</p>
+            <p>O Software é fornecido "COMO ESTÁ", sem garantias de qualquer tipo, expressas ou implícitas. O desenvolvedor não se responsabiliza por quaisquer danos diretos, indiretos, acidentais ou consequenciais (incluindo perda de dados, interrupção de negócios ou perdas financeiras) resultantes do uso ou da incapacidade de usar o Software.</p>
+            
+            <h4>6. Contato</h4>
+            <p>Se você tiver alguma dúvida sobre estes Termos de Uso, entre em contato através do e-mail: <strong>escalafacil.contato@gmail.com</strong></p>
         </div>
     `;
 
@@ -175,7 +178,6 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
 
 function exibirAtalhosDeTeclado() {
     const shortcuts = [
-        { keys: ['🖱️', 'Arrastar'], desc: 'Move um turno para uma célula vazia ou o troca com outro turno.' },
         { keys: ['↑', '↓', '←', '→'], desc: 'Navegam pela grade da escala.' },
         { keys: ['Q', 'E'], desc: 'Trocam o funcionário focado na Barra de Ferramentas.' },
         { keys: ['1', '...', '9'], desc: 'Selecionam o pincel de turno correspondente.' },
