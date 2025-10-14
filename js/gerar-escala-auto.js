@@ -13,6 +13,8 @@ let tempAusencia = {
     start: null,
     end: null,
 };
+// Flag para controle do listener de emoji
+let catEmojiListenerAttached = false;
 
 function setGeradorFormDirty(isDirty) {
     dirtyForms['gerar-escala'] = isDirty;
@@ -47,6 +49,7 @@ function resetGeradorWizard() {
     $("#gerador-wizard-passo1").classList.add('active');
 
     $('#btnGerarEscala').textContent = '✨ Gerar Escala ✨';
+    parseEmojisInElement($('#btnGerarEscala'));
 
     if ($("#gerar-escCargo")) $("#gerar-escCargo").value = '';
     if ($("#gerar-escIni")) $("#gerar-escIni").value = '';
@@ -110,6 +113,8 @@ function checkStep1Completion() {
 
 /* --- NOVO: LÓGICA DA ANIMAÇÃO DE EMOJIS --- */
 function initCatEmojiSpawner() {
+    if (catEmojiListenerAttached) return;
+
     const container = document.querySelector('#gerador-wizard-passo1 .wizard-tips-container');
     if (!container) return;
 
@@ -120,7 +125,7 @@ function initCatEmojiSpawner() {
         if (!canSpawn) return;
 
         canSpawn = false;
-        setTimeout(() => { canSpawn = true; }, 150); // Controla a frequência
+        setTimeout(() => { canSpawn = true; }, 150); 
 
         const rect = container.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -133,11 +138,14 @@ function initCatEmojiSpawner() {
         emoji.style.top = `${y}px`;
 
         container.appendChild(emoji);
+        parseEmojisInElement(emoji);
 
         emoji.addEventListener('animationend', () => {
             emoji.remove();
         });
     });
+
+    catEmojiListenerAttached = true;
 }
 
 
@@ -212,7 +220,7 @@ function renderHolidayCalendar() {
     rangeSet.forEach(date => {
         const monthKey = date.substring(0, 7);
         if (!months[monthKey]) {
-            months[monthKey] = true; // Use um objeto para obter meses únicos
+            months[monthKey] = true; 
         }
     });
 
@@ -353,6 +361,7 @@ function renderHolidayEditor(date) {
         </div>
     `;
     addHolidayEditorListeners(date);
+    parseEmojisInElement(container);
 }
 
 function renderHolidayList() {
@@ -545,6 +554,7 @@ function renderAusenciasStep() {
     addAusenciaListeners();
     renderAusenciaCalendar();
     renderAusenciaList();
+    parseEmojisInElement(container);
 }
 
 function addAusenciaListeners() {
@@ -565,7 +575,7 @@ function renderAusenciaCalendar() {
     rangeSet.forEach(date => {
         const monthKey = date.substring(0, 7);
         if (!months[monthKey]) {
-            months[monthKey] = true; // Use um objeto para obter meses únicos
+            months[monthKey] = true;
         }
     });
 
@@ -937,6 +947,34 @@ function renderPasso4_Cobertura() {
     });
 
     $$('input[data-cobertura]', container).forEach(input => input.addEventListener('input', () => setGeradorFormDirty(true)));
+
+    // DESATIVA INPUTS DE FOLGAS DE FIM DE SEMANA SE O CARGO NÃO OPERAR
+    const diasOperacionais = new Set(cargo?.regras?.dias || []);
+    const sabadoInput = $('#gerar-minFolgasSabados');
+    const domingoInput = $('#gerar-minFolgasDomingos');
+
+    const checkWeekendInput = (input, dayId, dayName) => {
+        const parent = input.closest('.animated-field');
+        let helperText = parent.querySelector('.field-helper-text');
+        if (!helperText) {
+            helperText = document.createElement('span');
+            helperText.className = 'field-helper-text muted';
+            helperText.style.fontSize = '0.8rem';
+            parent.appendChild(helperText);
+        }
+
+        if (!diasOperacionais.has(dayId)) {
+            input.disabled = true;
+            input.value = 0;
+            helperText.textContent = `O cargo não opera aos ${dayName}s.`;
+        } else {
+            input.disabled = false;
+            helperText.textContent = ``;
+        }
+    };
+
+    checkWeekendInput(sabadoInput, 'sab', 'Sábado');
+    checkWeekendInput(domingoInput, 'dom', 'Domingo');
 }
 
 function updateTeamPatternExplanation(patternDiv) {
@@ -960,6 +998,7 @@ function updateTeamPatternExplanation(patternDiv) {
         }
     }
     explanationDiv.innerHTML = `🗓️ Esta equipe trabalhará em um padrão de ${work}x${off}, começando em ${new Date(startDate+'T12:00:00').toLocaleDateString()}.<br>Ex: Dias ${diasDeTrabalho.join(', ')}...`;
+    parseEmojisInElement(explanationDiv);
 }
 
 
@@ -1012,12 +1051,14 @@ function setupInlineTitleEditor() {
         if (currentEscala) textEl.textContent = currentEscala.nome;
         container.classList.remove('is-editing');
         editBtn.innerHTML = '✏️';
+        parseEmojisInElement(editBtn);
     };
 
     const toEditMode = () => {
         if (!currentEscala) return;
         container.classList.add('is-editing');
         editBtn.innerHTML = '✔️';
+        parseEmojisInElement(editBtn);
         inputEl.value = currentEscala.nome;
         inputEl.focus();
         inputEl.select();
@@ -1120,11 +1161,11 @@ function setupGeradorPage() {
     });
 
     $("#btnExcluirEscalaGerador").addEventListener('click', async () => {
-        const confirmado = await showConfirm({
+        const { confirmed } = await showConfirm({
             title: "Descartar Alterações?",
             message: "Você tem certeza que deseja descartar esta escala? Todo o progresso não salvo será perdido."
         });
-        if (confirmado) {
+        if (confirmed) {
             resetGeradorWizard();
             go('home');
         }

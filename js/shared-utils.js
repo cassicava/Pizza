@@ -134,10 +134,55 @@ function calculateConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMa
 }
 
 /**
+ * CORREÇÃO: Nova função que calcula a sequência completa de dias de trabalho (para frente e para trás).
+ */
+function calculateFullConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMap) {
+    const turnosDoFuncMap = new Map(allSlots.filter(s => s.assigned === employeeId).map(s => [s.date, s]));
+    
+    // Função auxiliar para verificar se um dia é um dia de trabalho.
+    const isWorkDay = (date) => {
+        const slot = turnosDoFuncMap.get(date);
+        if (slot && !turnosMap[slot.turnoId]?.isSystem) {
+            return true;
+        }
+        // Verifica se é um dia de "descanso" coberto por um turno noturno anterior.
+        const prevDate = addDays(date, -1);
+        const prevSlot = turnosDoFuncMap.get(prevDate);
+        if (prevSlot && turnosMap[prevSlot.turnoId]) {
+            const turnoInfo = turnosMap[prevSlot.turnoId];
+            if (!turnoInfo.isSystem && (parseTimeToMinutes(turnoInfo.fim) + (turnoInfo.diasDeDiferenca || 0) * 1440) > 1440) {
+                return true;
+            }
+        }
+        return false;
+    };
+    
+    if (!isWorkDay(targetDate)) {
+        return 0;
+    }
+
+    let firstDay = targetDate;
+    while (isWorkDay(addDays(firstDay, -1))) {
+        firstDay = addDays(firstDay, -1);
+    }
+
+    let lastDay = targetDate;
+    while (isWorkDay(addDays(lastDay, 1))) {
+        lastDay = addDays(lastDay, 1);
+    }
+    
+    // A sequência é o número de dias entre o primeiro e o último dia de trabalho, inclusive.
+    return dateRangeInclusive(firstDay, lastDay).length;
+}
+
+
+/**
  * FUNÇÃO CORRIGIDA: Verifica violações de descanso obrigatório para o passado E para o futuro.
  */
 function checkMandatoryRestViolation(employee, newShiftTurno, newShiftDate, allSlots, turnosMap) {
-    if (employee.tipoContrato !== 'clt' || newShiftTurno.isSystem) {
+    // A verificação de tipo de contrato foi removida para que a regra de descanso
+    // seja aplicada a todos os funcionários, independentemente do tipo de contrato.
+    if (newShiftTurno.isSystem) {
         return { violation: false, message: '' };
     }
 

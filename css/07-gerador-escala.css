@@ -280,6 +280,32 @@ html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
   background-color: #423c1b;
 }
 
+/* NOVOS ESTILOS PARA CÉLULAS DE DIA FECHADO E FERIADO COM FOLGA */
+.celula-fechada {
+  background-color: #f1f5f9;
+  background-image: repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(0,0,0,0.04) 4px, rgba(0,0,0,0.04) 8px);
+  cursor: not-allowed;
+}
+html[data-theme="dark"] .celula-fechada {
+  background-color: #1e293b;
+  background-image: repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(255,255,255,0.04) 4px, rgba(255,255,255,0.04) 8px);
+}
+
+.celula-feriado-folga {
+  background-color: #eef2ff;
+  color: #4338ca;
+  font-weight: 500;
+  font-size: 0.7rem;
+  cursor: not-allowed;
+  text-align: center;
+  vertical-align: middle;
+}
+html[data-theme="dark"] .celula-feriado-folga {
+  background-color: #312e81;
+  color: #c7d2fe;
+}
+
+
 .celula-turno:hover {
   transform: scale(1.05);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
@@ -332,7 +358,6 @@ html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
   margin-left: 8px;
 }
 
-/* NOVO: Espaçamento inferior para o conteúdo dos cards do wizard */
 #page-gerar-escala .passo1-grid,
 #page-gerar-escala .passo2-holiday-grid,
 #page-gerar-escala #ausencia-step-container,
@@ -646,7 +671,7 @@ html[data-theme="dark"] .legenda-item:hover {
   z-index: 2;
 }
 .resumo-prog-overtime {
-  background-color: #22c55e;
+  background-color: var(--overtime-color);
   z-index: 1;
 }
 .resumo-prog-bar.red {
@@ -657,6 +682,9 @@ html[data-theme="dark"] .legenda-item:hover {
 }
 .resumo-prog-bar.blue {
   background-color: #3b82f6;
+}
+.resumo-prog-bar.green {
+  background-color: #4ade80;
 }
 
 .resumo-text-details {

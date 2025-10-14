@@ -5,6 +5,11 @@
 let editingTurnoId = null;
 let lastAddedTurnoId = null;
 
+// Referência à função de troca de abas, será definida na inicialização
+let switchTurnosTab = () => {};
+
+// --- Cache de Elementos DOM ---
+const pageTurnos = $("#page-turnos");
 const turnoNomeInput = $("#turnoNome");
 const turnoSiglaInput = $("#turnoSigla");
 const turnoInicioInput = $("#turnoInicio");
@@ -24,26 +29,28 @@ const btnSalvarTurno = $("#btnSalvarTurno");
 const btnCancelarTurno = $("#btnCancelarTurno");
 const filtroTurnosInput = $("#filtroTurnos");
 const tblTurnosBody = $("#tblTurnos tbody");
+const formTabButton = $('.painel-tab-btn[data-tab="formulario"]', pageTurnos);
+
 
 const PALETA_CORES = [
-    '#e2e8f0', '#fecaca', '#fed7aa', '#fef08a', '#d9f99d', '#bfdbfe', '#a5b4fc', '#f5d0fe',
-    '#cbd5e1', '#fca5a5', '#fbbf24', '#facc15', '#a3e635', '#93c5fd', '#818cf8', '#e879f9',
-    '#94a3b8', '#f87171', '#f97316', '#eab308', '#84cc16', '#60a5fa', '#6366f1', '#d946ef'
+    '#e0f2fe', '#fecaca', '#fed7aa', '#fef08a', '#d9f99d', '#bfdbfe', '#a5b4fc', '#f5d0fe',
+    '#dcfce7', '#fca5a5', '#fbbf24', '#facc15', '#a3e635', '#93c5fd', '#818cf8', '#e879f9',
+    '#fae8ff', '#f87171', '#f97316', '#eab308', '#84cc16', '#60a5fa', '#6366f1', '#d946ef'
 ];
+
 
 function setTurnoFormDirty(isDirty) { dirtyForms.turnos = isDirty; }
 
-// ALTERADO: Adiciona validação visual para o campo de horário final
 function checkHorarioLogico() {
     const inicio = turnoInicioInput.value;
     const fim = turnoFimInput.value;
     const diasDeDiferenca = Number(turnoFimDiaSelect.value);
     if (inicio && fim && diasDeDiferenca === 0 && parseTimeToMinutes(fim) <= parseTimeToMinutes(inicio)) {
         showToast("Atenção: O horário final deve ser maior que o inicial no mesmo dia.");
-        validateInput(turnoFimInput, false); // Adiciona a borda vermelha
+        validateInput(turnoFimInput, false);
         return false;
     }
-    validateInput(turnoFimInput, true); // Garante que o campo volte ao normal se estiver correto
+    validateInput(turnoFimInput, true);
     return true;
 }
 
@@ -92,7 +99,6 @@ descansoToggleButtons.forEach(button => {
     });
 });
 
-// ALTERADO: Adiciona o seletor de cor personalizada
 function renderCorPalette() {
     const container = $("#turnoCorPalette");
     container.innerHTML = '';
@@ -105,7 +111,6 @@ function renderCorPalette() {
         container.appendChild(swatch);
     });
 
-    // Cria o gatilho para o seletor de cor
     const pickerTrigger = document.createElement('div');
     pickerTrigger.className = 'color-swatch color-picker-trigger';
     pickerTrigger.title = 'Escolher cor personalizada';
@@ -114,6 +119,7 @@ function renderCorPalette() {
         <input type="color" id="turnoCorPicker" value="#ffffff">
     `;
     container.appendChild(pickerTrigger);
+    parseEmojisInElement(pickerTrigger);
 
     const colorInput = $("#turnoCorPicker");
     colorInput.addEventListener('input', (e) => {
@@ -122,11 +128,9 @@ function renderCorPalette() {
     });
 }
 
-// ALTERADO: Gerencia a seleção de cores personalizadas e da paleta
 function selectCor(cor) {
     turnoCorHiddenInput.value = cor;
 
-    // Remove a seleção de todas as amostras da paleta
     $$('#turnoCorPalette .color-swatch').forEach(sw => sw.classList.remove('selected'));
 
     const pickerTrigger = $('.color-picker-trigger');
@@ -138,8 +142,21 @@ function selectCor(cor) {
     } else {
         const swatch = $(`#turnoCorPalette .color-swatch[data-cor="${cor}"]`);
         if (swatch) swatch.classList.add('selected');
-        pickerTrigger.style.backgroundColor = ''; // Reseta a cor de fundo do gatilho
+        pickerTrigger.style.backgroundColor = ''; 
     }
+}
+
+function getLeastUsedColor() {
+    const { turnos } = store.getState();
+    const colorCounts = PALETA_CORES.reduce((acc, color) => ({ ...acc, [color]: 0 }), {});
+    
+    turnos.filter(t => !t.isSystem).forEach(t => {
+        if (colorCounts.hasOwnProperty(t.cor)) {
+            colorCounts[t.cor]++;
+        }
+    });
+
+    return Object.entries(colorCounts).sort((a, b) => a[1] - b[1])[0][0];
 }
 
 
@@ -160,8 +177,10 @@ function updateTurnoCargaPreview() {
         turnoCargaSpan.classList.add("highlight");
         if (cargaTotalMin >= 1440) {
             turnoDeLongaDuracaoIndicator.classList.remove('hidden');
+            parseEmojisInElement(turnoDeLongaDuracaoIndicator);
         } else if (diasDeDiferenca > 0 || parseTimeToMinutes(f) < parseTimeToMinutes(i)) {
             turnoViraDiaIndicator.classList.remove('hidden');
+            parseEmojisInElement(turnoViraDiaIndicator);
         }
     }
 }
@@ -171,7 +190,6 @@ function renderTurnos() {
     const filtro = filtroTurnosInput.value.toLowerCase();
     tblTurnosBody.innerHTML = "";
     
-    // Filtra os turnos de sistema para que não apareçam na tabela de edição
     const turnosEditaveis = turnos.filter(t => !t.isSystem);
 
     const turnosFiltrados = turnosEditaveis.filter(t => t.nome.toLowerCase().includes(filtro) || (t.sigla && t.sigla.toLowerCase().includes(filtro)));
@@ -185,6 +203,7 @@ function renderTurnos() {
                </div>`
             : `<p class="muted center">Nenhum turno encontrado com o termo "${filtro}".</p>`;
         tblTurnosBody.innerHTML = `<tr><td colspan="9">${emptyStateText}</td></tr>`;
+        parseEmojisInElement(tblTurnosBody);
         return;
     }
     turnosOrdenados.forEach(t => {
@@ -207,6 +226,7 @@ function renderTurnos() {
             </td>`;
         tblTurnosBody.appendChild(tr);
     });
+    parseEmojisInElement(tblTurnosBody);
     if (lastAddedTurnoId) {
         tblTurnosBody.querySelector(`tr[data-turno-id="${lastAddedTurnoId}"]`)?.classList.add('new-item');
         lastAddedTurnoId = null;
@@ -226,7 +246,7 @@ function validateTurnoForm() {
 async function saveTurnoFromForm() {
     if (!validateTurnoForm()) {
         showToast("Preencha todos os campos obrigatórios.");
-        focusFirstInvalidInput('#page-turnos .card');
+        focusFirstInvalidInput('#page-turnos .painel-gerenciamento');
         return;
     }
     if (!checkHorarioLogico()) return;
@@ -269,16 +289,18 @@ async function saveTurnoFromForm() {
     
     store.dispatch('SAVE_TURNO', dadosTurno);
     
-    cancelEditTurno();
-    
     showToast("Turno salvo com sucesso!");
+    switchTurnosTab('gerenciar');
 }
 
 function editTurnoInForm(id) {
     const { turnos } = store.getState();
     const turno = turnos.find(t => t.id === id);
-    if (!turno || turno.isSystem) return; // Impede a edição de turnos de sistema
+    if (!turno || turno.isSystem) return; 
+    
+    cancelEditTurno(); 
     editingTurnoId = id;
+
     turnoNomeInput.value = turno.nome;
     turnoSiglaInput.value = turno.sigla || '';
     selectCor(turno.cor || PALETA_CORES[0]);
@@ -294,8 +316,11 @@ function editTurnoInForm(id) {
     }
     updateTurnoCargaPreview();
     btnSalvarTurno.textContent = "💾 Salvar Alterações";
+    parseEmojisInElement(btnSalvarTurno);
     setTurnoFormDirty(false);
-    window.scrollTo(0, 0);
+    
+    formTabButton.textContent = `Editando: ${turno.nome}`;
+    switchTurnosTab('formulario');
 }
 
 function cancelEditTurno() {
@@ -307,25 +332,35 @@ function cancelEditTurno() {
     turnoFimDiaSelect.value = 0;
     turnoAlmocoInput.value = "";
 
-    const { turnos } = store.getState();
-    const colorCounts = PALETA_CORES.reduce((acc, color) => ({ ...acc, [color]: 0 }), {});
-    turnos.forEach(t => {
-        if (colorCounts.hasOwnProperty(t.cor)) {
-            colorCounts[t.cor]++;
-        }
-    });
-    const leastUsedColor = Object.entries(colorCounts).sort((a, b) => a[1] - b[1])[0][0];
-    selectCor(leastUsedColor || PALETA_CORES[0]);
+    selectCor(getLeastUsedColor() || PALETA_CORES[0]);
     
-    $$('.invalid', turnoNomeInput.closest('.card')).forEach(el => el.classList.remove('invalid'));
+    $$('.invalid', pageTurnos).forEach(el => el.classList.remove('invalid'));
     $(`.toggle-btn[data-value="nao"]`, descansoToggleGroup).click();
     updateTurnoCargaPreview();
+    
     btnSalvarTurno.textContent = "💾 Salvar Turno";
+    formTabButton.textContent = "Novo Turno"; // Redefine o título da aba
+    parseEmojisInElement(btnSalvarTurno);
     setTurnoFormDirty(false);
+
     turnoNomeInput.focus();
 }
 
 function deleteTurno(id) {
+    const { escalas } = store.getState();
+    const isTurnoInUse = escalas.some(escala => 
+        escala.slots.some(slot => slot.turnoId === id)
+    );
+
+    if (isTurnoInUse) {
+        showInfoModal({
+            title: "Exclusão Bloqueada",
+            contentHTML: `<p>Este turno não pode ser excluído porque está sendo utilizado em uma ou mais <strong>escalas salvas</strong>.</p>
+                          <p>Para preservar o histórico das escalas, a exclusão não é permitida. Se este turno não é mais necessário, você pode renomeá-lo para algo como "Inativo" ou "Arquivado".</p>`
+        });
+        return;
+    }
+    
     handleDeleteItem({ id, itemName: 'Turno', dispatchAction: 'DELETE_TURNO' });
 }
 
@@ -338,11 +373,29 @@ function handleTurnosTableClick(event) {
 }
 
 function initTurnosPage() {
+    switchTurnosTab = setupTabbedPanel('#page-turnos .painel-gerenciamento', (tabId) => {
+        if (tabId === 'gerenciar') {
+            cancelEditTurno();
+        }
+    });
+
+    $('.btn-add-new', pageTurnos).addEventListener('click', () => {
+        cancelEditTurno();
+        formTabButton.textContent = "Novo Turno";
+        switchTurnosTab('formulario');
+    });
+
     btnSalvarTurno.addEventListener('click', saveTurnoFromForm);
-    btnCancelarTurno.addEventListener('click', cancelEditTurno);
+    btnCancelarTurno.addEventListener('click', () => {
+        cancelEditTurno();
+        switchTurnosTab('gerenciar');
+    });
+    
     tblTurnosBody.addEventListener('click', handleTurnosTableClick);
+    filtroTurnosInput.addEventListener("input", renderTurnos);
+
     renderCorPalette();
-    selectCor(PALETA_CORES[0]);
+    selectCor(getLeastUsedColor() || PALETA_CORES[0]);
     $(`.toggle-btn[data-value="nao"]`, descansoToggleGroup).click();
     setTurnoFormDirty(false);
 }

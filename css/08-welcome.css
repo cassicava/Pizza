@@ -64,6 +64,58 @@
     max-width: 450px;
 }
 
+/* --- NOVOS CARDS DE OPÇÃO (PASSO 1) --- */
+.welcome-options-container {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    margin-top: 16px;
+}
+
+.welcome-option-card {
+    flex: 1;
+    padding: 24px;
+    border: 2px solid var(--border);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: var(--bg);
+}
+
+.welcome-option-card:hover {
+    border-color: var(--brand);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+}
+
+html[data-theme="dark"] .welcome-option-card {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="dark"] .welcome-option-card:hover {
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+.welcome-option-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    margin-bottom: 12px;
+}
+
+.welcome-option-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    color: var(--fg);
+}
+
+.welcome-option-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+
 /* --- Botões --- */
 .welcome-btn {
     padding: 10px 24px;
@@ -80,13 +132,8 @@
     border-color: var(--brand);
     color: var(--brand);
 }
-/* ADIÇÃO: Garante que o botão inicial tenha a cor correta */
-#welcome-start-btn {
-    border-color: var(--brand);
-    color: var(--brand);
-}
 
-.welcome-btn-primary:hover, #welcome-start-btn:hover {
+.welcome-btn-primary:hover {
     background: var(--brand);
     color: #fff;
     transform: translateY(-2px);
@@ -340,4 +387,15 @@ html[data-theme="dark"] .info-card.accepted {
 }
 .welcome-step.active .welcome-feature-item:nth-child(4) {
   animation-delay: 0.8s;
+}
+
+/* --- Media Queries --- */
+@media (max-width: 768px) {
+    .welcome-card {
+        padding: 32px 24px 64px 24px;
+        max-width: 95%;
+    }
+    .welcome-options-container {
+        flex-direction: column;
+    }
 }

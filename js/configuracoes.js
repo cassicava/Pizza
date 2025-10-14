@@ -176,7 +176,7 @@ function exibirAtalhosDeTeclado() {
     const shortcuts = [
         { keys: ['🖱️', 'Arrastar'], desc: 'Move um turno para uma célula vazia ou o troca com outro turno.' },
         { keys: ['↑', '↓', '←', '→'], desc: 'Navegam pela grade da escala.' },
-        { keys: ['Q', 'E'], desc: 'Trocam o funcionário focado na Caixa de Ferramentas.' },
+        { keys: ['Q', 'E'], desc: 'Trocam o funcionário focado na Barra de Ferramentas.' },
         { keys: ['1', '...', '9'], desc: 'Selecionam o pincel de turno correspondente.' },
         { keys: ['Enter'], desc: 'Pinta a célula focada com o pincel selecionado.' },
         { keys: ['Delete', 'Backspace'], desc: 'Apagam o turno da célula focada.' },
@@ -224,6 +224,7 @@ function initConfiguracoesPage() {
         e.preventDefault();
         exibirPoliticaDePrivacidade();
     };
+    // ADICIONADO: Listener para o novo botão de atalhos
     $("#config-shortcuts-card").onclick = (e) => {
         e.preventDefault();
         exibirAtalhosDeTeclado();
@@ -251,7 +252,7 @@ function initConfiguracoesPage() {
     if (btnCopyPix && pixKeyText) {
         btnCopyPix.onclick = () => {
             navigator.clipboard.writeText(pixKeyText.textContent).then(() => {
-                showToast('Chave PIX copiada!');
+                showToast('Chave PIX copiada! 📋');
             }).catch(err => {
                 console.error('Erro ao copiar a chave PIX: ', err);
                 showToast('Erro ao copiar. Tente manualmente.');

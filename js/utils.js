@@ -5,10 +5,31 @@
 const $ = (sel, el=document) => el.querySelector(sel);
 const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
-function saveJSON(key, data){ localStorage.setItem(key, JSON.stringify(data)); }
+function saveJSON(key, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+        console.error("Erro ao salvar no localStorage:", e);
+        showToast("Erro ao salvar! O armazenamento pode estar cheio.", "error");
+    }
+}
+
 function loadJSON(key, fallback){
   try { return JSON.parse(localStorage.getItem(key)) || fallback; }
   catch { return fallback; }
+}
+
+/**
+ * Roda o parser do Twemoji em um elemento específico do DOM para substituir emojis nativos por imagens.
+ * @param {HTMLElement} element O elemento container cujos emojis devem ser parseados.
+ */
+function parseEmojisInElement(element) {
+    if (element && typeof twemoji !== 'undefined') {
+        twemoji.parse(element, {
+            folder: 'svg',
+            ext: '.svg'
+        });
+    }
 }
 
 function showLoader(message = "Processando...") {
@@ -87,6 +108,7 @@ function showToast(message, type = 'info') {
     toast.classList.add(type, "visible");
     
     toastMessage.textContent = message;
+    parseEmojisInElement(toastMessage);
 
     toastTimeoutId = setTimeout(() => {
         toast.classList.remove("visible");
@@ -100,25 +122,48 @@ function showToast(message, type = 'info') {
     }, 4500); 
 }
 
-function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "Cancelar" }) {
+function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "Cancelar", checkbox = null }) {
     return new Promise((resolve) => {
         const backdrop = $("#modalBackdrop");
+        const modal = $("#modal");
+        const modalMessageEl = $("#modalMessage");
         const modalConfirmBtn = $("#modalConfirm");
         const modalCancelBtn = $("#modalCancel");
         $("#modalTitle").textContent = title;
-        $("#modalMessage").innerHTML = `<p>${message}</p>`;
+
+        let checkboxHTML = '';
+        if (checkbox) {
+            checkboxHTML = `
+            <div style="text-align: left; margin-top: 24px; background-color: var(--bg); padding: 8px 12px; border-radius: 12px;">
+                <label class="check-inline" style="justify-content: flex-start; border: none; padding: 0;">
+                    <input type="checkbox" id="modal-checkbox">
+                    <span style="font-weight: 500;">${checkbox.label}</span>
+                </label>
+            </div>`;
+        }
+        modalMessageEl.innerHTML = `<p>${message}</p>${checkboxHTML}`;
+
+        parseEmojisInElement(modalMessageEl);
         modalConfirmBtn.textContent = confirmText;
         modalConfirmBtn.disabled = false;
         modalCancelBtn.textContent = cancelText;
         modalConfirmBtn.style.display = 'inline-flex';
         modalCancelBtn.style.display = 'inline-flex';
+
+        modal.classList.add("modal--toast-style");
         backdrop.classList.remove("hidden");
+
         const cleanupAndResolve = (value) => {
+            const result = { confirmed: value };
+            if (checkbox && value) {
+                result.checkboxChecked = $("#modal-checkbox")?.checked || false;
+            }
             modalConfirmBtn.onclick = null;
             modalCancelBtn.onclick = null;
-            $("#modalMessage").innerHTML = '';
+            modalMessageEl.innerHTML = '';
+            modal.classList.remove("modal--toast-style");
             backdrop.classList.add("hidden");
-            resolve(value);
+            resolve(result);
         };
         modalConfirmBtn.onclick = () => cleanupAndResolve(true);
         modalCancelBtn.onclick = () => cleanupAndResolve(false);
@@ -131,6 +176,7 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
         const modalActionsContainer = $(".modal-actions");
         $("#modalTitle").textContent = title;
         $("#modalMessage").innerHTML = message ? `<p>${message}</p>` : '';
+        parseEmojisInElement($("#modalMessage"));
 
         modalActionsContainer.classList.toggle('modal-actions-column', columnLayout);
         
@@ -142,6 +188,7 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
             button.className = action.class || 'secondary';
             button.onclick = () => cleanupAndResolve(action.id);
             modalActionsContainer.appendChild(button);
+            parseEmojisInElement(button);
         });
 
         backdrop.classList.remove("hidden");
@@ -170,9 +217,11 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
 
 function showInfoModal({ title, contentHTML }) {
     const backdrop = $("#modalBackdrop");
+    const modalMessageEl = $("#modalMessage");
     const modalCancelBtn = $("#modalCancel");
     $("#modalTitle").textContent = title;
-    $("#modalMessage").innerHTML = contentHTML;
+    modalMessageEl.innerHTML = contentHTML;
+    parseEmojisInElement(modalMessageEl);
     $("#modalConfirm").style.display = 'none';
     modalCancelBtn.textContent = "Fechar";
     modalCancelBtn.style.display = 'inline-flex';
@@ -181,7 +230,7 @@ function showInfoModal({ title, contentHTML }) {
         backdrop.classList.add("hidden");
         modalCancelBtn.onclick = null;
         $("#modalConfirm").style.display = 'inline-flex';
-        $("#modalMessage").innerHTML = '';
+        modalMessageEl.innerHTML = '';
     };
     modalCancelBtn.onclick = closeHandler;
 }
@@ -194,6 +243,7 @@ function showScrollableConfirmModal({ title, contentHTML, confirmText = "Li e co
         const modalCancelBtn = $("#modalCancel");
         $("#modalTitle").textContent = title;
         modalMessageEl.innerHTML = contentHTML;
+        parseEmojisInElement(modalMessageEl);
         modalConfirmBtn.textContent = confirmText;
         modalConfirmBtn.disabled = true;
         modalCancelBtn.textContent = "Voltar";
@@ -230,16 +280,18 @@ function showScrollableConfirmModal({ title, contentHTML, confirmText = "Li e co
 async function showPromptConfirm({ title, message, promptLabel, requiredWord, confirmText = "Confirmar" }) {
     return new Promise((resolve) => {
         const backdrop = $("#modalBackdrop");
+        const modalMessageEl = $("#modalMessage");
         const modalConfirmBtn = $("#modalConfirm");
         const modalCancelBtn = $("#modalCancel");
         $("#modalTitle").textContent = title;
-        $("#modalMessage").innerHTML = `
+        modalMessageEl.innerHTML = `
             <p>${message}</p>
             <div class="form-group" style="align-items: flex-start; margin-top: 16px;">
                 <label for="modal-prompt-input" style="font-weight: 500;">${promptLabel}</label>
                 <input type="text" id="modal-prompt-input" autocomplete="off" style="width: 100%;">
             </div>
         `;
+        parseEmojisInElement(modalMessageEl);
         modalConfirmBtn.textContent = confirmText;
         modalConfirmBtn.disabled = true;
         modalCancelBtn.style.display = 'inline-flex';
@@ -265,15 +317,15 @@ async function showPromptConfirm({ title, message, promptLabel, requiredWord, co
 
 async function handleDeleteItem({ id, itemName, dispatchAction, additionalInfo = '' }) {
     let message = `Atenção: esta ação é permanente e não pode ser desfeita. Excluir este ${itemName.toLowerCase()} pode afetar outras partes do sistema. ${additionalInfo} Deseja continuar?`;
-    const confirmado = await showConfirm({
+    const { confirmed } = await showConfirm({
         title: `Confirmar Exclusão de ${itemName}?`,
         message: message
     });
-    if (confirmado) {
+    if (confirmed) {
         store.dispatch(dispatchAction, id);
         showToast(`${itemName} excluído com sucesso.`, 'success');
     }
-    return confirmado;
+    return confirmed;
 }
 
 function navigateWizardWithAnimation(containerSelector, targetStepId, direction) {
@@ -393,6 +445,7 @@ function playEmojiBurst(event) {
         emoji.style.setProperty('--r', `${rotation}deg`);
 
         document.body.appendChild(emoji);
+        parseEmojisInElement(emoji);
 
         emoji.addEventListener('animationend', () => {
             emoji.remove();
@@ -427,9 +480,67 @@ function playStarBurst(event) {
         star.style.setProperty('--r', `${rotation}deg`);
 
         document.body.appendChild(star);
+        parseEmojisInElement(star);
 
         star.addEventListener('animationend', () => {
             star.remove();
         });
     }
+}
+
+/**
+ * Limita a frequência de execução de uma função.
+ * @param {Function} func - A função a ser executada.
+ * @param {number} limit - O intervalo de tempo em milissegundos.
+ * @returns {Function} A nova função com throttle.
+ */
+const throttle = (func, limit) => {
+  let inThrottle;
+  return function() {
+    const args = arguments;
+    const context = this;
+    if (!inThrottle) {
+      func.apply(context, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  }
+};
+
+/**
+ * Configura um painel com abas, gerenciando a troca de visualização.
+ * @param {string} panelSelector - O seletor CSS para o elemento do painel principal (ex: '.painel-gerenciamento').
+ * @param {Function} [onTabSwitch=null] - Uma função de callback opcional executada quando uma aba é trocada, recebendo o ID da nova aba.
+ * @returns {Function|null} Uma função que pode ser chamada com um ID de aba para trocar programaticamente, ou null se o painel não for encontrado.
+ */
+function setupTabbedPanel(panelSelector, onTabSwitch = null) {
+    const panel = $(panelSelector);
+    if (!panel) return null;
+
+    const tabs = $$('.painel-tab-btn', panel);
+    const contents = $$('.painel-tab-content', panel);
+    const addBtn = $('.btn-add-new', panel);
+
+    const switchTab = (tabId) => {
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+        contents.forEach(c => c.classList.toggle('active', c.dataset.tabContent === tabId));
+        
+        if (addBtn) {
+            addBtn.style.display = (tabId === 'gerenciar') ? 'inline-flex' : 'none';
+        }
+
+        if (onTabSwitch) {
+            onTabSwitch(tabId);
+        }
+    };
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Não faz nada se a aba já estiver ativa
+            if (tab.classList.contains('active')) return;
+            switchTab(tab.dataset.tab)
+        });
+    });
+
+    return switchTab;
 }

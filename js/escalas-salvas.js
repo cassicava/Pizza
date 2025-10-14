@@ -2,7 +2,7 @@
  * 🗂️ Escalas Salvas
  **************************************/
 
-let escalaParaEditar = null; // Armazena a escala selecionada para visualização ou edição
+let escalaParaEditar = null; 
 
 function renderFiltroEscalasCargo() {
     const { escalas, cargos } = store.getState();
@@ -25,7 +25,7 @@ function renderEscalasList() {
     const { escalas } = store.getState();
     const filtroCargoSelect = $("#filtroEscalasCargo");
     const container = $("#listaEscalas");
-    container.innerHTML = ""; // Limpa a visualização anterior
+    container.innerHTML = ""; 
 
     const cargoFiltro = filtroCargoSelect ? filtroCargoSelect.value : '';
 
@@ -35,6 +35,7 @@ function renderEscalasList() {
             <h3>Nenhuma Escala Salva</h3>
             <p>As escalas que você gerar e salvar aparecerão aqui para consulta futura.</p>
         </div>`;
+        parseEmojisInElement(container);
         return;
     }
 
@@ -50,7 +51,6 @@ function renderEscalasList() {
         return;
     }
 
-    // Agrupa primeiro por ANO, depois por MÊS
     const escalasAgrupadas = escalasFiltradas.reduce((acc, esc) => {
         const ano = esc.inicio.substring(0, 4);
         const mes = esc.inicio.substring(5, 7);
@@ -64,7 +64,6 @@ function renderEscalasList() {
         return acc;
     }, {});
 
-    // Ordena os anos do mais recente para o mais antigo
     const anosOrdenados = Object.keys(escalasAgrupadas).sort((a, b) => b.localeCompare(a));
 
     anosOrdenados.forEach(ano => {
@@ -112,6 +111,7 @@ function renderEscalasList() {
             });
         });
     });
+    parseEmojisInElement(container);
 }
 
 function verEscalaSalva(id) {
@@ -119,6 +119,7 @@ function verEscalaSalva(id) {
     const escala = escalas.find(e => e.id === id);
     if (escala) {
         escalaParaEditar = escala;
+        currentEscala = escala; // Garante que currentEscala também seja setado
         escala.owner = 'salva';
 
         $("#escalaSalvaViewTitle").textContent = escala.nome || 'Visualização da Escala';
@@ -128,6 +129,7 @@ function verEscalaSalva(id) {
 
         $('#listaEscalasContainer').classList.add('hidden');
         $('#escalaSalvaView').classList.remove('hidden');
+        parseEmojisInElement($('#escalaSalvaView'));
     }
 }
 
@@ -135,7 +137,7 @@ function verEscalaSalva(id) {
 function editEscalaSalva() {
     if (escalaParaEditar) {
         go('gerar-escala', {
-            escalaParaEditar: escalaParaEditar,
+            escalaParaEditar: JSON.parse(JSON.stringify(escalaParaEditar)),
             isEditing: true
         });
     }
@@ -168,6 +170,7 @@ function initEscalasSalvasPage() {
         $('#escalaSalvaView').classList.add('hidden');
         $('#listaEscalasContainer').classList.remove('hidden');
         escalaParaEditar = null;
+        currentEscala = null; // Limpa a escala atual ao voltar
     };
     $("#btnEditarEscalaSalva").onclick = editEscalaSalva;
 
@@ -176,17 +179,26 @@ function initEscalasSalvasPage() {
             excluirEscalaSalva(escalaParaEditar.id);
         }
     };
+    
+    // CORREÇÃO: O botão de exportar agora usa o handler do pdf-export.js,
+    // que verifica por alterações não salvas.
+    const exportBtn = $("#btnExportarPDF");
+    if(exportBtn) {
+        exportBtn.onclick = () => {
+            if(escalaParaEditar) {
+                showExportModal(escalaParaEditar);
+            }
+        };
+    }
 
-    // Ponto central de eventos para a página de escalas salvas
+
     const pageContainer = $("#page-escalas-salvas");
     if(pageContainer) {
-        // Listener para o seletor de CARGO
         const filtroCargoSelect = $("#filtroEscalasCargo");
         if (filtroCargoSelect) {
             filtroCargoSelect.addEventListener('change', renderEscalasList);
         }
 
-        // Listener para os cliques nos cards de escala
         const listaEscalas = $("#listaEscalas");
         if(listaEscalas) {
             listaEscalas.addEventListener('click', handleEscalasSalvasContainerClick);

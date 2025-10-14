@@ -5,7 +5,11 @@
 let editingEquipeId = null;
 let lastAddedEquipeId = null;
 
+// Referência à função de troca de abas
+let switchEquipesTab = () => {};
+
 // --- Cache de Elementos DOM ---
+const pageEquipes = $("#page-equipes");
 const equipeNomeInput = $("#equipeNome");
 const equipeCargoSelect = $("#equipeCargo");
 const equipeTurnoSelect = $("#equipeTurno");
@@ -14,6 +18,8 @@ const filtroEquipesInput = $("#filtroEquipes");
 const tblEquipesBody = $("#tblEquipes tbody");
 const btnSalvarEquipe = $("#btnSalvarEquipe");
 const btnCancelarEquipe = $("#btnCancelarEquipe");
+const formTabButtonEquipes = $('.painel-tab-btn[data-tab="formulario"]', pageEquipes);
+
 
 function setEquipeFormDirty(isDirty) {
     dirtyForms.equipes = isDirty;
@@ -181,7 +187,7 @@ function validateEquipeForm() {
 function saveEquipeFromForm() {
     if (!validateEquipeForm()) {
         showToast("Preencha todos os campos obrigatórios.");
-        focusFirstInvalidInput('#page-equipes .card');
+        focusFirstInvalidInput('#page-equipes .painel-gerenciamento');
         return;
     }
 
@@ -199,9 +205,8 @@ function saveEquipeFromForm() {
 
     store.dispatch('SAVE_EQUIPE', equipeData);
     
-    cancelEditEquipe();
-    
     showToast("Equipe salva com sucesso!");
+    switchEquipesTab('gerenciar');
 }
 
 function editEquipeInForm(id) {
@@ -228,7 +233,9 @@ function editEquipeInForm(id) {
 
     btnSalvarEquipe.textContent = "💾 Salvar Alterações";
     setEquipeFormDirty(false);
-    window.scrollTo(0, 0);
+    
+    formTabButtonEquipes.textContent = `Editando: ${equipe.nome}`;
+    switchEquipesTab('formulario');
 }
 
 
@@ -240,9 +247,10 @@ function cancelEditEquipe() {
     handleEquipeCargoChange();
     
     btnSalvarEquipe.textContent = "💾 Salvar Equipe";
+    formTabButtonEquipes.textContent = "Nova Equipe";
     setEquipeFormDirty(false);
     
-    $$('.invalid, .invalid-fieldset').forEach(el => el.classList.remove('invalid-fieldset', 'invalid'));
+    $$('.invalid, .invalid-fieldset', pageEquipes).forEach(el => el.classList.remove('invalid-fieldset', 'invalid'));
     
     equipeNomeInput.focus();
 }
@@ -266,6 +274,18 @@ function handleEquipesTableClick(event) {
 // --- INICIALIZAÇÃO DA PÁGINA ---
 
 function initEquipesPageListeners() {
+    switchEquipesTab = setupTabbedPanel('#page-equipes .painel-gerenciamento', (tabId) => {
+        if (tabId === 'gerenciar') {
+            cancelEditEquipe();
+        }
+    });
+
+    $('.btn-add-new', pageEquipes).addEventListener('click', () => {
+        cancelEditEquipe();
+        formTabButtonEquipes.textContent = "Nova Equipe";
+        switchEquipesTab('formulario');
+    });
+
     equipeCargoSelect.addEventListener('change', () => {
         handleEquipeCargoChange();
         setEquipeFormDirty(true);
@@ -277,7 +297,11 @@ function initEquipesPageListeners() {
     filtroEquipesInput.addEventListener('input', renderEquipes);
     
     btnSalvarEquipe.addEventListener('click', saveEquipeFromForm);
-    btnCancelarEquipe.addEventListener('click', cancelEditEquipe);
+    btnCancelarEquipe.addEventListener('click', () => {
+        cancelEditEquipe();
+        switchEquipesTab('gerenciar');
+    });
+
     tblEquipesBody.addEventListener('click', handleEquipesTableClick);
 
     equipeNomeInput.addEventListener('input', () => setEquipeFormDirty(true));

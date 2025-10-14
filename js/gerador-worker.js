@@ -155,7 +155,9 @@ self.onmessage = function(e) {
         
         const metaHorasMap = new Map();
         const metaTurnosMap = new Map();
-        funcsIndividuais.forEach(f => {
+        
+        // CORREÇÃO: A meta agora é calculada para todos, não apenas individuais
+        todosFuncsDoCargo.forEach(f => {
             if (f.medicaoCarga === 'turnos') {
                 metaTurnosMap.set(f.id, calcularMetaTurnos(f, inicio, fim));
             } else {
@@ -165,7 +167,8 @@ self.onmessage = function(e) {
         
         postMessage({ type: 'progress', message: 'Ajustando metas para feriados...'});
         feriados.filter(feriado => feriado.descontaMeta && !feriado.trabalha).forEach(feriado => {
-            const funcsQueFolgaram = funcsIndividuais.filter(f => 
+            // CORREÇÃO: O filtro agora usa todosFuncsDoCargo para incluir membros de equipes
+            const funcsQueFolgaram = todosFuncsDoCargo.filter(f => 
                 !slots.some(s => s.date === feriado.date && s.assigned === f.id) &&
                 !excecoesMap[f.id].has(feriado.date)
             );
@@ -204,11 +207,14 @@ self.onmessage = function(e) {
                 const slotMonth = slot.date.substring(0, 7);
 
                 const candidatos = funcsIndividuais.map(f => {
+                    const tempSlots = [...slots, { date: slot.date, turnoId: slot.turnoId, assigned: f.id }];
+
                     if (excecoesMap[f.id].has(slot.date)) return null;
                     if (!f.disponibilidade[turno.id]?.includes(slotDiaSemanaId)) return null;
                     if (slots.some(s => s.assigned === f.id && s.date === slot.date)) return null;
-                    if (checkMandatoryRestViolation(f, turno, slot.date, slots, turnosMap).violation) return null;
-                    if ((calculateConsecutiveWorkDays(f.id, slots, addDays(slot.date, -1), turnosMap) + 1) > maxDiasConsecutivos) return null;
+                    if (checkMandatoryRestViolation(f, turno, slot.date, tempSlots, turnosMap).violation) return null;
+                    // CORREÇÃO: Utiliza a nova função que olha para frente e para trás
+                    if (calculateFullConsecutiveWorkDays(f.id, tempSlots, slot.date, turnosMap) > maxDiasConsecutivos) return null;
 
                     if (slotDate.getUTCDay() === 6 || slotDate.getUTCDay() === 0) {
                         const workedWeekends = slots.filter(s => s.assigned === f.id && s.date.startsWith(slotMonth))
@@ -269,12 +275,31 @@ self.onmessage = function(e) {
         preencherSlotsIndividuais(true);
         
         postMessage({ type: 'progress', message: 'Finalizando escala...' });
+
+        // --- INÍCIO DA CORREÇÃO ---
+        // Recalcula o objeto de cobertura para incluir a contagem das equipes,
+        // garantindo que a linha "Faltam" na tabela de visualização seja precisa.
+        const coberturaFinal = { ...cobertura }; // Começa com a cobertura individual/complementar
+
+        for (const turnoId in coberturaPorEquipe) {
+            if (!coberturaFinal[turnoId]) {
+                coberturaFinal[turnoId] = 0;
+            }
+            coberturaPorEquipe[turnoId].forEach(regra => {
+                const equipe = equipesMap[regra.equipeId];
+                if (equipe && equipe.funcionarioIds) {
+                    coberturaFinal[turnoId] += equipe.funcionarioIds.length;
+                }
+            });
+        }
+        // --- FIM DA CORREÇÃO ---
+
         const nomeEscala = generateEscalaNome(cargo.nome, inicio, fim);
         const escalaFinal = {
             id: uid(), nome: nomeEscala, cargoId, inicio, fim, slots, historico,
             excecoes: JSON.parse(JSON.stringify(excecoes)),
             feriados: [...geradorState.feriados],
-            cobertura,
+            cobertura: coberturaFinal, // <-- USA O OBJETO CORRIGIDO
             regras: { maxDiasConsecutivos, minFolgasSabados, minFolgasDomingos }
         };
         

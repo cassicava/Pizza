@@ -114,7 +114,7 @@ function go(page, options = {}) {
                     renderEscalasList(); 
                     break;
             }
-
+            parseEmojisInElement(document.body);
             isNavigating = false; 
         }, 200); 
     })();
@@ -181,6 +181,9 @@ function initMainApp() {
         go(c.dataset.goto)
     }));
     $("#header-settings-btn").addEventListener('click', () => go('configuracoes'));
+
+    // Converte todos os emojis estáticos da página de uma vez.
+    parseEmojisInElement(document.body);
 }
 
 function init() {

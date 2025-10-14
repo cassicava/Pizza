@@ -20,6 +20,11 @@ function hideExportModal() {
  * @returns {jsPDF} - A instância do documento jsPDF.
  */
 function generateVisaoGeralPDF(escala) {
+    // Validação de dados: Garante que a escala tenha um snapshot válido.
+    if (!escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
+        throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
         orientation: 'landscape',
@@ -27,11 +32,9 @@ function generateVisaoGeralPDF(escala) {
         format: 'a4'
     });
 
-    const { funcionarios, turnos } = store.getState();
-    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
-    const useSnapshot = !!escala.snapshot;
-    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : allTurnos.find(t => t.id === turnoId)) || {};
-    const getFuncInfo = (funcId) => (useSnapshot ? escala.snapshot.funcionarios?.[funcId] : funcionarios.find(f => f.id === funcId)) || {};
+    // Funções de busca agora usam EXCLUSIVAMENTE o snapshot.
+    const getTurnoInfo = (turnoId) => escala.snapshot.turnos?.[turnoId] || {};
+    const getFuncInfo = (funcId) => escala.snapshot.funcionarios?.[funcId] || {};
 
     const funcsDaEscalaIds = Object.keys(escala.historico || {});
     const funcsDaEscala = funcsDaEscalaIds
@@ -148,6 +151,7 @@ function generateVisaoGeralPDF(escala) {
     legendItems.sort((a,b) => {
         if(a.isSystem && !b.isSystem) return -1;
         if(!a.isSystem && b.isSystem) return 1;
+        if(!a.inicio || !b.inicio) return 0;
         return a.inicio.localeCompare(b.inicio);
     });
 
@@ -197,27 +201,26 @@ function generateVisaoGeralPDF(escala) {
 
     const resumoHead = [['Funcionário', 'Meta', 'Realizado', 'Saldo']];
     const resumoBody = funcsDaEscala.map(func => {
-        const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60) || 0;
-        
         let metaLabel = '';
         let realizadoLabel = '';
         let saldoLabel = '';
 
         if (func.medicaoCarga === 'turnos') {
             const metaTurnos = calcularMetaTurnos(func, escala.inicio, escala.fim);
-            const realizadoTurnos = escala.historico[func.id].turnosTrabalhados || 0;
+            const realizadoTurnos = escala.historico[func.id]?.turnosTrabalhados || 0;
             const saldo = realizadoTurnos - metaTurnos;
             
-            metaLabel = `${metaTurnos.toFixed(1)} turnos`;
+            metaLabel = `${metaTurnos.toFixed(0)} turnos`;
             realizadoLabel = `${realizadoTurnos} turnos`;
-            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(1)} turnos`;
+            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(0)} turnos`;
         } else { // Padrão é horas
+            const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
             const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
             const saldo = horasTrabalhadas - metaHoras;
             
-            metaLabel = `${metaHoras.toFixed(2)}h`;
-            realizadoLabel = `${horasTrabalhadas.toFixed(2)}h`;
-            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(2)}h`;
+            metaLabel = `${metaHoras.toFixed(1)}h`;
+            realizadoLabel = `${horasTrabalhadas.toFixed(1)}h`;
+            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(1)}h`;
         }
 
         return [func.nome, metaLabel, realizadoLabel, saldoLabel];
@@ -240,14 +243,15 @@ function generateVisaoGeralPDF(escala) {
  * @returns {jsPDF} - A instância do documento jsPDF.
  */
 function generateRelatorioDiarioPDF(escala) {
+    if (!escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
+        throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     
-    const { funcionarios, turnos } = store.getState();
-    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
-    const useSnapshot = !!escala.snapshot;
-    const getTurnoInfo = (turnoId) => (useSnapshot ? escala.snapshot.turnos?.[turnoId] : allTurnos.find(t => t.id === turnoId)) || {};
-    const getFuncInfo = (funcId) => (useSnapshot ? escala.snapshot.funcionarios?.[funcId] : funcionarios.find(f => f.id === funcId)) || {};
+    const getTurnoInfo = (turnoId) => escala.snapshot.turnos?.[turnoId] || {};
+    const getFuncInfo = (funcId) => escala.snapshot.funcionarios?.[funcId] || {};
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const pageHeight = doc.internal.pageSize.height;
@@ -276,7 +280,10 @@ function generateRelatorioDiarioPDF(escala) {
         const turnosDoDiaIds = [...new Set(escala.slots.filter(s => s.date === date).map(s => s.turnoId))];
         const turnosOrdenados = turnosDoDiaIds
             .map(id => ({ id, ...getTurnoInfo(id) }))
-            .sort((a,b) => a.inicio.localeCompare(b.inicio));
+            .sort((a,b) => {
+                if(!a.inicio || !b.inicio) return 0;
+                return a.inicio.localeCompare(b.inicio);
+            });
         
         turnosOrdenados.forEach(turno => {
             if (!turno.id) return;
@@ -324,53 +331,81 @@ function generateRelatorioDiarioPDF(escala) {
     return doc;
 }
 
+/**
+ * Função wrapper para lidar com a exportação, verificando se há alterações não salvas.
+ * @param {Function} exportFn - A função que efetivamente gera e baixa o PDF.
+ */
+async function handleExport(exportFn) {
+    if (!currentEscalaToExport) return;
+
+    // A verificação de 'dirty' é relevante se a escala que está sendo exportada
+    // é a mesma que está aberta no editor (seja na página de geração ou de escalas salvas).
+    const isDirty = (currentEscala && currentEscala.id === currentEscalaToExport.id) && dirtyForms['gerar-escala'];
+
+    if (isDirty) {
+        const { confirmed } = await showConfirm({
+            title: "Salvar Alterações Antes de Exportar?",
+            message: "Você tem alterações não salvas nesta escala. Deseja salvá-las para que apareçam no PDF?",
+            confirmText: "Salvar e Exportar",
+            cancelText: "Exportar Sem Salvar"
+        });
+
+        if (confirmed) {
+            await salvarEscalaAtual({ showToast: false });
+            setGeradorFormDirty(false); 
+            
+            const { escalas } = store.getState();
+            currentEscalaToExport = escalas.find(e => e.id === currentEscalaToExport.id);
+        }
+    }
+    
+    await exportFn(currentEscalaToExport);
+}
+
 async function initPdfExport() {
     $('#btnExportCancelar').addEventListener('click', hideExportModal);
 
-    $('#btnExportVisaoGeral').addEventListener('click', async () => {
-        if (!currentEscalaToExport) return;
+    $('#btnExportVisaoGeral').addEventListener('click', () => handleExport(async (escala) => {
         showLoader('Gerando PDF da Escala Completa...');
         await new Promise(res => setTimeout(res, 50));
         try {
-            const doc = generateVisaoGeralPDF(currentEscalaToExport);
-            doc.save(`${currentEscalaToExport.nome.replace(/\s/g, '_')}.pdf`);
+            const doc = generateVisaoGeralPDF(escala);
+            doc.save(`${escala.nome.replace(/\s/g, '_')}.pdf`);
         } catch (e) {
-            console.error(e);
-            showToast("Erro ao gerar o PDF.");
+            console.error("Erro ao gerar PDF da visão geral:", e);
+            showToast(e.message || "Erro ao gerar o PDF da escala completa.", 'error');
         } finally {
             hideLoader();
             hideExportModal();
         }
-    });
+    }));
     
-    $('#btnExportVisaoDiaria').addEventListener('click', async () => {
-        if (!currentEscalaToExport) return;
+    $('#btnExportVisaoDiaria').addEventListener('click', () => handleExport(async (escala) => {
         showLoader('Gerando Relatório Diário...');
         await new Promise(res => setTimeout(res, 50));
         try {
-            const doc = generateRelatorioDiarioPDF(currentEscalaToExport);
-            doc.save(`relatorio_diario_${currentEscalaToExport.nome.replace(/\s/g, '_')}.pdf`);
+            const doc = generateRelatorioDiarioPDF(escala);
+            doc.save(`relatorio_diario_${escala.nome.replace(/\s/g, '_')}.pdf`);
         } catch (e) {
-            console.error(e);
-            showToast("Erro ao gerar o PDF.");
+            console.error("Erro ao gerar PDF do relatório diário:", e);
+            showToast(e.message || "Erro ao gerar o PDF do relatório diário.", 'error');
         } finally {
             hideLoader();
             hideExportModal();
         }
-    });
+    }));
 
-    $('#btnExportAmbos').addEventListener('click', async () => {
-        if (!currentEscalaToExport) return;
+    $('#btnExportAmbos').addEventListener('click', () => handleExport(async (escala) => {
         showLoader('Gerando arquivos...');
         await new Promise(res => setTimeout(res, 50));
         try {
-            const geralPDF = generateVisaoGeralPDF(currentEscalaToExport);
+            const geralPDF = generateVisaoGeralPDF(escala);
             showLoader('Gerando arquivo 2 de 2...');
             await new Promise(res => setTimeout(res, 50));
-            const diarioPDF = generateRelatorioDiarioPDF(currentEscalaToExport);
+            const diarioPDF = generateRelatorioDiarioPDF(escala);
 
             const zip = new JSZip();
-            const nomeBase = currentEscalaToExport.nome.replace(/\s/g, '_');
+            const nomeBase = escala.nome.replace(/\s/g, '_');
             zip.file(`escala_completa_${nomeBase}.pdf`, geralPDF.output('blob'));
             zip.file(`relatorio_diario_${nomeBase}.pdf`, diarioPDF.output('blob'));
 
@@ -381,13 +416,13 @@ async function initPdfExport() {
             triggerDownload(zipBlob, `export_escala_${nomeBase}.zip`);
 
         } catch (e) {
-            console.error(e);
-            showToast("Erro ao gerar o arquivo ZIP.");
+            console.error("Erro ao gerar arquivo ZIP:", e);
+            showToast(e.message || "Erro ao gerar o arquivo ZIP.", 'error');
         } finally {
             hideLoader();
             hideExportModal();
         }
-    });
+    }));
 }
 
 document.addEventListener('DOMContentLoaded', initPdfExport);

@@ -6,7 +6,11 @@ let editingFuncId = null;
 let lastAddedFuncId = null;
 let funcDisponibilidadeTemporaria = {};
 
+// Referência à função de troca de abas
+let switchFuncionariosTab = () => {};
+
 // --- Cache de Elementos DOM ---
+const pageFuncionarios = $("#page-funcionarios");
 const funcNomeInput = $("#funcNome");
 const funcDocumentoInput = $("#funcDocumento");
 const funcCargoSelect = $("#funcCargo");
@@ -23,12 +27,11 @@ const contratoExplicacaoEl = $("#contratoExplicacao");
 const contratoToggleGroup = $("#contratoToggleGroup");
 const periodoHorasToggleGroup = $("#periodoHorasToggleGroup");
 const horaExtraToggleGroup = $("#horaExtraToggleGroup");
-
 const medicaoCargaToggleGroup = $("#medicaoCargaToggleGroup");
 const funcMedicaoCargaInput = $("#funcMedicaoCarga");
 const funcCargaHorariaLabel = $("#funcCargaHorariaLabel");
-
 const funcMetaExplicacao = $("#funcMetaExplicacao");
+const formTabButtonFuncionarios = $('.painel-tab-btn[data-tab="formulario"]', pageFuncionarios);
 
 const SEM_CARGO_DEFINIDO = "⚠️ Sem Cargo Definido";
 
@@ -203,7 +206,7 @@ function renderFuncCargoSelect() {
 }
 
 function renderFuncs() {
-    const { funcionarios, cargos } = store.getState();
+    const { funcionarios, cargos, turnos } = store.getState();
     const filtro = filtroFuncionariosInput.value.toLowerCase();
     const mostrarArquivados = $("#mostrarArquivadosCheck")?.checked || false;
     
@@ -218,7 +221,7 @@ function renderFuncs() {
     if (funcsFiltrados.length === 0) {
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
-        emptyCell.colSpan = 6;
+        emptyCell.colSpan = 7;
         if (funcionarios.filter(f => f.status !== 'arquivado').length === 0 && !mostrarArquivados) {
             emptyCell.innerHTML = `<div class="empty-state">...</div>`;
         } else {
@@ -231,6 +234,7 @@ function renderFuncs() {
     }
 
     const cargosMap = Object.fromEntries(cargos.map(c => [c.id, c.nome]));
+    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
     const fragment = document.createDocumentFragment();
 
     const agrupados = funcsFiltrados.reduce((acc, func) => {
@@ -243,7 +247,7 @@ function renderFuncs() {
     Object.keys(agrupados).sort((a, b) => a.localeCompare(b)).forEach(cargoNome => {
         const headerRow = document.createElement('tr');
         const headerCell = document.createElement('th');
-        headerCell.colSpan = 6;
+        headerCell.colSpan = 7;
         headerCell.className = `group-header ${cargoNome === SEM_CARGO_DEFINIDO ? 'warning' : ''}`;
         headerCell.textContent = cargoNome;
         headerRow.appendChild(headerCell);
@@ -262,6 +266,13 @@ function renderFuncs() {
                 cargaHoraria = `${f.cargaHoraria}${unidade} ${periodo}`;
             }
 
+            const turnosDoFunc = f.disponibilidade ? Object.keys(f.disponibilidade)
+                .map(turnoId => turnosMap[turnoId])
+                .filter(Boolean)
+                .sort((a,b) => a.inicio.localeCompare(b.inicio))
+                .map(t => `<span class="badge" style="background-color:${t.cor}; color:${getContrastingTextColor(t.cor)}; font-size: 0.75rem; padding: 2px 6px; margin: 1px;" title="${t.nome}">${t.sigla}</span>`)
+                .join(' ') : 'Nenhum';
+
             const nomeCell = document.createElement('td');
             nomeCell.innerHTML = `${f.nome} ${isArquivado ? '(Arquivado)' : ''}<br><small class="muted">${f.documento || '---'}</small>`;
             
@@ -270,6 +281,9 @@ function renderFuncs() {
             if (cargoCell.textContent === SEM_CARGO_DEFINIDO) {
                 cargoCell.title = "O cargo original foi removido. Edite o funcionário para atribuir um novo.";
             }
+
+            const turnosCell = document.createElement('td');
+            turnosCell.innerHTML = turnosDoFunc;
 
             const contratoCell = document.createElement('td');
             contratoCell.textContent = f.tipoContrato === 'pj' ? 'Prestador' : 'CLT';
@@ -290,7 +304,7 @@ function renderFuncs() {
                 `;
             }
             
-            row.append(nomeCell, cargoCell, contratoCell, cargaCell, extraCell, acoesCell);
+            row.append(nomeCell, cargoCell, turnosCell, contratoCell, cargaCell, extraCell, acoesCell);
             fragment.appendChild(row);
         });
     });
@@ -304,7 +318,7 @@ function renderFuncs() {
 }
 
 function validateFuncForm() {
-    $$('.invalid-label', funcNomeInput.closest('.card')).forEach(el => el.classList.remove('invalid-label'));
+    $$('.invalid-label', pageFuncionarios).forEach(el => el.classList.remove('invalid-label'));
     const isNomeValid = validateInput(funcNomeInput);
     const isCargoValid = validateInput(funcCargoSelect);
     const isCargaValid = validateInput(funcCargaHorariaInput);
@@ -315,7 +329,7 @@ function validateFuncForm() {
 async function saveFuncFromForm() {
     if (!validateFuncForm()) {
         showToast("Preencha todos os campos obrigatórios.");
-        focusFirstInvalidInput('#page-funcionarios .card');
+        focusFirstInvalidInput('#page-funcionarios .painel-gerenciamento');
         return;
     }
     const { funcionarios, equipes } = store.getState();
@@ -331,13 +345,13 @@ async function saveFuncFromForm() {
         if (funcOriginal && funcOriginal.cargoId !== novoCargoId) {
             const equipeDoFunc = equipes.find(e => e.funcionarioIds.includes(editingFuncId));
             if (equipeDoFunc) {
-                const confirmado = await showConfirm({
+                const { confirmed } = await showConfirm({
                     title: "Remover Funcionário da Equipe?",
                     message: `Ao alterar o cargo deste funcionário, ele será removido da equipe "${equipeDoFunc.nome}", pois ela pertence a um cargo diferente. Deseja continuar?`,
                     confirmText: "Sim, Continuar"
                 });
 
-                if (!confirmado) {
+                if (!confirmed) {
                     funcCargoSelect.value = funcOriginal.cargoId; 
                     return; 
                 }
@@ -391,10 +405,9 @@ async function saveFuncFromForm() {
     }
 
     store.dispatch('SAVE_FUNCIONARIO', funcData);
-
-    cancelEditFunc();
-
+    
     showToast("Funcionário salvo com sucesso!");
+    switchFuncionariosTab('gerenciar');
 }
 
 function editFuncInForm(id) {
@@ -435,7 +448,9 @@ function editFuncInForm(id) {
 
     btnSalvarFunc.textContent = "💾 Salvar Alterações";
     setFuncFormDirty(false);
-    window.scrollTo(0, 0);
+    
+    formTabButtonFuncionarios.textContent = `Editando: ${func.nome}`;
+    switchFuncionariosTab('formulario');
 }
 
 function cancelEditFunc() {
@@ -445,8 +460,8 @@ function cancelEditFunc() {
     funcCargaHorariaInput.value = "";
     funcDocumentoInput.value = "";
 
-    $$('.invalid', funcNomeInput.closest('.card')).forEach(el => el.classList.remove('invalid'));
-    $$('.invalid-label', funcNomeInput.closest('.card')).forEach(el => el.classList.remove('invalid-label'));
+    $$('.invalid', pageFuncionarios).forEach(el => el.classList.remove('invalid'));
+    $$('.invalid-label', pageFuncionarios).forEach(el => el.classList.remove('invalid-label'));
 
     $(`.toggle-btn[data-value="clt"]`, contratoToggleGroup).click();
     $(`.toggle-btn[data-value="horas"]`, medicaoCargaToggleGroup).click();
@@ -459,17 +474,32 @@ function cancelEditFunc() {
     updateFuncMetaExplicacao();
 
     btnSalvarFunc.textContent = "💾 Salvar Funcionário";
+    formTabButtonFuncionarios.textContent = "Novo Funcionário";
     setFuncFormDirty(false);
 
     funcNomeInput.focus();
 }
 
 async function archiveFuncionario(id) {
-    const confirmado = await showConfirm({
+    const { equipes } = store.getState();
+    const equipeDoFunc = equipes.find(e => e.funcionarioIds.includes(id));
+    
+    let message = "O funcionário não aparecerá mais nas listas para criação de novas escalas, mas seu histórico em escalas salvas será mantido. Você pode reativá-lo a qualquer momento.";
+    if (equipeDoFunc) {
+        message += `<br><br><strong>Atenção:</strong> Este funcionário pertence à equipe "<strong>${equipeDoFunc.nome}</strong>" e será removido dela ao ser arquivado.`;
+    }
+
+    const { confirmed } = await showConfirm({
         title: "Arquivar Funcionário?",
-        message: "O funcionário não aparecerá mais nas listas para criação de novas escalas, mas seu histórico em escalas salvas será mantido. Você pode reativá-lo a qualquer momento."
+        message: message
     });
-    if(confirmado) {
+
+    if(confirmed) {
+        if (equipeDoFunc) {
+            equipeDoFunc.funcionarioIds = equipeDoFunc.funcionarioIds.filter(funcId => funcId !== id);
+            store.dispatch('SAVE_EQUIPE', equipeDoFunc);
+        }
+        
         store.dispatch('ARCHIVE_FUNCIONARIO', id);
         showToast("Funcionário arquivado.");
     }
@@ -598,6 +628,18 @@ function handleDisponibilidadeGridClick(event) {
 
 
 function initFuncionariosPage() {
+    switchFuncionariosTab = setupTabbedPanel('#page-funcionarios .painel-gerenciamento', (tabId) => {
+        if (tabId === 'gerenciar') {
+            cancelEditFunc();
+        }
+    });
+
+    $('.btn-add-new', pageFuncionarios).addEventListener('click', () => {
+        cancelEditFunc();
+        formTabButtonFuncionarios.textContent = "Novo Funcionário";
+        switchFuncionariosTab('formulario');
+    });
+
     const filtroContainer = filtroFuncionariosInput.parentElement;
     if (filtroContainer && !$("#mostrarArquivadosCheck")) {
         const checkWrapper = document.createElement('label');
@@ -609,14 +651,17 @@ function initFuncionariosPage() {
     }
 
     btnSalvarFunc.addEventListener('click', saveFuncFromForm);
-    btnCancelarFunc.addEventListener('click', cancelEditFunc);
+    btnCancelarFunc.addEventListener('click', () => {
+        cancelEditFunc();
+        switchFuncionariosTab('gerenciar');
+    });
     tblFuncionariosBody.addEventListener('click', handleFuncionariosTableClick);
     
     funcTurnosContainer.addEventListener('click', handleDisponibilidadeGridClick);
     
     setupToggleGroup(contratoToggleGroup, funcContratoInput, contratoExplicacaoEl, {
-        'clt': '<strong>CLT / Concursados</strong> seguirão rigorosamente as regras de descanso obrigatório.',
-        'pj': '<strong>Prestadores de Serviço</strong> terão as regras de descanso ignoradas.'
+        'clt': '<strong>CLT / Concursado:</strong> Vínculo empregatício tradicional. As regras de descanso obrigatório são aplicadas.',
+        'pj': '<strong>Prestador de Serviço:</strong> Contrato de prestação de serviços. As regras de descanso obrigatório também são aplicadas.'
     });
 
     setupToggleGroup(medicaoCargaToggleGroup, funcMedicaoCargaInput);

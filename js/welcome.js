@@ -9,7 +9,6 @@ const themeToggle = $("#welcomeThemeToggle");
 const themeButtons = $$(".toggle-btn", themeToggle);
 const personalizacaoNextBtn = $("#welcome-personalizacao-next");
 const finishBtn = $("#welcome-finish-btn");
-// ADIÇÃO: Cache para os novos cards de termos
 const termsCard = $("#welcome-terms-card");
 const privacyCard = $("#welcome-privacy-card");
 
@@ -20,7 +19,6 @@ let onboardingState = {
     nome: '',
     theme: 'light',
 };
-// ADIÇÃO: Estado para controlar o aceite dos termos
 let termsAcceptedState = {
     terms: false,
     privacy: false,
@@ -33,7 +31,6 @@ function validateWelcomeStep2() {
     personalizacaoNextBtn.disabled = !(nomeValido && temaSelecionado);
 }
 
-// ADIÇÃO: Função para verificar se ambos os termos foram aceitos
 function checkAllTermsAccepted() {
     const allAccepted = termsAcceptedState.terms && termsAcceptedState.privacy;
     finishBtn.disabled = !allAccepted;
@@ -72,6 +69,7 @@ function showStep(stepNumber, direction = 'forward') {
     if (nextStepEl) {
         nextStepEl.classList.remove('anim-slide-in-right', 'anim-slide-in-left');
         nextStepEl.classList.add('active', animInClass);
+        parseEmojisInElement(nextStepEl); 
     }
 
     progressDots.forEach(dot => {
@@ -81,10 +79,8 @@ function showStep(stepNumber, direction = 'forward') {
     onboardingState.currentStep = stepNumber;
     saveOnboardingProgress();
 
-    // ALTERAÇÃO: A lógica de foco foi movida e condicionada
     setTimeout(() => {
         const firstInput = $('input:not([type=checkbox]), button.welcome-btn-primary', nextStepEl);
-        // Não foca no input de nome, mas foca nos botões de outras telas
         if(firstInput && firstInput.id !== 'welcome-nome-input') {
             firstInput.focus();
         }
@@ -99,6 +95,55 @@ function handleThemeSelection(theme) {
     });
     validateWelcomeStep2();
 }
+
+async function handleWelcomeImport() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json,application/json';
+
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            showLoader("Importando seus dados...");
+            await new Promise(res => setTimeout(res, 50)); // Permite que o loader apareça
+
+            try {
+                const importedData = JSON.parse(event.target.result);
+                
+                if (!importedData || typeof importedData.turnos === 'undefined' || typeof importedData.cargos === 'undefined') {
+                    throw new Error("Arquivo de backup inválido ou corrompido.");
+                }
+
+                for (const key in KEYS) {
+                    if (importedData.hasOwnProperty(key)) {
+                        saveJSON(KEYS[key], importedData[key]);
+                    }
+                }
+
+                localStorage.setItem('ge_onboarding_complete', 'true');
+                localStorage.removeItem('ge_onboarding_progress');
+                
+                hideLoader();
+                showToast("Dados importados com sucesso! Bem-vindo(a) de volta.", 'success');
+                
+                welcomeOverlay.classList.remove('visible');
+                initMainApp();
+
+            } catch (error) {
+                console.error("Erro ao importar dados na tela de boas-vindas:", error);
+                hideLoader();
+                showToast(error.message || "Ocorreu um erro ao ler o arquivo de backup.", 'error');
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    fileInput.click();
+}
+
 
 function finishOnboarding() {
     if (personalizacaoNextBtn.disabled) {
@@ -125,6 +170,7 @@ function finishOnboarding() {
 function initWelcomeScreen() {
     loadOnboardingProgress();
     welcomeOverlay.classList.add('visible');
+    parseEmojisInElement(welcomeOverlay);
     
     themeButtons.forEach(btn => btn.classList.remove('active'));
     if(onboardingState.theme) {
@@ -134,7 +180,8 @@ function initWelcomeScreen() {
     showStep(onboardingState.currentStep || 1);
 
     // --- Event Listeners ---
-    $("#welcome-start-btn").onclick = () => showStep(2, 'forward');
+    $("#welcome-start-fresh").onclick = () => showStep(2, 'forward');
+    $("#welcome-import-backup").onclick = handleWelcomeImport;
     personalizacaoNextBtn.onclick = () => showStep(3, 'forward');
     $("#welcome-proposta-next").onclick = () => showStep(4, 'forward');
     finishBtn.onclick = finishOnboarding;
@@ -143,9 +190,8 @@ function initWelcomeScreen() {
         btn.onclick = () => showStep(parseInt(btn.dataset.toStep), 'backward');
     });
 
-    // ALTERAÇÃO: Novos listeners para os cards de termos
     termsCard.onclick = async () => {
-        const accepted = await exibirTermosDeUso(true); // Passa 'true' para usar o modal com scroll
+        const accepted = await exibirTermosDeUso(true);
         if (accepted) {
             termsAcceptedState.terms = true;
             termsCard.classList.add('accepted');
@@ -154,7 +200,7 @@ function initWelcomeScreen() {
     };
 
     privacyCard.onclick = async () => {
-        const accepted = await exibirPoliticaDePrivacidade(true); // Passa 'true'
+        const accepted = await exibirPoliticaDePrivacidade(true);
         if (accepted) {
             termsAcceptedState.privacy = true;
             privacyCard.classList.add('accepted');

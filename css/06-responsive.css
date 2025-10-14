@@ -71,14 +71,6 @@
     .explanation-box {
         margin-top: 8px;
     }
-
-    /* --- Editor Manual --- */
-    #editor-toolbox {
-        width: 95%;
-        right: 2.5%;
-        bottom: 20px;
-        max-height: calc(100vh - 40px);
-    }
 }
 
 /* --- Celulares --- */
@@ -190,7 +182,9 @@
     }
 
     /* --- Editor Manual --- */
-    .focused-employee-header, .focused-employee-view {
+    /* ALTERADO: Muda o .focused-employee-view para flex para que a direção em coluna funcione */
+    .focused-employee-view {
+        display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 16px;
@@ -202,5 +196,26 @@
 
     .nav-arrow {
         display: none;
+    }
+}
+
+/* --- REGRAS MOVIDAS DE 11-home-screen.css --- */
+/* Ajustes para telas de tablet */
+@media (max-width: 992px) {
+    #page-home {
+        /* Padding do topo mantido, laterais dobradas para 128px. */
+        padding-top: 64px;
+        padding-left: 128px;
+        padding-right: 128px;
+    }
+}
+
+/* Ajustes para telas de celular */
+@media (max-width: 768px) {
+    #page-home {
+        /* Padding do topo mantido, laterais dobradas para 64px. */
+        padding-top: 32px;
+        padding-left: 64px;
+        padding-right: 64px;
     }
 }

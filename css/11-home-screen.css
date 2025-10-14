@@ -18,22 +18,4 @@
     padding-right: 192px;
 }
 
-/* Ajustes para telas de tablet */
-@media (max-width: 992px) {
-    #page-home {
-        /* Padding do topo mantido, laterais dobradas para 128px. */
-        padding-top: 64px;
-        padding-left: 128px;
-        padding-right: 128px;
-    }
-}
-
-/* Ajustes para telas de celular */
-@media (max-width: 768px) {
-    #page-home {
-        /* Padding do topo mantido, laterais dobradas para 64px. */
-        padding-top: 32px;
-        padding-left: 64px;
-        padding-right: 64px;
-    }
-}
+/* As regras de @media foram movidas para 06-responsive.css para centralização. */

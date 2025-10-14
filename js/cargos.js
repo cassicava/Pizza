@@ -5,7 +5,11 @@
 let editingCargoId = null;
 let lastAddedCargoId = null;
 
+// Referência à função de troca de abas
+let switchCargosTab = () => {};
+
 // --- Cache de Elementos DOM ---
+const pageCargos = $("#page-cargos");
 const cargoNomeInput = $("#cargoNome");
 const filtroCargosInput = $("#filtroCargos");
 const cargoTurnosContainer = $("#cargoTurnosContainer");
@@ -19,6 +23,7 @@ const cargoRegrasExplicacaoEl = $("#cargoRegrasExplicacao");
 const btnSalvarCargo = $("#btnSalvarCargo");
 const btnCancelarCargo = $("#btnCancelarCargo");
 const tblCargosBody = $("#tblCargos tbody");
+const formTabButtonCargos = $('.painel-tab-btn[data-tab="formulario"]', pageCargos);
 
 function setCargoFormDirty(isDirty) {
     dirtyForms.cargos = isDirty;
@@ -43,7 +48,6 @@ function renderTurnosSelects() {
     const { turnos } = store.getState();
     cargoTurnosContainer.innerHTML = '';
     
-    // Filtra os turnos de sistema para que não apareçam na associação de cargos
     const turnosEditaveis = turnos.filter(t => !t.isSystem);
 
     if (turnosEditaveis.length === 0) {
@@ -249,6 +253,7 @@ function renderCargos() {
         }
         row.appendChild(cell);
         tblCargosBody.appendChild(row);
+        parseEmojisInElement(tblCargosBody);
         return;
     }
 
@@ -284,6 +289,7 @@ function renderCargos() {
         `;
         tblCargosBody.appendChild(tr);
     });
+    parseEmojisInElement(tblCargosBody);
 
     if (lastAddedCargoId) {
         tblCargosBody.querySelector(`tr[data-cargo-id="${lastAddedCargoId}"]`)?.classList.add('new-item');
@@ -329,39 +335,52 @@ function validateCargoForm() {
 async function saveCargoFromForm() {
     if (!validateCargoForm()) {
         showToast("Preencha todos os campos obrigatórios para salvar o cargo.");
-        focusFirstInvalidInput('#page-cargos .card');
+        focusFirstInvalidInput('#page-cargos .painel-gerenciamento');
         return;
     }
 
     const nome = cargoNomeInput.value.trim();
     const turnosIds = $$('input[name="cargoTurno"]:checked').map(chk => chk.value);
     
-    const { cargos, equipes } = store.getState();
+    const { cargos, equipes, funcionarios } = store.getState();
     if (cargos.some(c => c.nome.toLowerCase() === nome.toLowerCase() && c.id !== editingCargoId)) {
         return showToast("Já existe um cargo com este nome.");
     }
     
     if (editingCargoId) {
         const cargoOriginal = cargos.find(c => c.id === editingCargoId);
-        const turnosRemovidos = cargoOriginal.turnosIds.filter(id => !turnosIds.includes(id));
+        const turnosRemovidosIds = cargoOriginal.turnosIds.filter(id => !turnosIds.includes(id));
         
-        if (turnosRemovidos.length > 0) {
-            const equipesAfetadas = equipes.filter(e => e.cargoId === editingCargoId && turnosRemovidos.includes(e.turnoId));
+        if (turnosRemovidosIds.length > 0) {
+            const equipesAfetadas = equipes.filter(e => e.cargoId === editingCargoId && turnosRemovidosIds.includes(e.turnoId));
             if (equipesAfetadas.length > 0) {
                 const nomesEquipes = equipesAfetadas.map(e => `"${e.nome}"`).join(', ');
-                const confirmado = await showConfirm({
+                const { confirmed } = await showConfirm({
                     title: "Confirmar Alteração?",
                     message: `Ao remover o(s) turno(s) associado(s), a(s) seguinte(s) equipe(s) será(ão) excluída(s): <strong>${nomesEquipes}</strong>. Deseja continuar?`,
                     confirmText: "Sim, Excluir Equipe(s)"
                 });
 
-                if (!confirmado) return;
+                if (!confirmed) return;
 
-                // A exclusão agora é feita aqui, antes de salvar o cargo
                 equipesAfetadas.forEach(equipe => {
                     store.dispatch('DELETE_EQUIPE', equipe.id);
                 });
             }
+        }
+        
+        const funcsAfetados = funcionarios.filter(f => 
+            f.cargoId === editingCargoId && 
+            turnosRemovidosIds.some(turnoId => f.disponibilidade && f.disponibilidade[turnoId])
+        );
+
+        if (funcsAfetados.length > 0) {
+            const { confirmed } = await showConfirm({
+                title: "Risco de Perda de Dados",
+                message: `Ao remover turno(s) deste cargo, as configurações de disponibilidade e preferência para este(s) turno(s) serão <strong>permanentemente apagadas</strong> para ${funcsAfetados.length} funcionário(s). Deseja continuar?`,
+                confirmText: "Sim, Apagar Dados"
+            });
+            if (!confirmed) return;
         }
     }
 
@@ -384,10 +403,8 @@ async function saveCargoFromForm() {
 
     store.dispatch('SAVE_CARGO', cargoData);
     
-    // A limpeza do formulário agora acontece mesmo em modo de edição
-    cancelEditCargo();
-
     showToast("Cargo salvo com sucesso!");
+    switchCargosTab('gerenciar');
 }
 
 function editCargoInForm(id) {
@@ -415,8 +432,11 @@ function editCargoInForm(id) {
     updateCargoRegrasExplicacao();
 
     btnSalvarCargo.textContent = "💾 Salvar Alterações";
+    parseEmojisInElement(btnSalvarCargo);
     setCargoFormDirty(false);
-    window.scrollTo(0, 0);
+
+    formTabButtonCargos.textContent = `Editando: ${cargo.nome}`;
+    switchCargosTab('formulario');
 }
 
 function cancelEditCargo() {
@@ -429,14 +449,16 @@ function cancelEditCargo() {
     cargoInicioInput.value = "";
     cargoFimInput.value = "";
     
-    $$('.invalid-fieldset').forEach(el => el.classList.remove('invalid-fieldset'));
+    $$('.invalid-fieldset', pageCargos).forEach(el => el.classList.remove('invalid-fieldset'));
 
     $(`.toggle-btn[data-value="automatico"]`, cargoHorarioToggle).click();
     updateCargoRegrasExplicacao();
 
     btnSalvarCargo.textContent = "💾 Salvar Cargo";
+    formTabButtonCargos.textContent = "Novo Cargo"; // Redefine o título da aba
+    parseEmojisInElement(btnSalvarCargo);
     setCargoFormDirty(false);
-
+    
     cargoNomeInput.focus();
 }
 
@@ -477,8 +499,24 @@ function handleCargosTableClick(event) {
 }
 
 function initCargosPage() {
+    switchCargosTab = setupTabbedPanel('#page-cargos .painel-gerenciamento', (tabId) => {
+        if (tabId === 'gerenciar') {
+            cancelEditCargo();
+        }
+    });
+
+    $('.btn-add-new', pageCargos).addEventListener('click', () => {
+        cancelEditCargo();
+        formTabButtonCargos.textContent = "Novo Cargo";
+        switchCargosTab('formulario');
+    });
+
     btnSalvarCargo.addEventListener('click', saveCargoFromForm);
-    btnCancelarCargo.addEventListener('click', cancelEditCargo);
+    btnCancelarCargo.addEventListener('click', () => {
+        cancelEditCargo();
+        switchCargosTab('gerenciar');
+    });
+
     tblCargosBody.addEventListener('click', handleCargosTableClick);
     
     cargoTurnosContainer.addEventListener('change', (e) => {

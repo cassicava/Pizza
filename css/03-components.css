@@ -8,11 +8,25 @@
     padding: 16px 32px;
     box-shadow: var(--shadow);
     position: relative;
-    transition: box-shadow 0.3s ease-in-out; 
+    transition: box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out; 
 }
 
 .card:hover {
-    box-shadow: 0 12px 30px rgba(0, 0, 0, .12); 
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .12);
+    transform: translateY(-2px);
+}
+
+/* NOVO: Desativa o efeito de hover para os cards que contêm a tabela da escala */
+.card:has(#gerador-escalaTabelaWrap):hover,
+.card:has(#escalaSalvaTabelaWrap):hover {
+    box-shadow: var(--shadow);
+    transform: none;
+}
+
+/* NOVO: Override mais robusto para desativar o efeito de hover no card da tabela */
+.card.card-table-container:hover {
+    transform: none;
+    box-shadow: var(--shadow);
 }
 
 
@@ -67,7 +81,7 @@
     font-weight: 700;
     color: var(--brand);
     margin: 12px 0 4px 0;
-    min-height: 1.3em; /* Reserva espaço para evitar que o layout "pule" */
+    min-height: 1.3em;
 }
 
 .home-card-desc {
@@ -223,7 +237,7 @@ fieldset.invalid-fieldset > legend {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
-    align-items: stretch; /* ALTERADO: de 'start' para 'stretch' para igualar altura dos cards */
+    align-items: stretch;
 }
 
 fieldset legend,
@@ -332,6 +346,10 @@ button {
     border: 2px solid;
     font-weight: 500;
     transition: all 0.2s ease-in-out;
+    /* CORREÇÃO: Garante o alinhamento perfeito do texto e ícones */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 button:active {
@@ -382,7 +400,6 @@ button.secondary:hover {
     color: #fff;
 }
 
-/* --- INÍCIO DA ALTERAÇÃO: Novo estilo para botão roxo --- */
 button.purple {
     border-color: #c4b5fd;
     color: #8b5cf6;
@@ -393,7 +410,6 @@ button.purple:hover {
     background-color: #8b5cf6;
     color: #fff;
 }
-/* --- FIM DA ALTERAÇÃO --- */
 
 button.danger {
     border-color: var(--danger);
@@ -466,6 +482,7 @@ button.danger:hover {
 
 /* --- ESTILOS DA SIDEBAR --- */
 .tab-btn {
+    justify-content: flex-start;
     background-color: transparent;
     width: 100%;
     border: none;
@@ -865,7 +882,6 @@ html[data-theme="dark"] .tab-btn:hover {
     box-shadow: 0 0 12px var(--brand);
 }
 
-/* NOVO: Estilos para o seletor de cor personalizada */
 .color-picker-trigger {
     position: relative;
     display: flex;
@@ -1013,28 +1029,25 @@ html[data-theme="dark"] .tab-btn:hover {
     text-align: center;
 }
 
-/* --- INÍCIO DA ALTERAÇÃO: Novo Estilo para Explanation Box --- */
 .explanation-box {
     position: relative;
     border-radius: 0 8px 8px 0;
     border-left: 4px solid var(--brand);
-    background-color: #eef2ff; /* Azul muito claro */
+    background-color: #eef2ff;
     padding: 12px 16px;
     font-size: 0.9rem;
     color: var(--muted);
     display: flex;
     gap: 12px;
-    align-items: center; /* Alinhamento vertical padrão */
-    animation: pulse-border-color 4s ease-in-out infinite; /* Nova animação de pulsação */
+    align-items: center;
+    animation: pulse-border-color 4s ease-in-out infinite;
 }
 
 .explanation-box::before {
-    content: '💡'; /* Ícone de Lâmpada */
+    content: '💡';
     font-size: 1.2rem;
-    line-height: 1; /* Ajustado para melhor alinhamento */
+    line-height: 1;
 }
-/* --- FIM DA ALTERAÇÃO --- */
-
 
 .dias-semana-container {
     display: flex;
@@ -1110,7 +1123,7 @@ html[data-theme="dark"] .tab-btn:hover {
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: -2; /* CORRIGIDO: Garante que a borda fique bem no fundo */
+    z-index: -2;
     background: linear-gradient(to right, #00BFFF, #FF00FF, #FF0000, #FF00FF, #00BFFF);
     background-size: 300% 100%;
     animation: animated-gradient-background 6s linear infinite;
@@ -1126,7 +1139,7 @@ html[data-theme="dark"] .tab-btn:hover {
     height: calc(100% - 4px);
     background-color: var(--card);
     border-radius: calc(var(--radius) - 2px);
-    z-index: -1; /* CORRIGIDO: Garante que o fundo fique atrás do conteúdo */
+    z-index: -1;
 }
 
 .card-animated-border.card-animated-border--cat-colors::before {
@@ -1197,7 +1210,6 @@ html[data-theme="dark"] .tab-btn:hover {
     pointer-events: none;
 }
 
-/* --- INÍCIO DA ALTERAÇÃO: Nova Animação do Loader --- */
 .grid-loader {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1234,7 +1246,6 @@ html[data-theme="dark"] .tab-btn:hover {
 .grid-cell:nth-child(7) { animation-delay: 0.6s; }
 .grid-cell:nth-child(8) { animation-delay: 0.7s; }
 .grid-cell:nth-child(9) { animation-delay: 0.8s; }
-/* --- FIM DA ALTERAÇÃO --- */
 
 .loader-text {
     color: #FFF;
@@ -1242,7 +1253,6 @@ html[data-theme="dark"] .tab-btn:hover {
     font-weight: 500;
 }
 
-/* NOVO ESTILO PARA O BOTÃO DE CANCELAR O LOADER */
 #loader-cancel-btn {
     margin-top: 24px;
     border-color: rgba(255, 255, 255, 0.4);
@@ -1257,12 +1267,6 @@ html[data-theme="dark"] .tab-btn:hover {
 
 .table tbody tr {
     transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
-}
-
-.table tbody tr:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.07);
-    cursor: pointer;
 }
 
 .tab-btn .tab-icon {
@@ -1361,7 +1365,7 @@ html[data-theme="dark"] .tab-btn:hover {
     padding: 16px;
     transition: all 0.2s ease-in-out;
     cursor: pointer;
-    position: relative; /* Adicionado para posicionar o status */
+    position: relative;
 }
 
 .escala-card:hover {
@@ -1443,7 +1447,6 @@ html[data-theme="dark"] .tab-btn:hover {
     ) !important;
 }
 
-/* --- ESTILOS DO NOVO CARD DE SUPORTE (GATO DO DEV) --- */
 .support-card-content {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -1451,7 +1454,7 @@ html[data-theme="dark"] .tab-btn:hover {
     align-items: center;
     text-align: left;
     min-height: 250px;
-    position: relative; /* Garante que o conteúdo fique acima dos pseudo-elementos */
+    position: relative;
     z-index: 1;
 }
 
@@ -1476,7 +1479,7 @@ html[data-theme="dark"] .tab-btn:hover {
     justify-content: center;
     color: var(--muted);
     font-weight: 500;
-    margin: 0 auto; /* Centraliza horizontalmente */
+    margin: 0 auto;
 }
 
 .pix-key-container {
@@ -1487,7 +1490,7 @@ html[data-theme="dark"] .tab-btn:hover {
     border: 1px solid var(--border);
     border-radius: 999px;
     padding: 8px 12px;
-    max-width: 200px; /* Largura máxima para a chave */
+    max-width: 200px;
     margin: 0 auto;
 }
 
@@ -1516,7 +1519,6 @@ html[data-theme="dark"] .tab-btn:hover {
     background: transparent;
 }
 
-/* NOVO: Estilo para o agrupador de ano nas escalas salvas */
 .year-group-fieldset {
     background-color: transparent;
     border: 1px solid var(--border);
@@ -1529,4 +1531,98 @@ html[data-theme="dark"] .tab-btn:hover {
     font-weight: 700;
     padding: 0 16px;
     margin-left: 16px;
+}
+
+#config-shortcuts-card {
+    display: flex !important;
+}
+
+
+/* --- CORREÇÃO FINAL: Estilo para o Modal de Confirmação com Aparência de Toast --- */
+
+/* 1. Torna o fundo do backdrop transparente QUANDO o modal customizado estiver ativo */
+.modal-backdrop:has(.modal--toast-style) {
+    background-color: rgba(0, 0, 0, 0.2); /* Fundo sutil para manter o foco */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+/* 2. Aplica o efeito de vidro e as cores corretas diretamente no modal */
+.modal.modal--toast-style {
+    background: rgba(255, 255, 255, 0.7); /* Fundo de vidro branco */
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: var(--fg);
+    -webkit-backdrop-filter: blur(10px); /* Efeito de vidro */
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border-radius: 24px;
+    max-width: 450px;
+}
+
+.modal.modal--toast-style h3 {
+    color: var(--fg);
+}
+.modal.modal--toast-style p {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.modal.modal--toast-style .modal-actions button {
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+
+.modal.modal--toast-style .modal-actions button.primary {
+    background-color: var(--brand);
+}
+.modal.modal--toast-style .modal-actions button.primary:hover {
+    background-color: var(--brand-2);
+    transform: translateY(-2px);
+}
+
+.modal.modal--toast-style .modal-actions button.secondary {
+    background-color: transparent;
+    color: var(--secondary);
+    border: 2px solid var(--border);
+}
+
+.modal.modal--toast-style .modal-actions button.secondary:hover {
+    background-color: var(--bg);
+    color: var(--fg);
+}
+
+
+html[data-theme="dark"] .modal.modal--toast-style {
+    background: rgba(28, 28, 30, 0.7); /* Fundo de vidro escuro */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--fg);
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
+}
+html[data-theme="dark"] .modal.modal--toast-style h3 {
+    color: var(--fg);
+}
+html[data-theme="dark"] .modal.modal--toast-style p {
+    color: var(--muted);
+}
+html[data-theme="dark"] .modal.modal--toast-style .modal-actions button.primary {
+    background-color: #4f46e5;
+}
+html[data-theme="dark"] .modal.modal--toast-style .modal-actions button.primary:hover {
+    background-color: #4338ca;
+}
+html[data-theme="dark"] .modal.modal--toast-style .modal-actions button.secondary {
+    color: var(--muted);
+    border-color: var(--border);
+}
+html[data-theme="dark"] .modal.modal--toast-style .modal-actions button.secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--fg);
+}
+
+/* NOVO: Estilo para centralizar botões em um form-row */
+.form-row.form-row-center {
+    justify-content: center;
 }

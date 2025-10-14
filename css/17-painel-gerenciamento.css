@@ -1,0 +1,92 @@
+/**************************************
+ * 🏛️ Painel de Gerenciamento (CRUD com Abas)
+ **************************************/
+
+.painel-gerenciamento {
+    padding: 0;
+    overflow: hidden;
+}
+
+.painel-gerenciamento .painel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--bg);
+}
+
+.painel-gerenciamento .painel-tabs {
+    display: flex;
+    gap: 4px;
+    background-color: transparent;
+    padding: 0;
+}
+
+.painel-gerenciamento .painel-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 8px 16px;
+    border-radius: 12px; /* AUMENTADO */
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.painel-gerenciamento .painel-tab-btn.active {
+    background-color: var(--card);
+    color: var(--brand);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+}
+
+html[data-theme="dark"] .painel-gerenciamento .painel-tab-btn.active {
+     box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
+}
+
+.painel-gerenciamento .painel-actions .btn-add-new {
+    /* Reutiliza o estilo do botão primário, mas pode ter ajustes */
+}
+
+.painel-gerenciamento .painel-content {
+    padding: 24px;
+}
+
+.painel-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.painel-tab-content.active {
+    display: block;
+}
+
+/* Esconde o card de lista antigo dentro da nova estrutura, pois ele não é mais necessário */
+.painel-tab-content .card-lista {
+    margin-top: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+.painel-tab-content .card-lista:hover {
+    transform: none;
+}
+
+html[data-theme="dark"] .painel-tab-content .card-lista {
+    border: none;
+}
+
+
+/* Remove margens e bordas desnecessárias dos formulários dentro das abas */
+.painel-tab-content > .card {
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+.painel-tab-content > .card:hover {
+     transform: none;
+}

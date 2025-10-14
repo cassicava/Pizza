@@ -169,6 +169,10 @@ main.container {
   padding: 24px 48px 12px 48px;
 }
 
+/* REGRA REMOVIDA: A lógica de padding extra para a toolbox no topo foi removida
+   pois a nova abordagem com 'position: sticky' não precisa mais dela. */
+
+
 .page.active {
   display: flex;
   animation: fadeIn 0.25s ease-in forwards;
@@ -181,7 +185,7 @@ main.container {
 
 /* --- TELA DE INÍCIO --- */
 #page-home {
-    padding-top: 96px; /* AUMENTADO: de 48px para 96px para melhor centralização */
+    padding-top: 96px;
 }
 
 .home-section-title {
