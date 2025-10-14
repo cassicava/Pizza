@@ -1,0 +1,211 @@
+/**************************************
+ * ⚙️ Estilos da Nova Tela de Configurações (v3.2 - Ajustes Finais)
+ **************************************/
+
+
+
+.config-painel .painel-content {
+    padding-top: 8px; 
+}
+
+.config-painel .painel-tabs .painel-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 0.95rem;
+    font-weight: 500;   /* Fonte igual às outras abas */
+}
+
+.config-painel .painel-tabs .painel-tab-btn span {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+
+/* --- Conteúdo dos Painéis (Abas) --- */
+.config-pane {
+    display: none;
+    flex-direction: column;
+    gap: 24px;
+    animation: fadeInSlideUp 0.4s ease-out forwards;
+}
+
+.config-pane.active {
+    display: flex;
+}
+
+@keyframes fadeInSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* --- Estilo dos Cards Internos de Configuração --- */
+.config-pane > .card {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.config-card-title {
+    margin: 0;
+    font-size: 1.3rem;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.config-card-subtitle {
+    margin: -16px 0 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.config-item-group {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+.config-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.config-item-label h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+.config-item-label p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+    max-width: 450px;
+}
+
+.config-card-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 16px;
+    margin-top: auto; 
+    border-top: 1px solid var(--border);
+}
+
+
+/* --- Card da Zona de Perigo (Avançado) --- */
+.card--danger-zone {
+    border-color: rgba(239, 68, 68, 0.4);
+    background-color: #fff5f5;
+}
+html[data-theme="dark"] .card--danger-zone {
+    background-color: rgba(127, 29, 29, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.card--danger-zone .config-card-title {
+    color: var(--danger);
+}
+.warning-text {
+    color: #c2410c;
+    font-weight: 500;
+}
+html[data-theme="dark"] .warning-text {
+    color: #fb923c;
+}
+
+
+/* --- Card "Sobre" e Links (Ajustes de layout) --- */
+.config-links-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.info-link-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centraliza conteúdo (ícone + texto) */
+    gap: 12px;
+    padding: 16px;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--fg);
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.2s ease-out;
+}
+.info-link-btn:hover {
+    border-color: var(--brand);
+    background-color: #eff6ff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+html[data-theme="dark"] .info-link-btn:hover {
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+.info-link-btn span {
+    font-size: 1.5rem;
+    line-height: 1; 
+}
+
+/* Adiciona um separador e estilo para a informação de versão movida */
+.config-card-version {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.4;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+/* Ajuste no card de Apoio (PIX) */
+.config-pane[data-pane="sobre"] .support-card-content {
+    grid-template-columns: 1.5fr 1fr; /* Dá mais espaço para a coluna da direita (PIX) */
+    gap: 32px;
+}
+
+/* --- Responsividade --- */
+@media (max-width: 992px) {
+    .config-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    .config-item-control {
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+    }
+    .config-pane[data-pane="sobre"] .support-card-content {
+        grid-template-columns: 1fr; /* Coloca o PIX abaixo do texto em telas menores */
+    }
+}
+
+@media (max-width: 768px) {
+    .config-links-container {
+        grid-template-columns: 1fr;
+    }
+}

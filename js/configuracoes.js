@@ -1,11 +1,11 @@
-// configuracoes.js
 /**************************************
- * ⚙️ Configurações
+ * ⚙️ Configurações (v2 - Layout com Abas)
  **************************************/
 
 function loadConfigForm() {
     const { config } = store.getState();
-    $("#configNome").value = config.nome || '';
+    const configNomeInput = $("#configNome");
+    if(configNomeInput) configNomeInput.value = config.nome || '';
 
     const theme = config.theme || 'light';
     $$('#themeToggleGroup .toggle-btn').forEach(btn => {
@@ -15,9 +15,10 @@ function loadConfigForm() {
 
 function saveConfig() {
     const { config } = store.getState();
+    const configNomeInput = $("#configNome");
     const newConfig = {
         ...config,
-        nome: $("#configNome").value.trim()
+        nome: configNomeInput ? configNomeInput.value.trim() : ''
     };
 
     store.dispatch('SAVE_CONFIG', newConfig);
@@ -67,7 +68,7 @@ async function importAllData() {
                     throw new Error("Arquivo de backup inválido ou corrompido.");
                 }
 
-                const confirmado = await showPromptConfirm({
+                const { confirmed } = await showPromptConfirm({
                     title: "Confirmar Importação?",
                     message: "<strong>ATENÇÃO:</strong> Isto irá substituir TODOS os seus dados atuais (turnos, cargos, funcionários, etc.) pelos dados do arquivo. Esta ação é IRREVERSÍVEL.",
                     promptLabel: `Para confirmar, digite a palavra "IMPORTAR":`,
@@ -75,7 +76,7 @@ async function importAllData() {
                     confirmText: "Substituir Dados Atuais"
                 });
 
-                if (confirmado) {
+                if (confirmed) {
                     showLoader("Importando dados...");
                     for (const key in KEYS) {
                         if (importedData.hasOwnProperty(key)) {
@@ -102,7 +103,7 @@ async function importAllData() {
 function exibirTermosDeUso(requireScrollableConfirm = false) {
     const termosDeUsoHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
-            <p><strong>Última atualização:</strong> 25 de setembro de 2025</p>
+            <p><strong>Última atualização:</strong> 14 de Outubro de 2025</p>
             <h4>1. Introdução e Aceitação dos Termos</h4>
             <p>Bem-vindo(a) ao Escala Fácil ("Software"). Estes Termos de Uso ("Termos") representam um contrato legal entre você ("Usuário") e o desenvolvedor do Escala Fácil. Ao adquirir e/ou utilizar o Software, você confirma que leu, entendeu e concorda em estar vinculado a estes Termos.</p>
             <h4>2. Licença de Uso</h4>
@@ -140,7 +141,7 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
 function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
     const politicaHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
-            <p><strong>Última atualização:</strong> 26 de setembro de 2025</p>
+            <p><strong>Última atualização:</strong> 14 de Outubro de 2025</p>
             <h4>1. O Princípio Fundamental: Seus Dados São Apenas Seus</h4>
             <p>O Escala Fácil foi projetado com a privacidade em sua essência. Nós <strong>não coletamos, não armazenamos, não transmitimos e não temos acesso a absolutamente nenhuma informação pessoal ou de negócio</strong> que você insere no software.</p>
             <p>Isso inclui, mas não se limita a: Nomes de funcionários, cargos, detalhes de turnos, escalas de trabalho geradas, feriados, férias, ou qualquer outra informação inserida.</p>
@@ -214,21 +215,38 @@ function exibirAtalhosDeTeclado() {
 
 
 function initConfiguracoesPage() {
-    $("#btnSalvarConfig").onclick = saveConfig;
+    const page = $("#page-configuracoes");
+    if (!page) return;
+
+    // --- Lógica das Abas ---
+    const tabs = $$("#config-tabs .painel-tab-btn", page);
+    const panes = $$("#config-content .config-pane", page);
+
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            const targetPane = tab.dataset.tab;
+
+            tabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+
+            panes.forEach(pane => {
+                pane.classList.toggle("active", pane.dataset.pane === targetPane);
+            });
+        });
+    });
+
+    // --- Lógica dos Botões e Controles ---
+    const btnSalvar = $("#btnSalvarConfig");
+    if(btnSalvar) btnSalvar.onclick = saveConfig;
     
-    $("#config-terms-card").onclick = (e) => {
-        e.preventDefault();
-        exibirTermosDeUso();
-    };
-    $("#config-privacy-card").onclick = (e) => {
-        e.preventDefault();
-        exibirPoliticaDePrivacidade();
-    };
-    // ADICIONADO: Listener para o novo botão de atalhos
-    $("#config-shortcuts-card").onclick = (e) => {
-        e.preventDefault();
-        exibirAtalhosDeTeclado();
-    };
+    const termsCard = $("#config-terms-card");
+    if(termsCard) termsCard.onclick = () => exibirTermosDeUso();
+    
+    const privacyCard = $("#config-privacy-card");
+    if(privacyCard) privacyCard.onclick = () => exibirPoliticaDePrivacidade();
+    
+    const shortcutsCard = $("#config-shortcuts-card");
+    if(shortcutsCard) shortcutsCard.onclick = () => exibirAtalhosDeTeclado();
 
     const themeToggleButtons = $$('#themeToggleGroup .toggle-btn');
     themeToggleButtons.forEach(button => {
@@ -243,28 +261,30 @@ function initConfiguracoesPage() {
         };
     });
     
-    $("#btn-export-data").onclick = exportAllData;
-    $("#btn-import-data").onclick = importAllData;
+    const btnExport = $("#btn-export-data");
+    if(btnExport) btnExport.onclick = exportAllData;
+    
+    const btnImport = $("#btn-import-data");
+    if(btnImport) btnImport.onclick = importAllData;
 
     const btnCopyPix = $("#btn-copy-pix");
-    const pixKeyText = $("#pix-key-text");
-
-    if (btnCopyPix && pixKeyText) {
+    if (btnCopyPix) {
         btnCopyPix.onclick = () => {
-            navigator.clipboard.writeText(pixKeyText.textContent).then(() => {
-                showToast('Chave PIX copiada! 📋');
-            }).catch(err => {
-                console.error('Erro ao copiar a chave PIX: ', err);
-                showToast('Erro ao copiar. Tente manualmente.');
-            });
+            const pixKeyText = $("#pix-key-text");
+            if(pixKeyText){
+                navigator.clipboard.writeText(pixKeyText.textContent).then(() => {
+                    showToast('Chave PIX copiada! 📋');
+                }).catch(err => {
+                    console.error('Erro ao copiar a chave PIX: ', err);
+                    showToast('Erro ao copiar. Tente manualmente.');
+                });
+            }
         };
     }
 
-    const btnReiniciarOnboarding = $("#btnReiniciarOnboarding");
-    const btnHardReset = $("#btnHardReset");
-
-    if (btnReiniciarOnboarding) {
-        btnReiniciarOnboarding.onclick = () => {
+    const btnReiniciar = $("#btnReiniciarOnboarding");
+    if(btnReiniciar){
+        btnReiniciar.onclick = () => {
             localStorage.removeItem('ge_onboarding_complete');
             localStorage.removeItem('ge_onboarding_progress');
             showToast("Onboarding reiniciado. A página será recarregada.");
@@ -272,17 +292,18 @@ function initConfiguracoesPage() {
         };
     }
 
-    if (btnHardReset) {
-        btnHardReset.onclick = async () => {
-            const confirmado = await showPromptConfirm({
+    const btnReset = $("#btnHardReset");
+    if(btnReset){
+        btnReset.onclick = async () => {
+            const { confirmed } = await showPromptConfirm({
                 title: "APAGAR TODOS OS DADOS?",
                 message: "Esta ação é IRREVERSÍVEL. Todos os turnos, cargos, funcionários e escalas salvas serão permanentemente excluídos.",
                 promptLabel: `Para confirmar, digite a palavra "APAGAR" no campo abaixo:`,
                 requiredWord: "APAGAR",
                 confirmText: "Confirmar Exclusão"
             });
-
-            if (confirmado) {
+    
+            if (confirmed) {
                 Object.values(KEYS).forEach(key => localStorage.removeItem(key));
                 localStorage.removeItem('ge_onboarding_complete');
                 localStorage.removeItem('ge_onboarding_progress');
@@ -291,6 +312,9 @@ function initConfiguracoesPage() {
             }
         };
     }
+    
+    // Carrega os dados iniciais no formulário ao abrir a página
+    loadConfigForm();
 }
 
 document.addEventListener('DOMContentLoaded', initConfiguracoesPage);

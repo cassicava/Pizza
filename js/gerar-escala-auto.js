@@ -1,20 +1,20 @@
 /**************************************
- * ✨ Assistente de Geração Automática
+ * ✨ Assistente de Geração Automática (Versão Final Completa)
  **************************************/
 
+// Estado global do assistente
 let geradorState = {};
-let tipInterval = null;
-let activeTipIndex = 0;
+// Estado temporário para o editor de feriados
 let tempHolidayData = {};
-// Objeto de estado temporário para o Passo 3
+// Estado temporário para o editor de ausências
 let tempAusencia = {
     tipo: TURNO_FERIAS_ID,
     funcionarios: new Set(),
     start: null,
     end: null,
 };
-// Flag para controle do listener de emoji
-let catEmojiListenerAttached = false;
+// Gerenciador do estado do wizard (passos)
+let wizardManager = null;
 
 function setGeradorFormDirty(isDirty) {
     dirtyForms['gerar-escala'] = isDirty;
@@ -43,31 +43,33 @@ function resetGeradorWizard() {
         end: null,
     };
 
-    $("#gerador-wizard-container").classList.remove('hidden');
-    $("#gerador-escalaView").classList.add('hidden');
-    $$("#gerador-wizard-container .wizard-step").forEach(step => step.classList.remove('active'));
-    $("#gerador-wizard-passo1").classList.add('active');
-
-    $('#btnGerarEscala').textContent = '✨ Gerar Escala ✨';
-    parseEmojisInElement($('#btnGerarEscala'));
-
+    const wizardContainer = $("#gerador-wizard-container");
+    if (wizardContainer) wizardContainer.classList.remove('hidden');
+    
+    const escalaView = $("#gerador-escalaView");
+    if (escalaView) escalaView.classList.add('hidden');
+    
     if ($("#gerar-escCargo")) $("#gerar-escCargo").value = '';
     if ($("#gerar-escIni")) $("#gerar-escIni").value = '';
     if ($("#gerar-escFim")) $("#gerar-escFim").value = '';
-    if ($('#gerar-escFim')) $('#gerar-escFim').disabled = true;
+    const fimInput = $('#gerar-escFim');
+    if (fimInput) fimInput.disabled = true;
 
     updateGeradorResumoDias();
 
-    if ($("#gerador-excecoes-funcionarios-container")) $("#gerador-excecoes-funcionarios-container").innerHTML = '';
-    if ($("#gerador-cobertura-turnos-container")) $("#gerador-cobertura-turnos-container").innerHTML = '';
     if ($("#holiday-calendars-container")) $("#holiday-calendars-container").innerHTML = '';
     if ($("#holiday-editor-container")) $("#holiday-editor-container").innerHTML = '';
     if ($("#holiday-list-wrapper")) $("#holiday-list-wrapper").innerHTML = '';
+    if ($("#gerador-excecoes-funcionarios-container")) $("#gerador-excecoes-funcionarios-container").innerHTML = '';
+    if ($("#gerador-cobertura-turnos-container")) $("#gerador-cobertura-turnos-container").innerHTML = '';
 
     const toolbox = $("#editor-toolbox");
     if (toolbox) toolbox.classList.add("hidden");
 
-    checkStep1Completion(); // Garante que o botão de início esteja oculto
+    if (wizardManager) {
+        wizardManager.goToStep(1);
+    }
+    
     setGeradorFormDirty(false);
 }
 
@@ -84,8 +86,11 @@ function initGeradorPage(options = {}) {
     }
 
     if (options.isEditing && options.escalaParaEditar) {
-        $("#gerador-wizard-container").classList.add('hidden');
-        $("#gerador-escalaView").classList.remove('hidden');
+        const wizardContainer = $("#gerador-wizard-container");
+        if(wizardContainer) wizardContainer.classList.add('hidden');
+        
+        const escalaView = $("#gerador-escalaView");
+        if(escalaView) escalaView.classList.remove('hidden');
 
         currentEscala = options.escalaParaEditar;
         currentEscala.owner = 'gerador';
@@ -97,64 +102,12 @@ function initGeradorPage(options = {}) {
     }
 }
 
-function checkStep1Completion() {
-    const startButton = $("#btn-gerador-goto-passo2");
-    if (!startButton) return;
-
-    const cargoId = $("#gerar-escCargo").value;
-    const inicio = $("#gerar-escIni").value;
-    const fim = $("#gerar-escFim").value;
-
-    const isComplete = cargoId && inicio && fim && fim >= inicio;
-
-    startButton.classList.toggle('hidden', !isComplete);
-}
-
-
-/* --- NOVO: LÓGICA DA ANIMAÇÃO DE EMOJIS --- */
-function initCatEmojiSpawner() {
-    if (catEmojiListenerAttached) return;
-
-    const container = document.querySelector('#gerador-wizard-passo1 .wizard-tips-container');
-    if (!container) return;
-
-    let canSpawn = true;
-    const catEmojis = ['😺', '😸', '😹', '😻', '😼', '😽', '🐾', '🧡'];
-
-    container.addEventListener('mousemove', (e) => {
-        if (!canSpawn) return;
-
-        canSpawn = false;
-        setTimeout(() => { canSpawn = true; }, 150); 
-
-        const rect = container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        const emoji = document.createElement('span');
-        emoji.className = 'cat-emoji';
-        emoji.textContent = catEmojis[Math.floor(Math.random() * catEmojis.length)];
-        emoji.style.left = `${x}px`;
-        emoji.style.top = `${y}px`;
-
-        container.appendChild(emoji);
-        parseEmojisInElement(emoji);
-
-        emoji.addEventListener('animationend', () => {
-            emoji.remove();
-        });
-    });
-
-    catEmojiListenerAttached = true;
-}
-
-
 function renderGeradorCargoSelect() {
     const sel = $("#gerar-escCargo");
     if (!sel) return;
     const { cargos } = store.getState();
     sel.innerHTML = "<option value=''>Selecione um cargo para a escala</option>";
-    cargos.forEach(c => {
+    cargos.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(c => {
         const o = document.createElement("option");
         o.value = c.id;
         o.textContent = c.nome;
@@ -166,45 +119,103 @@ function updateGeradorResumoDias() {
     const inicio = $("#gerar-escIni").value;
     const fim = $("#gerar-escFim").value;
     const resumoEl = $("#gerar-escResumoDias");
-    if (inicio && fim && fim >= inicio) {
-        resumoEl.textContent = `Total: ${dateRangeInclusive(inicio, fim).length} dia(s)`;
-    } else {
-        resumoEl.textContent = 'Selecione o período para ver a duração da escala.';
+    if (resumoEl) {
+        if (inicio && fim && fim >= inicio) {
+            resumoEl.textContent = `Total: ${dateRangeInclusive(inicio, fim).length} dia(s)`;
+        } else {
+            resumoEl.textContent = 'Selecione o período para ver a duração da escala.';
+        }
     }
 }
 
-function handleGoToStep(step) {
-    const cargoId = $("#gerar-escCargo").value;
-    const inicio = $("#gerar-escIni").value;
-    const fim = $("#gerar-escFim").value;
+// --- LÓGICA DO ASSISTENTE (WIZARD) ---
+function createWizardManager() {
+    const container = $("#gerador-wizard-container");
+    if (!container) return { goToStep: () => {}, updateButtonState: () => {} };
 
-    if (step > 1 && (!cargoId || !inicio || !fim || fim < inicio)) {
-        showToast("Por favor, selecione o cargo e um período válido.");
-        return;
+    const tabs = $$("#gerador-wizard-tabs .painel-tab-btn", container);
+    const contents = $$("#gerador-wizard-content .painel-tab-content", container);
+    const nextBtn = $("#btn-gerador-next", container);
+    let currentStep = 1;
+
+    function updateButtonState() {
+        if (!nextBtn) return;
+        const cargoId = $("#gerar-escCargo").value;
+        const inicio = $("#gerar-escIni").value;
+        const fim = $("#gerar-escFim").value;
+        const isStep1Complete = cargoId && inicio && fim && fim >= inicio;
+
+        if (currentStep === 1) {
+            nextBtn.disabled = !isStep1Complete;
+        } else {
+            nextBtn.disabled = false;
+        }
+        
+        if (currentStep === 4) {
+            nextBtn.innerHTML = '✨ Gerar Escala';
+            parseEmojisInElement(nextBtn);
+        } else {
+            nextBtn.innerHTML = 'Próximo Passo &gt;';
+        }
     }
 
+    function goToStep(stepNumber) {
+        currentStep = stepNumber;
+        
+        tabs.forEach(tab => {
+            const step = parseInt(tab.dataset.step, 10);
+            tab.classList.remove('active', 'completed');
+            tab.disabled = step > currentStep;
+            if (step === currentStep) {
+                tab.classList.add('active');
+            } else if (step < currentStep) {
+                tab.classList.add('completed');
+            }
+        });
 
-    geradorState.cargoId = cargoId;
-    geradorState.inicio = inicio;
-    geradorState.fim = fim;
+        contents.forEach(content => {
+            content.classList.toggle('active', content.dataset.tabContent == currentStep);
+        });
 
-    switch (step) {
-        case 2:
-            renderHolidayStep();
-            navigateWizardWithAnimation('#gerador-wizard-container', 'gerador-wizard-passo2', 'forward');
-            break;
-        case 3:
-            renderAusenciasStep();
-            navigateWizardWithAnimation('#gerador-wizard-container', 'gerador-wizard-passo3', 'forward');
-            break;
-        case 4:
-            renderPasso4_Cobertura();
-            navigateWizardWithAnimation('#gerador-wizard-container', 'gerador-wizard-passo4', 'forward');
-            break;
+        switch (currentStep) {
+            case 2: renderHolidayStep(); break;
+            case 3: renderAusenciasStep(); break;
+            case 4: renderPasso4_Cobertura(); break;
+        }
+        updateButtonState();
     }
+
+    if (nextBtn) {
+        nextBtn.onclick = (event) => {
+            if (currentStep === 4) {
+                playStarBurst(event);
+                handleStartGeneration();
+            } else {
+                if (currentStep === 1) {
+                    geradorState.cargoId = $("#gerar-escCargo").value;
+                    geradorState.inicio = $("#gerar-escIni").value;
+                    geradorState.fim = $("#gerar-escFim").value;
+                    playEmojiBurst(event);
+                }
+                goToStep(currentStep + 1);
+            }
+        };
+    }
+    
+    tabs.forEach(tab => {
+        tab.onclick = () => {
+            if (!tab.disabled) {
+                goToStep(parseInt(tab.dataset.step, 10));
+            }
+        };
+    });
+    
+    goToStep(1);
+
+    return { goToStep, updateButtonState };
 }
 
-// --- PASSO 2: Lógica de Feriados ---
+// --- PASSO 2: LÓGICA DE FERIADOS ---
 function renderHolidayStep() {
     renderHolidayCalendar();
     renderHolidayEditor(geradorState.selectedDate);
@@ -214,47 +225,29 @@ function renderHolidayStep() {
 function renderHolidayCalendar() {
     const container = $("#holiday-calendars-container");
     if (!container) return;
-
     const rangeSet = new Set(dateRangeInclusive(geradorState.inicio, geradorState.fim));
     const months = {};
     rangeSet.forEach(date => {
         const monthKey = date.substring(0, 7);
-        if (!months[monthKey]) {
-            months[monthKey] = true; 
-        }
+        if (!months[monthKey]) months[monthKey] = true;
     });
-
     let html = '';
     const sortedMonthKeys = Object.keys(months).sort();
-
     for (const monthKey of sortedMonthKeys) {
         const [year, month] = monthKey.split('-').map(Number);
-        const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', {
-            month: 'long',
-            year: 'numeric'
-        });
+        const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
         const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
         const daysInMonth = new Date(year, month, 0).getDate();
-
-        html += `<div class="calendar-instance">
-                    <h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4>
-                    <div class="calendar-grid">
-                        ${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}
-                        ${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}
-                `;
-
+        html += `<div class="calendar-instance"><h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4><div class="calendar-grid">${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
         for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
             const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
-
             if (!rangeSet.has(date)) {
                 html += '<div class="calendar-day empty"></div>';
                 continue;
             }
-            
             const day = new Date(date + 'T12:00:00');
             const dayOfWeek = day.getUTCDay();
             const holiday = geradorState.feriados.find(f => f.date === date);
-
             let classes = 'calendar-day';
             if ([0, 6].includes(dayOfWeek)) classes += ' weekend';
             if (date === geradorState.selectedDate) classes += ' is-selected';
@@ -262,10 +255,8 @@ function renderHolidayCalendar() {
                 classes += ' is-holiday';
                 if (!holiday.trabalha) classes += ' is-holiday-off';
             }
-
             html += `<div class="${classes}" data-date="${date}"><span class="day-number">${dayNumber}</span></div>`;
         }
-
         html += '</div></div>';
     }
     container.innerHTML = html;
@@ -275,91 +266,22 @@ function handleCalendarDayClick(event) {
     const dayEl = event.target.closest('.calendar-day:not(.empty)');
     if (!dayEl) return;
     const newDate = dayEl.dataset.date;
-
     if (newDate === geradorState.selectedDate) return;
-
     geradorState.selectedDate = newDate;
     const existingHoliday = geradorState.feriados.find(f => f.date === geradorState.selectedDate);
-
-    tempHolidayData = existingHoliday ?
-        JSON.parse(JSON.stringify(existingHoliday)) : {
-            date: newDate,
-            nome: '',
-            trabalha: true,
-            descontaMeta: false,
-            desconto: { horas: 8, turnos: 1 }
-        };
-
+    tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : { date: newDate, nome: '', trabalha: true, descontaMeta: false, desconto: { horas: 8, turnos: 1 } };
     renderHolidayStep();
 }
-
 
 function renderHolidayEditor(date) {
     const container = $("#holiday-editor-container");
     if (!container) return;
-
     if (!date) {
         container.innerHTML = `<div class="holiday-editor-placeholder">Clique em um dia no calendário para configurá-lo.</div>`;
         return;
     }
-
     const holiday = tempHolidayData;
-
-    container.innerHTML = `
-        <div class="holiday-editor-content">
-            <h5>${new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {dateStyle: 'full'})}</h5>
-            
-            <fieldset>
-                <legend>1. Nome do Feriado/Evento</legend>
-                <div class="animated-field">
-                    <input id="holiday-name" type="text" placeholder=" " value="${holiday.nome}" />
-                    <label for="holiday-name">Ex: Confraternização, Ponto Facultativo</label>
-                </div>
-            </fieldset>
-
-            <fieldset id="holiday-config-trabalho" disabled>
-                <legend>2. Configurações do Dia</legend>
-                <div class="holiday-config-row">
-                    <div class="form-group">
-                        <label class="form-label">Haverá Trabalho?</label>
-                        <div class="toggle-group" id="holiday-trabalha-toggle">
-                            <button type="button" class="toggle-btn ${holiday.trabalha ? 'active' : ''}" data-value="sim">Sim</button>
-                            <button type="button" class="toggle-btn ${!holiday.trabalha ? 'active' : ''}" data-value="nao">Não (Folga Geral)</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Descontar da Meta?</label>
-                        <div class="toggle-group" id="holiday-desconta-toggle">
-                            <button type="button" class="toggle-btn ${holiday.descontaMeta ? 'active' : ''}" data-value="sim">Sim</button>
-                            <button type="button" class="toggle-btn ${!holiday.descontaMeta ? 'active' : ''}" data-value="nao">Não</button>
-                        </div>
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset id="holiday-desconto-options" class="${holiday.descontaMeta ? '' : 'hidden'}" disabled>
-                 <legend>3. Valor do Desconto</legend>
-                 <div class="form-row-aligned">
-                    <div class="animated-field" style="flex: 1;">
-                        <input id="holiday-desconto-horas" type="number" min="0" step="0.5" placeholder=" " value="${holiday.desconto.horas}" />
-                        <label for="holiday-desconto-horas">Horas a Descontar</label>
-                    </div>
-                    <div class="animated-field" style="flex: 1;">
-                        <input id="holiday-desconto-turnos" type="number" min="0" step="1" placeholder=" " value="${holiday.desconto.turnos}" />
-                        <label for="holiday-desconto-turnos">Turnos a Descontar</label>
-                    </div>
-                 </div>
-                 <div class="explanation-box">
-                    <div>O valor será subtraído da meta do funcionário (seja ela em horas ou turnos) que não trabalhar neste dia.</div>
-                </div>
-            </fieldset>
-
-            <div class="holiday-editor-actions">
-                <button id="holiday-save-btn" class="success">💾 Salvar</button>
-                <button id="holiday-remove-btn" class="danger" ${!geradorState.feriados.some(f => f.date === date) ? 'style="display:none;"' : ''}>🔥 Remover</button>
-            </div>
-        </div>
-    `;
+    container.innerHTML = `<div class="holiday-editor-content"><h5>${new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {dateStyle: 'full'})}</h5><fieldset><legend>1. Nome do Feriado/Evento</legend><div class="animated-field"><input id="holiday-name" type="text" placeholder=" " value="${holiday.nome}" /><label for="holiday-name">Ex: Confraternização, Ponto Facultativo</label></div></fieldset><fieldset id="holiday-config-trabalho" disabled><legend>2. Configurações do Dia</legend><div class="holiday-config-row"><div class="form-group"><label class="form-label">Haverá Trabalho?</label><div class="toggle-group" id="holiday-trabalha-toggle"><button type="button" class="toggle-btn ${holiday.trabalha ? 'active' : ''}" data-value="sim">Sim</button><button type="button" class="toggle-btn ${!holiday.trabalha ? 'active' : ''}" data-value="nao">Não (Folga Geral)</button></div></div><div class="form-group"><label class="form-label">Descontar da Meta?</label><div class="toggle-group" id="holiday-desconta-toggle"><button type="button" class="toggle-btn ${holiday.descontaMeta ? 'active' : ''}" data-value="sim">Sim</button><button type="button" class="toggle-btn ${!holiday.descontaMeta ? 'active' : ''}" data-value="nao">Não</button></div></div></div></fieldset><fieldset id="holiday-desconto-options" class="${holiday.descontaMeta ? '' : 'hidden'}" disabled><legend>3. Valor do Desconto</legend><div class="form-row-aligned"><div class="animated-field" style="flex: 1;"><input id="holiday-desconto-horas" type="number" min="0" step="0.5" placeholder=" " value="${holiday.desconto.horas}" /><label for="holiday-desconto-horas">Horas a Descontar</label></div><div class="animated-field" style="flex: 1;"><input id="holiday-desconto-turnos" type="number" min="0" step="1" placeholder=" " value="${holiday.desconto.turnos}" /><label for="holiday-desconto-turnos">Turnos a Descontar</label></div></div><div class="explanation-box"><div>O valor será subtraído da meta do funcionário (seja ela em horas ou turnos) que não trabalhar neste dia.</div></div></fieldset><div class="holiday-editor-actions"><button id="holiday-save-btn" class="success">💾 Salvar</button><button id="holiday-remove-btn" class="danger" ${!geradorState.feriados.some(f => f.date === date) ? 'style="display:none;"' : ''}>🔥 Remover</button></div></div>`;
     addHolidayEditorListeners(date);
     parseEmojisInElement(container);
 }
@@ -367,114 +289,84 @@ function renderHolidayEditor(date) {
 function renderHolidayList() {
     const container = $('#holiday-list-wrapper');
     if (!container) return;
-
     const sortedHolidays = [...geradorState.feriados].sort((a, b) => a.date.localeCompare(b.date));
-
     if (sortedHolidays.length === 0) {
-        container.innerHTML = `<fieldset class="fieldset-wrapper" style="height: 100%;">
-            <legend>Feriados Adicionados</legend>
-            <p class="muted" style="text-align:center; padding: 1rem;">Nenhum feriado adicionado.</p>
-        </fieldset>`;
+        container.innerHTML = `<fieldset class="fieldset-wrapper" style="height: 100%;"><legend>Feriados Adicionados</legend><p class="muted" style="text-align:center; padding: 1rem;">Nenhum feriado adicionado.</p></fieldset>`;
         return;
     }
-
     const listItems = sortedHolidays.map(h => {
         const d = new Date(h.date + 'T12:00:00');
         const isFolga = !h.trabalha;
-        
-        return `
-            <li class="summary-list-item" data-date="${h.date}" style="border-color: ${isFolga ? '#22c55e':'#3b82f6'}">
-                <div class="summary-list-item-header">
-                    <span class="item-type">${isFolga ? 'Folga Geral' : 'Dia de Trabalho'}</span>
-                    <span class="item-name">${h.nome || ''}</span>
-                </div>
-                <div class="summary-list-item-body">
-                    ${d.toLocaleDateString('pt-BR', {dateStyle: 'long'})}
-                </div>
-                <div class="summary-list-item-footer">
-                     <button class="summary-delete-btn" data-remove-date="${h.date}">Excluir</button>
-                </div>
-            </li>
-        `;
+        return `<li class="summary-list-item" data-date="${h.date}" style="border-color: ${isFolga ? '#22c55e':'#3b82f6'}"><div class="summary-list-item-header"><span class="item-type">${isFolga ? 'Folga Geral' : 'Dia de Trabalho'}</span><span class="item-name">${h.nome || ''}</span></div><div class="summary-list-item-body">${d.toLocaleDateString('pt-BR', {dateStyle: 'long'})}</div><div class="summary-list-item-footer"><button class="summary-delete-btn">Excluir</button></div></li>`;
     }).join('');
-
-    container.innerHTML = `<fieldset class="fieldset-wrapper">
-        <legend>Feriados Adicionados</legend>
-        <ul class="summary-list">${listItems}</ul>
-    </fieldset>`;
-
+    container.innerHTML = `<fieldset class="fieldset-wrapper"><legend>Feriados Adicionados</legend><ul class="summary-list">${listItems}</ul></fieldset>`;
     $$('.summary-list-item').forEach(item => {
         item.onclick = (e) => {
-            if(e.target.classList.contains('summary-delete-btn')) {
-                geradorState.feriados = geradorState.feriados.filter(f => f.date !== item.dataset.date);
-                geradorState.selectedDate = null;
-                tempHolidayData = {};
+            const date = item.dataset.date;
+            if (e.target.classList.contains('summary-delete-btn')) {
+                geradorState.feriados = geradorState.feriados.filter(f => f.date !== date);
+                if (geradorState.selectedDate === date) {
+                    geradorState.selectedDate = null;
+                    tempHolidayData = {};
+                }
                 setGeradorFormDirty(true);
                 renderHolidayStep();
                 showToast("Feriado removido.");
                 return;
             }
-            const newDate = item.dataset.date;
-            if (newDate === geradorState.selectedDate) return;
-
-            geradorState.selectedDate = newDate;
-            const existingHoliday = geradorState.feriados.find(f => f.date === geradorState.selectedDate);
-            tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : {};
-            renderHolidayStep();
+            if (date !== geradorState.selectedDate) {
+                geradorState.selectedDate = date;
+                const existingHoliday = geradorState.feriados.find(f => f.date === date);
+                tempHolidayData = existingHoliday ? JSON.parse(JSON.stringify(existingHoliday)) : {};
+                renderHolidayStep();
+            }
         };
     });
 }
-
 
 function addHolidayEditorListeners(date) {
     const nomeInput = $('#holiday-name');
     const configTrabalhoFieldset = $('#holiday-config-trabalho');
     const descontaOptionsFieldset = $('#holiday-desconto-options');
-    
+    if (!nomeInput || !configTrabalhoFieldset || !descontaOptionsFieldset) return;
     if (nomeInput.value.trim()) {
         configTrabalhoFieldset.disabled = false;
         descontaOptionsFieldset.disabled = !tempHolidayData.descontaMeta;
     }
-    
     nomeInput.oninput = () => {
         tempHolidayData.nome = nomeInput.value.trim();
         configTrabalhoFieldset.disabled = !tempHolidayData.nome;
-        if (!tempHolidayData.nome) {
-            descontaOptionsFieldset.disabled = true;
-        }
+        if (!tempHolidayData.nome) descontaOptionsFieldset.disabled = true;
+        setGeradorFormDirty(true);
     };
-
-    $('#holiday-desconto-horas').oninput = (e) => tempHolidayData.desconto.horas = parseFloat(e.target.value) || 0;
-    $('#holiday-desconto-turnos').oninput = (e) => tempHolidayData.desconto.turnos = parseInt(e.target.value, 10) || 0;
-
+    $('#holiday-desconto-horas').oninput = (e) => { tempHolidayData.desconto.horas = parseFloat(e.target.value) || 0; setGeradorFormDirty(true); };
+    $('#holiday-desconto-turnos').oninput = (e) => { tempHolidayData.desconto.turnos = parseInt(e.target.value, 10) || 0; setGeradorFormDirty(true); };
     const setupToggle = (toggleId, onToggle) => {
-        $$(toggleId).forEach(toggleEl => {
-             toggleEl.onclick = (e) => {
+        const toggleEl = $(toggleId);
+        if (toggleEl) {
+            toggleEl.onclick = (e) => {
                 const btn = e.target.closest('.toggle-btn');
                 if (btn) {
                     $$('.toggle-btn', toggleEl).forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     if (onToggle) onToggle(btn.dataset.value);
+                    setGeradorFormDirty(true);
                 }
             };
-        });
+        }
     };
-
     setupToggle('#holiday-trabalha-toggle', (value) => tempHolidayData.trabalha = value === 'sim');
-    
     setupToggle('#holiday-desconta-toggle', (value) => {
         const isSim = value === 'sim';
         descontaOptionsFieldset.classList.toggle('hidden', !isSim);
         descontaOptionsFieldset.disabled = !isSim;
         tempHolidayData.descontaMeta = isSim;
     });
-
     $('#holiday-save-btn').onclick = () => {
-        if (!tempHolidayData.nome && tempHolidayData.trabalha) {
-            showToast("Por favor, dê um nome ao feriado ou marque que 'Não Haverá Trabalho'.");
+        if (!tempHolidayData.nome.trim() && tempHolidayData.trabalha) {
+            showToast("Por favor, dê um nome ao feriado ou marque como 'Folga Geral'.");
             return;
         }
-
         const index = geradorState.feriados.findIndex(f => f.date === date);
         if (index > -1) {
             geradorState.feriados[index] = { ...tempHolidayData };
@@ -487,7 +379,6 @@ function addHolidayEditorListeners(date) {
         showToast("Feriado salvo!");
         $('#holiday-remove-btn').style.display = 'inline-flex';
     };
-
     $('#holiday-remove-btn').onclick = () => {
         geradorState.feriados = geradorState.feriados.filter(f => f.date !== date);
         geradorState.selectedDate = null;
@@ -498,13 +389,12 @@ function addHolidayEditorListeners(date) {
     };
 }
 
-
-// --- PASSO 3: Lógica de Ausências (REFATORADO) ---
-
+// --- PASSO 3: LÓGICA DE AUSÊNCIAS ---
 function renderAusenciasStep() {
     const { funcionarios } = store.getState();
     const funcs = funcionarios.filter(f => f.cargoId === geradorState.cargoId && f.status !== 'arquivado').sort((a,b) => a.nome.localeCompare(b.nome));
     const container = $("#gerador-excecoes-funcionarios-container");
+    if(!container) return;
 
     let html = `
         <div class="passo2-holiday-grid" id="ausencia-step-container">
@@ -513,16 +403,10 @@ function renderAusenciasStep() {
                 <div class="holiday-editor-content">
                     <fieldset id="ausencia-funcs-fieldset">
                         <legend>1. Selecione o(s) Funcionário(s)</legend>
-                        <div id="ausencia-funcionario-list" class="check-container">
-                            ${funcs.length > 0 ? funcs.map(f => `
-                                <label class="check-inline" data-func-id="${f.id}">
-                                    <input type="checkbox" name="ausencia-funcionario-check" value="${f.id}">
-                                    ${f.nome}
-                                </label>
-                            `).join('') : '<p class="muted">Nenhum funcionário para este cargo.</p>'}
+                        <div id="ausencia-funcionario-list" class="check-container" style="max-height: 150px; overflow-y: auto; padding: 8px;">
+                            ${funcs.length > 0 ? funcs.map(f => `<label class="check-inline" data-func-id="${f.id}"><input type="checkbox" name="ausencia-funcionario-check" value="${f.id}">${f.nome}</label>`).join('') : '<p class="muted">Nenhum funcionário para este cargo.</p>'}
                         </div>
                     </fieldset>
-
                     <fieldset id="ausencia-tipo-fieldset" disabled>
                         <legend>2. Escolha o Tipo de Ausência</legend>
                         <div class="toggle-group" id="ausencia-tipo-toggle">
@@ -531,7 +415,6 @@ function renderAusenciasStep() {
                             <button type="button" class="toggle-btn" data-value="${TURNO_AFASTAMENTO_ID}">Afastamento</button>
                         </div>
                     </fieldset>
-                    
                     <fieldset id="ausencia-dates-fieldset" disabled>
                          <legend>3. Defina o Período</legend>
                         <div id="ausencia-date-selector" class="form-row" style="margin: 0;">
@@ -546,11 +429,8 @@ function renderAusenciasStep() {
                 </div>
             </div>
             <div id="ausencia-list-wrapper"></div>
-        </div>
-    `;
-
+        </div>`;
     container.innerHTML = html;
-    
     addAusenciaListeners();
     renderAusenciaCalendar();
     renderAusenciaList();
@@ -558,99 +438,71 @@ function renderAusenciasStep() {
 }
 
 function addAusenciaListeners() {
-    $('#ausencia-calendars-container').onclick = handleAusenciaCalendarClick;
-    $('#ausencia-tipo-toggle').onclick = handleAusenciaTipoToggle;
-    $('#ausencia-funcionario-list').onchange = handleAusenciaFuncionarioChange;
-    $('#ausencia-date-ini').onchange = handleAusenciaDateChange;
-    $('#ausencia-date-fim').onchange = handleAusenciaDateChange;
-    $('#ausencia-save-btn').onclick = saveAusenciaPeriodo;
+    const cal = $('#ausencia-calendars-container');
+    if(cal) cal.onclick = handleAusenciaCalendarClick;
+    const tipo = $('#ausencia-tipo-toggle');
+    if(tipo) tipo.onclick = handleAusenciaTipoToggle;
+    const funcList = $('#ausencia-funcionario-list');
+    if(funcList) funcList.onchange = handleAusenciaFuncionarioChange;
+    const dateIni = $('#ausencia-date-ini');
+    if(dateIni) dateIni.onchange = handleAusenciaDateChange;
+    const dateFim = $('#ausencia-date-fim');
+    if(dateFim) dateFim.onchange = handleAusenciaDateChange;
+    const saveBtn = $('#ausencia-save-btn');
+    if(saveBtn) saveBtn.onclick = saveAusenciaPeriodo;
 }
 
 function renderAusenciaCalendar() {
     const container = $("#ausencia-calendars-container");
     if (!container) return;
-
     const rangeSet = new Set(dateRangeInclusive(geradorState.inicio, geradorState.fim));
     const months = {};
-    rangeSet.forEach(date => {
-        const monthKey = date.substring(0, 7);
-        if (!months[monthKey]) {
-            months[monthKey] = true;
-        }
-    });
-
+    rangeSet.forEach(date => { const monthKey = date.substring(0, 7); if (!months[monthKey]) months[monthKey] = true; });
     const datesInRange = tempAusencia.start && tempAusencia.end ? dateRangeInclusive(tempAusencia.start, tempAusencia.end) : (tempAusencia.start ? [tempAusencia.start] : []);
-
     const allAusenciasPorData = {};
     for (const funcId in geradorState.excecoes) {
         for (const tipoId in geradorState.excecoes[funcId]) {
             const dates = geradorState.excecoes[funcId][tipoId];
             if (dates && dates.length > 0) {
-                dates.forEach(d => {
-                    if (!allAusenciasPorData[d]) {
-                        allAusenciasPorData[d] = new Set();
-                    }
-                    allAusenciasPorData[d].add(tipoId);
-                });
+                dates.forEach(d => { if (!allAusenciasPorData[d]) allAusenciasPorData[d] = new Set(); allAusenciasPorData[d].add(tipoId); });
             }
         }
     }
-
     let html = '';
     const sortedMonthKeys = Object.keys(months).sort();
-
     for (const monthKey of sortedMonthKeys) {
         const [year, month] = monthKey.split('-').map(Number);
         const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
         const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
         const daysInMonth = new Date(year, month, 0).getDate();
-
-        html += `<div class="calendar-instance">
-                    <h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4>
-                    <div class="calendar-grid">
-                        ${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}
-                        ${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
-
+        html += `<div class="calendar-instance"><h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4><div class="calendar-grid">${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
         for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
             const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
-            
-            if (!rangeSet.has(date)) {
-                html += '<div class="calendar-day empty"></div>';
-                continue;
-            }
-
+            if (!rangeSet.has(date)) { html += '<div class="calendar-day empty"></div>'; continue; }
             const day = new Date(date + 'T12:00:00');
             const dayOfWeek = day.getUTCDay();
             let classes = 'calendar-day';
             if ([0, 6].includes(dayOfWeek)) classes += ' weekend';
             if (datesInRange.includes(date)) classes += ' is-selected';
-            
             let dotsHTML = '';
             const ausenciasDoDia = allAusenciasPorData[date];
             if (ausenciasDoDia) {
                 classes += ' has-ausencia';
                 dotsHTML += '<div class="ausencia-dots-container">';
-                
                 if (ausenciasDoDia.size > 2) {
                     const firstType = ausenciasDoDia.values().next().value;
                     let dotClass = '';
-                    if (firstType === TURNO_FOLGA_ID) dotClass = 'is-folga-dot';
-                    else if (firstType === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot';
-                    else if (firstType === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
+                    if (firstType === TURNO_FOLGA_ID) dotClass = 'is-folga-dot'; else if (firstType === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot'; else if (firstType === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
                     dotsHTML += `<div class="ausencia-dot ${dotClass}"></div><span class="ausencia-plus-symbol">+</span>`;
                 } else {
                     ausenciasDoDia.forEach(tipoId => {
                         let dotClass = '';
-                        if (tipoId === TURNO_FOLGA_ID) dotClass = 'is-folga-dot';
-                        else if (tipoId === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot';
-                        else if (tipoId === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
+                        if (tipoId === TURNO_FOLGA_ID) dotClass = 'is-folga-dot'; else if (tipoId === TURNO_FERIAS_ID) dotClass = 'is-ferias-dot'; else if (tipoId === TURNO_AFASTAMENTO_ID) dotClass = 'is-afastamento-dot';
                         dotsHTML += `<div class="ausencia-dot ${dotClass}"></div>`;
                     });
                 }
-                
                 dotsHTML += '</div>';
             }
-            
             html += `<div class="${classes}" data-date="${date}"><span class="day-number">${dayNumber}</span>${dotsHTML}</div>`;
         }
         html += '</div></div>';
@@ -660,67 +512,32 @@ function renderAusenciaCalendar() {
 
 function renderAusenciaList() {
     const container = $('#ausencia-list-wrapper');
+    if(!container) return;
     const { funcionarios } = store.getState();
     const funcsMap = Object.fromEntries(funcionarios.map(f => [f.id, f.nome]));
-
     const allAusencias = [];
     for (const funcId in geradorState.excecoes) {
         for (const tipoId in geradorState.excecoes[funcId]) {
             const dates = geradorState.excecoes[funcId][tipoId];
             if (dates && dates.length > 0) {
-                const ranges = dates.reduce((acc, date) => {
-                    if (acc.length > 0 && date === addDays(acc[acc.length - 1].end, 1)) {
-                        acc[acc.length - 1].end = date;
-                    } else {
-                        acc.push({ start: date, end: date });
-                    }
-                    return acc;
-                }, []);
-                
-                ranges.forEach(range => {
-                    allAusencias.push({
-                        funcId, funcNome: funcsMap[funcId] || "Funcionário Removido",
-                        tipoId, tipoNome: TURNOS_SISTEMA_AUSENCIA[tipoId].nome,
-                        ...range
-                    });
-                });
+                const ranges = dates.reduce((acc, date) => { if (acc.length > 0 && date === addDays(acc[acc.length - 1].end, 1)) { acc[acc.length - 1].end = date; } else { acc.push({ start: date, end: date }); } return acc; }, []);
+                ranges.forEach(range => { allAusencias.push({ funcId, funcNome: funcsMap[funcId] || "Funcionário Removido", tipoId, tipoNome: TURNOS_SISTEMA_AUSENCIA[tipoId].nome, ...range }); });
             }
         }
     }
     allAusencias.sort((a,b) => a.start.localeCompare(b.start) || a.funcNome.localeCompare(b.funcNome));
-    
     if (allAusencias.length === 0) {
-        container.innerHTML = `<fieldset class="fieldset-wrapper" style="height: 100%;">
-            <legend>Ausências Agendadas</legend>
-            <p class="muted" style="text-align:center; padding: 1rem;">Nenhuma ausência agendada.</p>
-        </fieldset>`;
+        container.innerHTML = `<fieldset class="fieldset-wrapper" style="height: 100%;"><legend>Ausências Agendadas</legend><p class="muted" style="text-align:center; padding: 1rem;">Nenhuma ausência agendada.</p></fieldset>`;
         return;
     }
-
     const listItems = allAusencias.map(aus => {
         const d_start = new Date(aus.start + 'T12:00:00');
         const d_end = new Date(aus.end + 'T12:00:00');
         const dateStr = aus.start === aus.end ? d_start.toLocaleDateString('pt-BR', {dateStyle: 'long'}) : `${d_start.toLocaleDateString()} a ${d_end.toLocaleDateString()}`;
-
-        return `
-            <li class="summary-list-item" style="border-color: ${TURNOS_SISTEMA_AUSENCIA[aus.tipoId].cor};">
-                <div class="summary-list-item-header">
-                    <span class="item-type">${aus.tipoNome}</span>
-                    <span class="item-name">${aus.funcNome}</span>
-                </div>
-                <div class="summary-list-item-body">${dateStr}</div>
-                <div class="summary-list-item-footer">
-                     <button class="summary-delete-btn" data-remove-func-id="${aus.funcId}" data-remove-tipo-id="${aus.tipoId}" data-remove-start="${aus.start}" data-remove-end="${aus.end}">Excluir</button>
-                </div>
-            </li>`;
+        return `<li class="summary-list-item" style="border-color: ${TURNOS_SISTEMA_AUSENCIA[aus.tipoId].cor};"><div class="summary-list-item-header"><span class="item-type">${aus.tipoNome}</span><span class="item-name">${aus.funcNome}</span></div><div class="summary-list-item-body">${dateStr}</div><div class="summary-list-item-footer"><button class="summary-delete-btn" data-remove-func-id="${aus.funcId}" data-remove-tipo-id="${aus.tipoId}" data-remove-start="${aus.start}" data-remove-end="${aus.end}">Excluir</button></div></li>`;
     }).join('');
-
-    container.innerHTML = `<fieldset class="fieldset-wrapper">
-        <legend>Ausências Agendadas</legend>
-        <ul class="summary-list">${listItems}</ul>
-    </fieldset>`;
-
-    $$('.summary-delete-btn').forEach(btn => btn.onclick = removeAusencia);
+    container.innerHTML = `<fieldset class="fieldset-wrapper"><legend>Ausências Agendadas</legend><ul class="summary-list">${listItems}</ul></fieldset>`;
+    $$('.summary-delete-btn', container).forEach(btn => btn.onclick = removeAusencia);
 }
 
 function handleAusenciaTipoToggle(e) {
@@ -729,38 +546,40 @@ function handleAusenciaTipoToggle(e) {
     $$('.toggle-btn', e.currentTarget).forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     tempAusencia.tipo = btn.dataset.value;
-    $('#ausencia-date-fim-label').style.display = tempAusencia.tipo === TURNO_FOLGA_ID ? 'none' : 'flex';
-
-    $('#ausencia-dates-fieldset').disabled = false;
+    const fimLabel = $('#ausencia-date-fim-label');
+    if(fimLabel) fimLabel.style.display = tempAusencia.tipo === TURNO_FOLGA_ID ? 'none' : 'flex';
+    const datesFieldset = $('#ausencia-dates-fieldset');
+    if(datesFieldset) datesFieldset.disabled = false;
     resetAusenciaDates(); 
 }
 
 function handleAusenciaFuncionarioChange() {
     tempAusencia.funcionarios = new Set($$('input[name="ausencia-funcionario-check"]:checked').map(chk => chk.value));
     const hasSelection = tempAusencia.funcionarios.size > 0;
-    
-    $('#ausencia-tipo-fieldset').disabled = !hasSelection;
-    
+    const tipoFieldset = $('#ausencia-tipo-fieldset');
+    if(tipoFieldset) tipoFieldset.disabled = !hasSelection;
     if(!hasSelection) {
-        $('#ausencia-dates-fieldset').disabled = true;
+        const datesFieldset = $('#ausencia-dates-fieldset');
+        if(datesFieldset) datesFieldset.disabled = true;
         resetAusenciaDates();
     }
 }
 
 function handleAusenciaDateChange() {
-    tempAusencia.start = $('#ausencia-date-ini').value;
-    tempAusencia.end = tempAusencia.tipo === TURNO_FOLGA_ID ? tempAusencia.start : $('#ausencia-date-fim').value;
-    
-    $('#ausencia-save-btn').disabled = !(tempAusencia.start && tempAusencia.end && tempAusencia.end >= tempAusencia.start && tempAusencia.funcionarios.size > 0);
+    const iniInput = $('#ausencia-date-ini');
+    const fimInput = $('#ausencia-date-fim');
+    tempAusencia.start = iniInput ? iniInput.value : null;
+    tempAusencia.end = tempAusencia.tipo === TURNO_FOLGA_ID ? tempAusencia.start : (fimInput ? fimInput.value : null);
+    const saveBtn = $('#ausencia-save-btn');
+    if(saveBtn) saveBtn.disabled = !(tempAusencia.start && tempAusencia.end && tempAusencia.end >= tempAusencia.start && tempAusencia.funcionarios.size > 0);
     renderAusenciaCalendar();
 }
 
 function handleAusenciaCalendarClick(e) {
     const dayEl = e.target.closest('.calendar-day:not(.empty)');
-    if (!dayEl || $('#ausencia-dates-fieldset').disabled) return;
-
+    const datesFieldset = $('#ausencia-dates-fieldset');
+    if (!dayEl || (datesFieldset && datesFieldset.disabled)) return;
     const date = dayEl.dataset.date;
-    
     if (tempAusencia.tipo === TURNO_FOLGA_ID) {
         tempAusencia.start = date;
         tempAusencia.end = date;
@@ -775,17 +594,16 @@ function handleAusenciaCalendarClick(e) {
             tempAusencia.end = date;
         }
     }
-    
-    $('#ausencia-date-ini').value = tempAusencia.start;
-    $('#ausencia-date-fim').value = tempAusencia.end;
+    const iniInput = $('#ausencia-date-ini');
+    if(iniInput) iniInput.value = tempAusencia.start;
+    const fimInput = $('#ausencia-date-fim');
+    if(fimInput) fimInput.value = tempAusencia.end;
     handleAusenciaDateChange();
 }
 
 function saveAusenciaPeriodo() {
     if (tempAusencia.funcionarios.size === 0 || !tempAusencia.start || !tempAusencia.end) return;
-    
     const range = dateRangeInclusive(tempAusencia.start, tempAusencia.end);
-    
     tempAusencia.funcionarios.forEach(funcId => {
         if (!geradorState.excecoes[funcId]) geradorState.excecoes[funcId] = {};
         Object.keys(TURNOS_SISTEMA_AUSENCIA).forEach(tipoId => {
@@ -793,14 +611,11 @@ function saveAusenciaPeriodo() {
                 geradorState.excecoes[funcId][tipoId] = geradorState.excecoes[funcId][tipoId].filter(d => !range.includes(d));
             }
         });
-        
         const currentDates = geradorState.excecoes[funcId][tempAusencia.tipo] || [];
         geradorState.excecoes[funcId][tempAusencia.tipo] = [...new Set([...currentDates, ...range])].sort();
     });
-    
     setGeradorFormDirty(true);
     renderAusenciaList();
-    renderAusenciaCalendar();
     resetAusenciaForm();
     showToast(`${TURNOS_SISTEMA_AUSENCIA[tempAusencia.tipo].nome} adicionada.`);
 }
@@ -808,10 +623,8 @@ function saveAusenciaPeriodo() {
 function removeAusencia(event) {
     const { removeFuncId, removeTipoId, removeStart, removeEnd } = event.target.dataset;
     const rangeToRemove = dateRangeInclusive(removeStart, removeEnd);
-    
     const currentDates = geradorState.excecoes[removeFuncId]?.[removeTipoId] || [];
     geradorState.excecoes[removeFuncId][removeTipoId] = currentDates.filter(d => !rangeToRemove.includes(d));
-
     setGeradorFormDirty(true);
     renderAusenciaList();
     renderAusenciaCalendar();
@@ -821,31 +634,31 @@ function removeAusencia(event) {
 function resetAusenciaDates() {
     tempAusencia.start = null;
     tempAusencia.end = null;
-    $('#ausencia-date-ini').value = '';
-    $('#ausencia-date-fim').value = '';
-    $('#ausencia-save-btn').disabled = true;
+    const iniInput = $('#ausencia-date-ini');
+    if(iniInput) iniInput.value = '';
+    const fimInput = $('#ausencia-date-fim');
+    if(fimInput) fimInput.value = '';
+    const saveBtn = $('#ausencia-save-btn');
+    if(saveBtn) saveBtn.disabled = true;
     renderAusenciaCalendar();
 }
 
-function resetAusenciaFuncsAndDates() {
-    $('#ausencia-tipo-fieldset').disabled = true;
-    $('#ausencia-dates-fieldset').disabled = true;
+function resetAusenciaForm() {
     tempAusencia.funcionarios.clear();
     $$('input[name="ausencia-funcionario-check"]').forEach(chk => chk.checked = false);
+    const tipoFieldset = $('#ausencia-tipo-fieldset');
+    if(tipoFieldset) tipoFieldset.disabled = true;
+    const datesFieldset = $('#ausencia-dates-fieldset');
+    if(datesFieldset) datesFieldset.disabled = true;
     resetAusenciaDates();
 }
 
-function resetAusenciaForm() {
-    $('#ausencia-funcs-fieldset').disabled = false;
-    resetAusenciaFuncsAndDates();
-}
-
-// --- FIM DO PASSO 3 REFATORADO ---
-
+// --- PASSO 4: LÓGICA DE COBERTURA ---
 function renderPasso4_Cobertura() {
     const { cargos, turnos, equipes } = store.getState();
     const cargo = cargos.find(c => c.id === geradorState.cargoId);
     const container = $("#gerador-cobertura-turnos-container");
+    if(!container) return;
     container.innerHTML = "";
 
     if (!cargo || !cargo.turnosIds || cargo.turnosIds.length === 0) {
@@ -853,54 +666,14 @@ function renderPasso4_Cobertura() {
         return;
     }
 
-    const turnosDoCargo = turnos.filter(t => cargo.turnosIds.includes(t.id));
+    const turnosDoCargo = turnos.filter(t => cargo.turnosIds.includes(t.id)).sort((a,b)=>a.inicio.localeCompare(b.inicio));
     turnosDoCargo.forEach(turno => {
         const equipesCompativeis = equipes.filter(e => e.cargoId === cargo.id && e.turnoId === turno.id);
         const div = document.createElement('div');
         div.className = 'cobertura-modo-container cobertura-item';
         div.dataset.turnoId = turno.id;
-
-        let equipesOptionsHTML = equipesCompativeis.length > 0 ? equipesCompativeis.map(equipe => `
-            <div class="cobertura-equipe-row">
-                <label class="check-inline">
-                    <input type="checkbox" name="equipe_check_${turno.id}" value="${equipe.id}">
-                    ${equipe.nome} (${equipe.funcionarioIds.length} membros)
-                </label>
-                <div class="cobertura-equipe-padrao" style="display: none;">
-                    <div class="animated-field"><input type="number" min="1" value="1" placeholder=" " data-pattern="work"><label>Trabalha</label></div>
-                    <div class="animated-field"><input type="number" min="1" value="1" placeholder=" " data-pattern="off"><label>Folga</label></div>
-                    <input type="date" data-pattern="start" min="${geradorState.inicio}" max="${geradorState.fim}" value="${geradorState.inicio}" title="Primeiro dia de trabalho da equipe">
-                </div>
-            </div>
-            <div class="equipe-pattern-explanation" data-equipe-id="${equipe.id}" style="display: none;"></div>
-        `).join('') : `<p class="muted" style="margin: 8px 0;">Nenhuma equipe cadastrada para este turno.</p>`;
-
-        div.innerHTML = `
-            <div class="form-row-aligned" style="margin-bottom: 8px;">
-                <strong style="flex-grow: 1;">${turno.nome} (${turno.inicio} - ${turno.fim})</strong>
-                <div class="toggle-group" data-turno-id="${turno.id}">
-                    <button type="button" class="toggle-btn active" data-value="individual">Individual</button>
-                    <button type="button" class="toggle-btn" data-value="equipes">Por Equipes</button>
-                </div>
-            </div>
-            <div class="cobertura-individual-options">
-                <div class="animated-field" style="max-width: 200px;">
-                    <input type="number" id="cobertura-${turno.id}" data-cobertura="individual" value="1" min="0" placeholder=" " />
-                    <label for="cobertura-${turno.id}">Nº de funcionários</label>
-                </div>
-            </div>
-            <div class="cobertura-equipes-options" style="display: none;">
-                ${equipesOptionsHTML}
-                <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">
-                <div class="cobertura-complementar-container">
-                    <label class="form-label">Cobertura Individual Complementar:</label>
-                    <div class="animated-field" style="max-width: 200px;">
-                        <input type="number" id="cobertura-extra-${turno.id}" data-cobertura="complementar" value="0" min="0" placeholder=" " />
-                        <label for="cobertura-extra-${turno.id}">Nº de funcionários</label>
-                    </div>
-                </div>
-            </div>
-        `;
+        let equipesOptionsHTML = equipesCompativeis.length > 0 ? equipesCompativeis.map(equipe => `<div class="cobertura-equipe-row"><label class="check-inline"><input type="checkbox" name="equipe_check_${turno.id}" value="${equipe.id}">${equipe.nome} (${equipe.funcionarioIds.length} membros)</label><div class="cobertura-equipe-padrao" style="display: none;"><div class="animated-field"><input type="number" min="1" value="1" placeholder=" " data-pattern="work"><label>Trabalha</label></div><div class="animated-field"><input type="number" min="1" value="1" placeholder=" " data-pattern="off"><label>Folga</label></div><input type="date" data-pattern="start" min="${geradorState.inicio}" max="${geradorState.fim}" value="${geradorState.inicio}" title="Primeiro dia de trabalho da equipe"></div></div><div class="equipe-pattern-explanation" data-equipe-id="${equipe.id}" style="display: none;"></div>`).join('') : `<p class="muted" style="margin: 8px 0;">Nenhuma equipe cadastrada para este turno.</p>`;
+        div.innerHTML = `<div class="form-row-aligned" style="margin-bottom: 8px;"><strong style="flex-grow: 1;">${turno.nome} (${turno.inicio} - ${turno.fim})</strong><div class="toggle-group" data-turno-id="${turno.id}"><button type="button" class="toggle-btn active" data-value="individual">Individual</button><button type="button" class="toggle-btn" data-value="equipes">Por Equipes</button></div></div><div class="cobertura-individual-options"><div class="animated-field" style="max-width: 200px;"><input type="number" id="cobertura-${turno.id}" data-cobertura="individual" value="1" min="0" placeholder=" " /><label for="cobertura-${turno.id}">Nº de funcionários</label></div></div><div class="cobertura-equipes-options" style="display: none;">${equipesOptionsHTML}<hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;"><div class="cobertura-complementar-container"><label class="form-label">Cobertura Individual Complementar:</label><div class="animated-field" style="max-width: 200px;"><input type="number" id="cobertura-extra-${turno.id}" data-cobertura="complementar" value="0" min="0" placeholder=" " /><label for="cobertura-extra-${turno.id}">Nº de funcionários</label></div></div></div>`;
         container.appendChild(div);
     });
 
@@ -917,27 +690,20 @@ function renderPasso4_Cobertura() {
             };
         });
     });
-
     $$('input[type="checkbox"][name^="equipe_check_"]', container).forEach(chk => {
         chk.onchange = () => {
             const row = chk.closest('.cobertura-equipe-row');
             const patternDiv = row.querySelector('.cobertura-equipe-padrao');
             const explanationDiv = row.nextElementSibling;
-
             patternDiv.style.display = chk.checked ? 'flex' : 'none';
             explanationDiv.style.display = chk.checked ? 'block' : 'none';
             if (chk.checked) updateTeamPatternExplanation(patternDiv);
             setGeradorFormDirty(true);
         };
     });
-
     $$('.cobertura-equipe-padrao input').forEach(input => {
         if (input.type === 'date') {
-            input.addEventListener('click', function() {
-                try {
-                    this.showPicker();
-                } catch (e) {}
-            });
+            input.addEventListener('click', function() { try { this.showPicker(); } catch (e) {} });
         }
         input.addEventListener('input', () => {
             const patternDiv = input.closest('.cobertura-equipe-padrao');
@@ -945,51 +711,19 @@ function renderPasso4_Cobertura() {
             setGeradorFormDirty(true);
         });
     });
-
     $$('input[data-cobertura]', container).forEach(input => input.addEventListener('input', () => setGeradorFormDirty(true)));
-
-    // DESATIVA INPUTS DE FOLGAS DE FIM DE SEMANA SE O CARGO NÃO OPERAR
-    const diasOperacionais = new Set(cargo?.regras?.dias || []);
-    const sabadoInput = $('#gerar-minFolgasSabados');
-    const domingoInput = $('#gerar-minFolgasDomingos');
-
-    const checkWeekendInput = (input, dayId, dayName) => {
-        const parent = input.closest('.animated-field');
-        let helperText = parent.querySelector('.field-helper-text');
-        if (!helperText) {
-            helperText = document.createElement('span');
-            helperText.className = 'field-helper-text muted';
-            helperText.style.fontSize = '0.8rem';
-            parent.appendChild(helperText);
-        }
-
-        if (!diasOperacionais.has(dayId)) {
-            input.disabled = true;
-            input.value = 0;
-            helperText.textContent = `O cargo não opera aos ${dayName}s.`;
-        } else {
-            input.disabled = false;
-            helperText.textContent = ``;
-        }
-    };
-
-    checkWeekendInput(sabadoInput, 'sab', 'Sábado');
-    checkWeekendInput(domingoInput, 'dom', 'Domingo');
 }
 
 function updateTeamPatternExplanation(patternDiv) {
+    if(!patternDiv) return;
     const explanationDiv = patternDiv.closest('.cobertura-equipe-row').nextElementSibling;
     const work = parseInt(patternDiv.querySelector('[data-pattern="work"]').value, 10) || 1;
     const off = parseInt(patternDiv.querySelector('[data-pattern="off"]').value, 10) || 1;
     const startDate = patternDiv.querySelector('[data-pattern="start"]').value;
-
     if (!startDate) return explanationDiv.innerHTML = `Selecione uma data de início.`;
-
     const dateRange = dateRangeInclusive(geradorState.inicio, geradorState.fim);
     const startIndex = dateRange.indexOf(startDate);
-
     if (startIndex === -1) return explanationDiv.innerHTML = `A data de início está fora do período da escala.`;
-
     const ciclo = work + off;
     const diasDeTrabalho = [];
     for (let i = 0; i < Math.min(dateRange.length, 10); i++) {
@@ -1001,38 +735,42 @@ function updateTeamPatternExplanation(patternDiv) {
     parseEmojisInElement(explanationDiv);
 }
 
-
+// --- CONTROLES DA ESCALA GERADA ---
 function handleStartGeneration() {
     geradorState.cobertura = {};
     geradorState.coberturaPorEquipe = {};
-
     $$('#gerador-cobertura-turnos-container .cobertura-modo-container').forEach(container => {
         const turnoId = container.dataset.turnoId;
-        const modo = $('.toggle-btn.active', container).dataset.value;
-
+        const modoAtivo = $('.toggle-btn.active', container);
+        if(!modoAtivo) return;
+        const modo = modoAtivo.dataset.value;
         if (modo === 'individual') {
-            geradorState.cobertura[turnoId] = parseInt($('[data-cobertura="individual"]', container).value, 10) || 0;
+            const input = $('[data-cobertura="individual"]', container);
+            if(input) geradorState.cobertura[turnoId] = parseInt(input.value, 10) || 0;
         } else {
-            geradorState.cobertura[turnoId] = parseInt($('[data-cobertura="complementar"]', container).value, 10) || 0;
+            const inputComp = $('[data-cobertura="complementar"]', container);
+            if(inputComp) geradorState.cobertura[turnoId] = parseInt(inputComp.value, 10) || 0;
             geradorState.coberturaPorEquipe[turnoId] = [];
-
             $$('input[type="checkbox"][name^="equipe_check_"]:checked', container).forEach(chk => {
                 const equipeId = chk.value;
                 const patternContainer = chk.closest('.cobertura-equipe-row').querySelector('.cobertura-equipe-padrao');
-                geradorState.coberturaPorEquipe[turnoId].push({
-                    equipeId: equipeId,
-                    work: parseInt($('[data-pattern="work"]', patternContainer).value, 10) || 1,
-                    off: parseInt($('[data-pattern="off"]', patternContainer).value, 10) || 1,
-                    start: $('[data-pattern="start"]', patternContainer).value,
-                });
+                if(patternContainer){
+                    geradorState.coberturaPorEquipe[turnoId].push({
+                        equipeId: equipeId,
+                        work: parseInt($('[data-pattern="work"]', patternContainer).value, 10) || 1,
+                        off: parseInt($('[data-pattern="off"]', patternContainer).value, 10) || 1,
+                        start: $('[data-pattern="start"]', patternContainer).value,
+                    });
+                }
             });
         }
     });
-
-    geradorState.maxDiasConsecutivos = parseInt($('#gerar-maxDiasConsecutivos').value, 10) || 6;
-    geradorState.minFolgasSabados = parseInt($('#gerar-minFolgasSabados').value, 10) || 1;
-    geradorState.minFolgasDomingos = parseInt($('#gerar-minFolgasDomingos').value, 10) || 1;
-
+    const maxDiasInput = $('#gerar-maxDiasConsecutivos');
+    if(maxDiasInput) geradorState.maxDiasConsecutivos = parseInt(maxDiasInput.value, 10) || 6;
+    const sabadosInput = $('#gerar-minFolgasSabados');
+    if(sabadosInput) geradorState.minFolgasSabados = parseInt(sabadosInput.value, 10) || 1;
+    const domingosInput = $('#gerar-minFolgasDomingos');
+    if(domingosInput) geradorState.minFolgasDomingos = parseInt(domingosInput.value, 10) || 1;
     gerarEscala();
 }
 
@@ -1041,6 +779,7 @@ function setupInlineTitleEditor() {
     const textEl = $('#gerador-escalaViewTitle');
     const inputEl = $('#gerador-escalaViewTitleInput');
     const editBtn = $('#gerador-escala-edit-title-btn');
+    if(!container || !textEl || !inputEl || !editBtn) return;
 
     const toViewMode = () => {
         const newName = inputEl.value.trim();
@@ -1053,7 +792,6 @@ function setupInlineTitleEditor() {
         editBtn.innerHTML = '✏️';
         parseEmojisInElement(editBtn);
     };
-
     const toEditMode = () => {
         if (!currentEscala) return;
         container.classList.add('is-editing');
@@ -1063,10 +801,7 @@ function setupInlineTitleEditor() {
         inputEl.focus();
         inputEl.select();
     };
-
-    editBtn.onclick = () => {
-        container.classList.contains('is-editing') ? toViewMode() : toEditMode();
-    };
+    editBtn.onclick = () => { container.classList.contains('is-editing') ? toViewMode() : toEditMode(); };
     textEl.onclick = toEditMode;
     inputEl.onblur = toViewMode;
     inputEl.onkeydown = (e) => {
@@ -1078,101 +813,69 @@ function setupInlineTitleEditor() {
     };
 }
 
-
 function setupGeradorPage() {
-    $("#btn-gerador-goto-passo2").addEventListener('click', (event) => {
-        playEmojiBurst(event);
-        handleGoToStep(2);
-    });
-    $("#btn-gerador-goto-passo3").addEventListener('click', (event) => {
-        playEmojiBurst(event);
-        handleGoToStep(3);
-    });
-    $("#btn-gerador-goto-passo4").addEventListener('click', (event) => {
-        playEmojiBurst(event);
-        handleGoToStep(4);
-    });
-
-    $$('[data-wizard-back-to][data-wizard="gerador"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetStep = btn.dataset.wizardBackTo;
-            navigateWizardWithAnimation('#gerador-wizard-container', `gerador-wizard-passo${targetStep}`, 'backward');
-        });
-    });
-
-    $("#btnGerarEscala").addEventListener('click', (event) => {
-        playStarBurst(event);
-        handleStartGeneration();
-    });
-
+    wizardManager = createWizardManager();
     const escCargoSelect = $("#gerar-escCargo");
     const escIniInput = $("#gerar-escIni");
     const escFimInput = $("#gerar-escFim");
 
-    escCargoSelect.addEventListener('change', (e) => {
-        geradorState.cargoId = e.target.value;
-        if (e.target.value) try {
-            escIniInput.showPicker();
-        } catch (e) {}
-        checkStep1Completion();
-        setGeradorFormDirty(true);
-    });
-
-    escIniInput.addEventListener('change', (e) => {
-        if (e.target.value) {
-            escFimInput.disabled = false;
-            escFimInput.min = e.target.value;
-            try {
-                escFimInput.showPicker();
-            } catch (e) {}
-        } else {
-            escFimInput.disabled = true;
-            escFimInput.value = '';
-        }
-        updateGeradorResumoDias();
-        checkStep1Completion();
-        setGeradorFormDirty(true);
-    });
-
-    escFimInput.addEventListener('change', () => {
-        updateGeradorResumoDias();
-        checkStep1Completion();
-        setGeradorFormDirty(true);
-    });
-
-    [escIniInput, escFimInput].forEach(input => {
-        if (input) {
-            input.addEventListener('click', function() {
-                try {
-                    this.showPicker();
-                } catch (e) {}
-            });
-            input.addEventListener('input', () => setGeradorFormDirty(true));
-        }
-    });
-
+    if (escCargoSelect) {
+        escCargoSelect.addEventListener('change', (e) => {
+            if (e.target.value && escIniInput) {
+                try { escIniInput.showPicker(); } catch (e) {}
+            }
+            wizardManager.updateButtonState();
+            setGeradorFormDirty(true);
+        });
+    }
+    if (escIniInput) {
+        escIniInput.addEventListener('change', (e) => {
+            if (escFimInput) {
+                if (e.target.value) {
+                    escFimInput.disabled = false;
+                    escFimInput.min = e.target.value;
+                    try { escFimInput.showPicker(); } catch (e) {}
+                } else {
+                    escFimInput.disabled = true;
+                    escFimInput.value = '';
+                }
+            }
+            updateGeradorResumoDias();
+            wizardManager.updateButtonState();
+            setGeradorFormDirty(true);
+        });
+    }
+    if (escFimInput) {
+        escFimInput.addEventListener('change', () => {
+            updateGeradorResumoDias();
+            wizardManager.updateButtonState();
+            setGeradorFormDirty(true);
+        });
+    }
     const calendarsContainer = $('#holiday-calendars-container');
     if (calendarsContainer) calendarsContainer.addEventListener('click', handleCalendarDayClick);
-
-    $("#btnSalvarEscalaGerador").addEventListener('click', async (event) => {
-        await salvarEscalaAtual();
-        playConfettiAnimation(event.target);
-        setGeradorFormDirty(false);
-    });
-
-    $("#btnExcluirEscalaGerador").addEventListener('click', async () => {
-        const { confirmed } = await showConfirm({
-            title: "Descartar Alterações?",
-            message: "Você tem certeza que deseja descartar esta escala? Todo o progresso não salvo será perdido."
+    const btnSalvar = $("#btnSalvarEscalaGerador");
+    if (btnSalvar) {
+        btnSalvar.addEventListener('click', async (event) => {
+            await salvarEscalaAtual();
+            playConfettiAnimation(event.target);
+            setGeradorFormDirty(false);
         });
-        if (confirmed) {
-            resetGeradorWizard();
-            go('home');
-        }
-    });
-
+    }
+    const btnDescartar = $("#btnExcluirEscalaGerador");
+    if(btnDescartar){
+        btnDescartar.addEventListener('click', async () => {
+            const { confirmed } = await showConfirm({
+                title: "Descartar Alterações?",
+                message: "Você tem certeza que deseja descartar esta escala? Todo o progresso não salvo será perdido."
+            });
+            if (confirmed) {
+                resetGeradorWizard();
+                go('home');
+            }
+        });
+    }
     setupInlineTitleEditor();
-    initCatEmojiSpawner();
 }
 
 document.addEventListener("DOMContentLoaded", setupGeradorPage);

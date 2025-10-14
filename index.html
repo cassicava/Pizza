@@ -27,8 +27,9 @@
     <link rel="stylesheet" href="css/15-toasts.css" />     
     <link rel="stylesheet" href="css/16-validation.css" /> 
     <link rel="stylesheet" href="css/17-painel-gerenciamento.css" />
+    <link rel="stylesheet" href="css/18-configuracoes.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js" integrity="sha512-NbEKAylAIvinDrSG0pOdV1vT/gN2TqnwP2/RbrI_eR+vPuT+DTC2PZkJBYuOhsXe3L2OOBm2ec_hXPKA3kYi/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"></script>
 
 </head>
 
@@ -610,90 +611,86 @@
         </section>
 
         <section id="page-gerar-escala" class="page">
-            <div id="gerador-wizard-container">
-                
-                <div id="gerador-wizard-passo1" class="wizard-step card card-animated-border">
-                    <div class="wizard-header">
-                        <h3>Passo 1: Defina o Básico</h3>
+            <div id="gerador-wizard-container" class="card painel-gerenciamento">
+                 <div class="painel-header" id="gerador-wizard-header">
+                    <div class="painel-tabs" id="gerador-wizard-tabs">
+                        <button class="painel-tab-btn" data-step="1" disabled>1. Período da Escala</button>
+                        <button class="painel-tab-btn" data-step="2" disabled>2. Feriados</button>
+                        <button class="painel-tab-btn" data-step="3" disabled>3. Ausências</button>
+                        <button class="painel-tab-btn" data-step="4" disabled>4. Cobertura e Regras</button>
                     </div>
-                    <div class="passo1-grid">
-                        <fieldset class="regras-fieldset">
-                            <legend>Informações Essenciais</legend>
-                            <select id="gerar-escCargo" style="width: 100%; margin-bottom: 16px;"></select>
-                            <fieldset class="fieldset-wrapper">
+                    <div class="painel-actions">
+                        <button id="btn-gerador-next" class="primary" disabled>Próximo Passo &gt;</button>
+                    </div>
+                </div>
+                <div class="painel-content" id="gerador-wizard-content">
+                    <div class="painel-tab-content" data-tab-content="1">
+                        <div class="passo1-grid">
+                            <fieldset class="regras-fieldset">
                                 <legend>Período da Escala</legend>
-                                <div class="form-row form-row-vcenter">
-                                    <label>Início <input type="date" id="gerar-escIni" class="input-sm"></label>
-                                    <label>Fim <input type="date" id="gerar-escFim" class="input-sm" disabled></label>
+                                <select id="gerar-escCargo" style="width: 100%; margin-bottom: 16px;"></select>
+                                <fieldset class="fieldset-wrapper">
+                                    <legend>Período da Escala</legend>
+                                    <div class="form-row form-row-vcenter">
+                                        <label>Início <input type="date" id="gerar-escIni" class="input-sm"></label>
+                                        <label>Fim <input type="date" id="gerar-escFim" class="input-sm" disabled></label>
+                                    </div>
+                                </fieldset>
+                                <span id="gerar-escResumoDias" class="dias-resumo-box">Selecione o período para ver a duração da escala.</span>
+                            </fieldset>
+                            <fieldset class="regras-fieldset">
+                                <legend>Guia Rápido</legend>
+                                <p class="muted" style="margin-top: 0; margin-bottom: 16px;">Siga os passos nas abas acima para criar sua escala de forma inteligente.</p>
+                                <div class="form-section-column" style="gap: 16px;">
+                                    <div class="explanation-box" style="margin: 0;"><strong>1. Período da Escala:</strong> Defina o cargo e as datas. Este é o único passo obrigatório.</div>
+                                    <div class="explanation-box" style="margin: 0;"><strong>2. Feriados:</strong> Marque os feriados do período e configure-os como dias de trabalho ou folga geral.</div>
+                                    <div class="explanation-box" style="margin: 0;"><strong>3. Ausências:</strong> Registre férias, folgas ou afastamentos para funcionários específicos.</div>
+                                    <div class="explanation-box" style="margin: 0;"><strong>4. Cobertura:</strong> Informe quantos funcionários você precisa em cada turno.</div>
                                 </div>
                             </fieldset>
-                            <span id="gerar-escResumoDias" class="dias-resumo-box">Selecione o período para ver a duração da escala.</span>
-                        </fieldset>
-                        <div class="wizard-tips-container">
-                             <button id="btn-gerador-goto-passo2" class="primary hidden" style="font-size: 1.2rem; padding: 12px 28px;">Vamos começar</button>
                         </div>
                     </div>
-                </div>
-
-                <div id="gerador-wizard-passo2" class="wizard-step card card-animated-border">
-                    <div class="wizard-header">
-                        <button class="secondary button-voltar" data-wizard-back-to="1" data-wizard="gerador"><b>&lt;</b> Voltar</button>
-                        <h3>Passo 2: Marque Feriados e Folgas Gerais</h3>
-                        <button id="btn-gerador-goto-passo3" class="primary">Próximo Passo <b>&gt;</b></button>
-                    </div>
-                    <div id="holiday-step-container" class="passo2-holiday-grid">
-                        <div id="holiday-calendars-container" class="calendars-wrapper">
+                    <div class="painel-tab-content" data-tab-content="2">
+                        <div id="holiday-step-container" class="passo2-holiday-grid">
+                            <div id="holiday-calendars-container" class="calendars-wrapper"></div>
+                            <div id="holiday-editor-container" class="holiday-editor-wrapper"></div>
+                            <div id="holiday-list-wrapper"></div>
                         </div>
-                        <div id="holiday-editor-container" class="holiday-editor-wrapper">
+                    </div>
+                    <div class="painel-tab-content" data-tab-content="3">
+                        <div id="gerador-excecoes-funcionarios-container"></div>
+                    </div>
+                    <div class="painel-tab-content" data-tab-content="4">
+                        <div class="passo2-grid">
+                            <fieldset class="regras-fieldset">
+                                <legend>Cobertura de Turnos</legend>
+                                <div id="gerador-cobertura-turnos-container"></div>
+                            </fieldset>
+                            <fieldset class="regras-fieldset">
+                                <legend>Regras para Funcionários</legend>
+                                <div class="explanation-box" style="margin-bottom: 16px;">
+                                   <div>Estas regras se aplicam a todos os funcionários alocados individualmente pelo gerador.</div>
+                                </div>
+                                <div class="regra-item">
+                                    <div class="animated-field">
+                                        <input type="number" id="gerar-maxDiasConsecutivos" value="6" min="1" placeholder=" " />
+                                        <label for="gerar-maxDiasConsecutivos">Máx. dias de trabalho consecutivos</label>
+                                    </div>
+                                </div>
+                                <div class="regra-item">
+                                    <div class="animated-field">
+                                        <input type="number" id="gerar-minFolgasSabados" value="1" min="0" placeholder=" " />
+                                        <label for="gerar-minFolgasSabados">Mín. Sábados de folga por mês</label>
+                                    </div>
+                                </div>
+                                <div class="regra-item">
+                                    <div class="animated-field">
+                                        <input type="number" id="gerar-minFolgasDomingos" value="1" min="0" placeholder=" " />
+                                        <label for="gerar-minFolgasDomingos">Mín. Domingos de folga por mês</label>
+                                    </div>
+                                </div>
+                            </fieldset>
                         </div>
-                        <div id="holiday-list-wrapper"></div>
-                    </div>
-                </div>
-
-                <div id="gerador-wizard-passo3" class="wizard-step card card-animated-border">
-                    <div class="wizard-header">
-                        <button class="secondary button-voltar" data-wizard-back-to="2" data-wizard="gerador"><b>&lt;</b> Voltar</button>
-                        <h3>Passo 3: Configure Férias e Afastamentos</h3>
-                        <button id="btn-gerador-goto-passo4" class="primary">Próximo Passo <b>&gt;</b></button>
-                    </div>
-                    <div id="gerador-excecoes-funcionarios-container"></div>
-                </div>
-
-                <div id="gerador-wizard-passo4" class="wizard-step card card-animated-border">
-                    <div class="wizard-header">
-                        <button class="secondary button-voltar" data-wizard-back-to="3" data-wizard="gerador"><b>&lt;</b> Voltar</button>
-                        <h3>Passo 4: Defina a Cobertura e Regras Finais</h3>
-                        <button id="btnGerarEscala" class="primary">✨ Gerar Escala ✨</button>
-                    </div>
-                    <div class="passo2-grid">
-                        <fieldset class="regras-fieldset">
-                            <legend>Cobertura de Turnos</legend>
-                            <div id="gerador-cobertura-turnos-container"></div>
-                        </fieldset>
-                        <fieldset class="regras-fieldset">
-                            <legend>Regras para Funcionários</legend>
-                            <div class="explanation-box" style="margin-bottom: 16px;">
-                               <div>Estas regras se aplicam a todos os funcionários alocados individualmente pelo gerador.</div>
-                            </div>
-                            <div class="regra-item">
-                                <div class="animated-field">
-                                    <input type="number" id="gerar-maxDiasConsecutivos" value="6" min="1" placeholder=" " />
-                                    <label for="gerar-maxDiasConsecutivos">Máx. dias de trabalho consecutivos</label>
-                                </div>
-                            </div>
-                            <div class="regra-item">
-                                <div class="animated-field">
-                                    <input type="number" id="gerar-minFolgasSabados" value="1" min="0" placeholder=" " />
-                                    <label for="gerar-minFolgasSabados">Mín. Sábados de folga por mês</label>
-                                </div>
-                            </div>
-                            <div class="regra-item">
-                                <div class="animated-field">
-                                    <input type="number" id="gerar-minFolgasDomingos" value="1" min="0" placeholder=" " />
-                                    <label for="gerar-minFolgasDomingos">Mín. Domingos de folga por mês</label>
-                                </div>
-                            </div>
-                        </fieldset>
                     </div>
                 </div>
             </div>
@@ -840,91 +837,145 @@
         </section>
 
         <section id="page-configuracoes" class="page">
-            <div class="config-grid">
-                <div class="card">
-                    <h2>Preferências</h2>
-                    <div class="grid-2-col" style="align-items: center; gap: 32px; margin-bottom: 0;">
-                        <div class="form-row" style="border: none; padding: 0; margin: 0; flex-direction: column; align-items: stretch;">
-                            <div class="animated-field" style="width: 100%;">
-                                <input type="text" id="configNome" placeholder=" " />
-                                <label for="configNome">Nome (Empresa ou Pessoal)</label>
-                            </div>
-                        </div>
-                        <div class="form-row" style="border: none; padding: 0; margin: 0; justify-content: flex-end; align-items: center;">
-                            <div class="toggle-group" id="themeToggleGroup">
-                                <button type="button" class="toggle-btn" data-value="light">☀️ Claro</button>
-                                <button type="button" class="toggle-btn" data-value="dark">🌙 Escuro</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-row" style="padding-top: 24px; justify-content: flex-end; border-top: 1px solid var(--border); margin-top: 16px;">
-                        <button id="btnSalvarConfig" class="success">💾 Salvar</button>
+            <div class="card painel-gerenciamento config-painel">
+                <div class="painel-header">
+                    <div class="painel-tabs" id="config-tabs">
+                        <button class="painel-tab-btn active" data-tab="geral"><span>⚙️</span> Geral</button>
+                        <button class="painel-tab-btn" data-tab="dados"><span>💾</span> Dados</button>
+                        <button class="painel-tab-btn" data-tab="sobre"><span>ℹ️</span> Sobre</button>
+                        <button class="painel-tab-btn" data-tab="avancado"><span>⚠️</span> Avançado</button>
                     </div>
                 </div>
-                <div class="card">
-                    <h2>Sobre e Suporte</h2>
-                    <p class="muted">Precisa de ajuda ou quer saber mais sobre o software?</p>
-                    <div class="config-terms-container">
-                        <div class="config-terms-row">
-                            <div class="info-card" id="config-terms-card">
-                                <span class="icon"></span>
-                                <span class="text">Termos de Uso</span>
+                <div class="painel-content" id="config-content">
+                    <div class="config-pane active" data-pane="geral">
+                        <div class="card">
+                            <h2 class="config-card-title">Preferências Gerais</h2>
+                            <div class="config-item-group">
+                                <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Nome de Usuário/Empresa</h3>
+                                        <p>Usado para personalizar a saudação na tela inicial.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <div class="animated-field" style="width: 100%; max-width: 300px;">
+                                            <input type="text" id="configNome" placeholder=" " />
+                                            <label for="configNome">Seu nome ou nome da empresa</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Tema da Interface</h3>
+                                        <p>Escolha entre o tema claro ou escuro.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <div class="toggle-group" id="themeToggleGroup">
+                                            <button type="button" class="toggle-btn" data-value="light">☀️ Claro</button>
+                                            <button type="button" class="toggle-btn" data-value="dark">🌙 Escuro</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="info-card" id="config-privacy-card">
-                                <span class="icon"></span>
-                                <span class="text">Política de Privacidade</span>
-                            </div>
-                        </div>
-                        <div class="config-terms-row">
-                            <div class="info-card" id="config-shortcuts-card" style="flex: 1;">
-                                <span class="text">⌨️ Atalhos de Teclado</span>
+                            <div class="config-card-footer">
+                                <button id="btnSalvarConfig" class="success">💾 Salvar Preferências</button>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="config-grid">
-                <div class="card">
-                    <h2>Backup e Restauração de Dados</h2>
-                    <div class="explanation-box" style="margin-bottom: 16px;">
-                        <div>
-                            <strong>Atenção:</strong> Seus dados (turnos, funcionários, etc.) são salvos apenas neste navegador. Use as opções abaixo para criar um arquivo de backup e restaurá-lo se necessário (ex: em outro computador ou após limpar os dados do navegador).
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <button id="btn-export-data" class="primary">📤 Exportar Todos os Dados</button>
-                        <button id="btn-import-data" class="secondary">📥 Importar de um Arquivo</button>
-                    </div>
-                </div>
-                <div class="card card-animated-border card-animated-border--cat-colors">
-                    <div class="support-card-content">
-                        <div class="support-card-col-left">
-                            <h2 class="animated-brand-text animated-brand-text--cat-colors" style="font-size: 1.5rem; margin-bottom: 16px;">🐈 Gostou do app?</h2>
-                            <p class="muted" style="text-align: left;">
-                                Este é um projeto independente, feito com muito carinho e sob a supervisão de três assistentes felinos exigentes 😼.<br> Se o app te ajudou, que tal pagar um sachê pra eles? Eles vão ficar muito felizes!
+
+                    <div class="config-pane" data-pane="dados">
+                         <div class="card">
+                            <h2 class="config-card-title">Backup e Restauração</h2>
+                            <p class="config-card-subtitle">
+                                Seus dados são salvos apenas neste navegador. Use as opções abaixo para criar um arquivo de segurança (backup) e restaurá-lo em outro computador ou navegador.
                             </p>
-                        </div>
-                        <div class="support-card-col-right">
-                             <div id="pix-details">
-                                <div class="pix-qr-code-placeholder">
-                                    <span>QR Code PIX</span>
+                            <div class="config-item-group">
+                                <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Criar um Backup</h3>
+                                        <p>Isso irá exportar todos os seus dados (turnos, funcionários, escalas, etc.) para um único arquivo <code>.json</code>.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <button id="btn-export-data" class="primary">📤 Exportar Todos os Dados</button>
+                                    </div>
                                 </div>
-                                <p style="font-weight: 500; margin: 12px 0 4px 0;">Ou copie a chave aleatória:</p>
-                                <div class="pix-key-container">
-                                    <span id="pix-key-text">escalafacil.contato@gmail.com</span>
-                                    <button id="btn-copy-pix" title="Copiar Chave">📋</button>
+                                <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Restaurar de um Backup</h3>
+                                        <p class="warning-text"><strong>Atenção:</strong> A importação de um arquivo substituirá permanentemente todos os dados existentes no aplicativo.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <button id="btn-import-data" class="secondary">📥 Importar de um Arquivo</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="card card-lista">
-                <h2>Ferramentas de Desenvolvedor</h2>
-                <p class="muted">Use estas opções para testar o comportamento da aplicação.</p>
-                <div class="form-row">
-                    <button id="btnReiniciarOnboarding" class="secondary">🔁 Reiniciar Onboarding</button>
-                    <button id="btnHardReset" class="danger">🔥 Apagar Todos os Dados (Hard Reset)</button>
+
+                    <div class="config-pane" data-pane="sobre">
+                        <div class="card card-animated-border card-animated-border--cat-colors">
+                            <div class="support-card-content">
+                                <div class="support-card-col-left">
+                                    <h2 class="animated-brand-text animated-brand-text--cat-colors" style="font-size: 1.5rem; margin-bottom: 16px;">🐈 Gostou do app?</h2>
+                                    <p class="muted" style="text-align: left;">
+                                        Este é um projeto independente, feito com muito carinho e sob a supervisão de três assistentes felinos exigentes 😼.<br> Se o app te ajudou, que tal pagar um sachê pra eles? Eles vão ficar muito felizes!
+                                    </p>
+                                </div>
+                                <div class="support-card-col-right">
+                                     <div id="pix-details">
+                                        <div class="pix-qr-code-placeholder">
+                                            <span>QR Code PIX</span>
+                                        </div>
+                                        <p style="font-weight: 500; margin: 12px 0 4px 0;">Ou copie a chave:</p>
+                                        <div class="pix-key-container">
+                                            <span id="pix-key-text">escalafacil.contato@gmail.com</span>
+                                            <button id="btn-copy-pix" title="Copiar Chave">📋</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                             <h2 class="config-card-title">Ajuda e Recursos</h2>
+                             <div class="config-links-container">
+                                 <button class="info-link-btn" id="config-terms-card"><span>📄</span> Termos de Uso</button>
+                                 <button class="info-link-btn" id="config-privacy-card"><span>🛡️</span> Política de Privacidade</button>
+                                 <button class="info-link-btn" id="config-shortcuts-card"><span>⌨️</span> Atalhos de Teclado</button>
+                                 <a href="mailto:escalafacil.contato@gmail.com" class="info-link-btn"><span>🐛</span> Reportar um Problema</a>
+                             </div>
+                             <p class="config-card-version">
+                                <b>Escala Fácil v1.0.0</b><br>
+                                Uma ferramenta para simplificar a criação e o gerenciamento de escalas.
+                             </p>
+                        </div>
+                    </div>
+
+                    <div class="config-pane" data-pane="avancado">
+                        <div class="card card--danger-zone">
+                            <h2 class="config-card-title">⚠️ Zona de Perigo</h2>
+                            <p class="config-card-subtitle">As ações abaixo são destrutivas e não podem ser desfeitas. Use com extrema cautela.</p>
+
+                             <div class="config-item-group">
+                                <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Reiniciar Tutorial</h3>
+                                        <p>Isso fará com que a tela de boas-vindas seja exibida novamente na próxima vez que você abrir o aplicativo.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <button id="btnReiniciarOnboarding" class="secondary">🔁 Reiniciar Tutorial</button>
+                                    </div>
+                                </div>
+                                <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Apagar Todos os Dados</h3>
+                                        <p class="warning-text"><strong>Ação irreversível.</strong> Remove permanentemente todos os turnos, cargos, funcionários, equipes e escalas salvas deste navegador.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <button id="btnHardReset" class="danger">🔥 Hard Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

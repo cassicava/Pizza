@@ -44,10 +44,6 @@ html[data-theme="dark"] .painel-gerenciamento .painel-tab-btn.active {
      box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
 }
 
-.painel-gerenciamento .painel-actions .btn-add-new {
-    /* Reutiliza o estilo do botão primário, mas pode ter ajustes */
-}
-
 .painel-gerenciamento .painel-content {
     padding: 24px;
 }
