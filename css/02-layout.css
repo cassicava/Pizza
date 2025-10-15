@@ -1,10 +1,9 @@
-/* LARGURAS DA SIDEBAR - Variáveis para fácil manutenção */
 :root {
   --sidebar-width-collapsed: 72px;
   --sidebar-width-expanded: 250px;
+  --header-height: 73px; /* ALTURA DO CABEÇALHO PARA CÁLCULOS */
 }
 
-/* NOVO LAYOUT PRINCIPAL COM FLEXBOX */
 body {
   display: flex;
 }
@@ -98,7 +97,8 @@ main.container {
   flex-grow: 1; 
   margin-left: var(--sidebar-width-collapsed); 
   max-width: 1800px;
-  padding: 0; 
+  padding: 0;
+  min-width: 0; /* CORREÇÃO ADICIONADA: Impede o container principal de esticar com conteúdo largo */
 }
 
 #main-header {
@@ -108,6 +108,7 @@ main.container {
     padding: 24px 24px 16px 24px;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border);
+    height: var(--header-height); /* ALTURA FIXA */
 }
 
 #page-title {
@@ -161,17 +162,14 @@ main.container {
     transform: scale(1.1) rotate(-8deg);
 }
 
-/* --- LÓGICA DE TRANSIÇÃO E TAMANHO DE PÁGINAS CORRIGIDA --- */
 .page {
   display: none;
   flex-direction: column;
   gap: 24px;
   padding: 24px 48px 12px 48px;
+  transition: padding 0.4s ease-in-out; /* Adicionado para suavizar a mudança de padding */
+  min-width: 0; /* CORREÇÃO ADICIONADA: Garante que a página não se estique com a tabela */
 }
-
-/* REGRA REMOVIDA: A lógica de padding extra para a toolbox no topo foi removida
-   pois a nova abordagem com 'position: sticky' não precisa mais dela. */
-
 
 .page.active {
   display: flex;
@@ -183,7 +181,6 @@ main.container {
   animation: fadeOut 0.2s ease-out forwards;
 }
 
-/* --- TELA DE INÍCIO (MOVIDO DE 11-home-screen.css) --- */
 #page-home {
     padding-top: 96px;
     padding-left: 192px;
@@ -206,7 +203,6 @@ main.container {
     margin-top: 0;
 }
 
-/* GRIDS DA HOME */
 .grid-2-col, .grid-3-col, .grid-4-col {
     display: grid;
     gap: 24px;

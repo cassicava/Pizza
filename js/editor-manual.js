@@ -1,6 +1,6 @@
 /**************************************************************
  * 🛠️ Lógica do Editor Manual (v5.9 - Correção de Conflitos e UI)
- **********************************************/
+ **************************************************************/
 
 const editorState = {
     editMode: 'employee',
@@ -24,6 +24,34 @@ const toolboxState = {
 
 let marqueeObserver = null;
 
+/* INÍCIO DA ALTERAÇÃO */
+/**
+ * Adiciona ou remove padding da página ativa para evitar que a toolbox sobreponha o conteúdo.
+ * @param {boolean} reset - Se verdadeiro, remove todo o padding adicionado.
+ */
+function updatePagePaddingForToolbox(reset = false) {
+    const activePage = $('.page.active');
+    if (!activePage) return;
+
+    // Aumentado o espaçamento para 120px para dar mais "respiro"
+    const toolboxHeight = 120; 
+
+    // Limpa os paddings antes de aplicar o novo, para evitar conflitos
+    activePage.style.paddingTop = '';
+    activePage.style.paddingBottom = '';
+
+    if (reset || toolboxState.isMinimized) {
+        return; // Se resetando ou minimizado, não aplica padding
+    }
+
+    if (toolboxState.dockPosition === 'top') {
+        activePage.style.paddingTop = `${toolboxHeight}px`;
+    } else {
+        activePage.style.paddingBottom = `${toolboxHeight}px`;
+    }
+}
+/* FIM DA ALTERAÇÃO */
+
 function saveToolboxState() {
     localStorage.setItem('ge_toolbox_state', JSON.stringify({
         isMinimized: toolboxState.isMinimized,
@@ -46,9 +74,12 @@ function loadToolboxState() {
     toolboxState.dockPosition = savedState?.dockPosition || 'bottom';
     editorState.enforceRules = savedState?.enforceRules !== false;
 
+    // Aplica classes de posicionamento
     toolbox.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
+    fab.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
     toolbox.classList.toggle('override-active', !editorState.enforceRules);
 
+    // Controla visibilidade
     if (toolboxState.isMinimized) {
         toolbox.classList.add('is-minimized');
         fab.classList.remove('hidden');
@@ -57,15 +88,16 @@ function loadToolboxState() {
         fab.classList.add('hidden');
     }
 
-    const sizeBtnSpan = $('#toggle-size-btn span');
-    if (sizeBtnSpan) sizeBtnSpan.textContent = '—';
-    
+    // Atualiza ícones dos botões
     const dockBtnSpan = $('#toggle-dock-btn span');
     if(dockBtnSpan) {
         dockBtnSpan.textContent = toolboxState.dockPosition === 'top' ? '🔽' : '🔼';
         dockBtnSpan.parentElement.title = toolboxState.dockPosition === 'top' ? 'Mover para a Base' : 'Mover para o Topo';
     }
     parseEmojisInElement(toolbox);
+    
+    // Aplica o padding inicial na página
+    updatePagePaddingForToolbox();
 }
 
 function toggleToolboxSize() {
@@ -76,15 +108,18 @@ function toggleToolboxSize() {
     toolbox.classList.toggle('is-minimized', toolboxState.isMinimized);
     fab.classList.toggle('hidden', !toolboxState.isMinimized);
     
+    updatePagePaddingForToolbox();
     saveToolboxState();
 }
 
 function toggleDockPosition() {
     toolboxState.dockPosition = toolboxState.dockPosition === 'bottom' ? 'top' : 'bottom';
     const toolbox = $("#editor-toolbox");
+    const fab = $("#editor-toolbox-fab");
     const btnSpan = $('#toggle-dock-btn span');
     
     toolbox.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
+    fab.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
 
     if (toolboxState.dockPosition === 'top') {
         btnSpan.textContent = '🔽';
@@ -94,8 +129,24 @@ function toggleDockPosition() {
         btnSpan.parentElement.title = 'Mover para o Topo';
     }
     parseEmojisInElement(btnSpan.parentElement);
+    
+    updatePagePaddingForToolbox();
     saveToolboxState();
 }
+
+/* INÍCIO DA ALTERAÇÃO */
+/**
+ * Esconde a toolbox e reseta o padding da página. Chamada ao navegar para outra tela.
+ */
+function cleanupEditor() {
+    const toolbox = $("#editor-toolbox");
+    const fab = $("#editor-toolbox-fab");
+    if (toolbox) toolbox.classList.add("hidden");
+    if (fab) fab.classList.add("hidden");
+    updatePagePaddingForToolbox(true); // Reseta o padding
+}
+/* FIM DA ALTERAÇÃO */
+
 
 function findPotentialConflicts(employeeId, turnoId, date, escala) {
     const { turnos, funcionarios } = store.getState();
@@ -447,9 +498,13 @@ function handleToolboxClick(event) {
 }
 
 function handleKeyboardNav(event) {
+    const focusedElement = document.activeElement;
+    if (focusedElement.tagName === 'INPUT' || focusedElement.tagName === 'SELECT' || focusedElement.tagName === 'TEXTAREA') {
+        return;
+    }
+    
     const toolbox = $("#editor-toolbox");
     if (!toolbox || toolbox.classList.contains('hidden') || toolboxState.isMinimized) return;
-    if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') return;
 
     const key = event.key;
     let { row, col } = editorState.selectedCellCoords;

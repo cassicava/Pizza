@@ -3,9 +3,23 @@
  **************************************/
 
 
+.config-painel .painel-header {
+    background-color: var(--bg); /* Garante que o fundo do header seja o padrão */
+}
 
 .config-painel .painel-content {
     padding-top: 8px; 
+}
+
+/* NOVO: Estilo unificado para o container de abas */
+.config-painel .painel-tabs {
+    background-color: var(--bg); 
+    border: 1px solid var(--border); 
+    border-radius: 12px; 
+    padding: 4px;
+}
+html[data-theme="dark"] .config-painel .painel-tabs {
+    background-color: var(--card);
 }
 
 .config-painel .painel-tabs .painel-tab-btn {
@@ -15,6 +29,7 @@
     padding: 8px 16px;
     font-size: 0.95rem;
     font-weight: 500;   /* Fonte igual às outras abas */
+    border-radius: 8px;
 }
 
 .config-painel .painel-tabs .painel-tab-btn span {
@@ -100,6 +115,10 @@
     font-size: 0.9rem;
     color: var(--muted);
     max-width: 450px;
+}
+
+.config-item-control {
+    flex-shrink: 0;
 }
 
 .config-card-footer {

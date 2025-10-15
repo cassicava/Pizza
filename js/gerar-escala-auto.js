@@ -394,7 +394,7 @@ function addHolidayEditorListeners(date) {
         setGeradorFormDirty(true);
         renderHolidayCalendar();
         renderHolidayList();
-        showToast("Feriado salvo!");
+        showToast("Feriado salvo.");
         $('#holiday-remove-btn').style.display = 'inline-flex';
     };
     $('#holiday-remove-btn').onclick = () => {

@@ -17,36 +17,33 @@ function renderEscalaLegend(escala, container) {
 
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const allLegendItems = [];
-    const turnosDoCargo = allTurnos.filter(t => cargo.turnosIds?.includes(t.id) || t.isSystem)
-        .sort((a,b) => {
-            if (a.isSystem && !b.isSystem) return -1;
-            if (!a.isSystem && b.isSystem) return 1;
-            return a.nome.localeCompare(b.nome);
-        });
-        
-    turnosDoCargo.forEach(turno => {
-        allLegendItems.push({
-            id: turno.id,
-            html: `<div class="legenda-item" data-tipo="turno" data-id="${turno.id}"><span class="color-dot" style="background-color: ${turno.cor || '#e2e8f0'}"></span><strong>${turno.sigla || '??'}</strong> - ${turno.nome}</div>`,
-        });
+    
+    const nonSystemTurnos = allTurnos.filter(t => !t.isSystem && (cargo.turnosIds?.includes(t.id) || t.isSystem));
+    const systemTurnosSet = new Set();
+    const activeSystemTurnos = new Set(escala.slots.map(s => s.turnoId).filter(id => TURNOS_SISTEMA_AUSENCIA.hasOwnProperty(id)));
+
+    nonSystemTurnos.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(turno => {
+        allLegendItems.push(turno);
+    });
+
+    Object.values(TURNOS_SISTEMA_AUSENCIA).forEach(turnoSistema => {
+        if (activeSystemTurnos.has(turnoSistema.id) && !systemTurnosSet.has(turnoSistema.id)) {
+            allLegendItems.push(turnoSistema);
+            systemTurnosSet.add(turnoSistema.id);
+        }
     });
 
     const activeTurnos = new Set(escala.slots.map(s => s.turnoId));
     
-    // Adiciona os turnos de sistema se houverem na escala.
-    Object.values(TURNOS_SISTEMA_AUSENCIA).forEach(turnoSistema => {
-        if(activeTurnos.has(turnoSistema.id)) {
-            allLegendItems.push({
-                id: turnoSistema.id,
-                html: `<div class="legenda-item" data-tipo="turno" data-id="${turnoSistema.id}"><span class="color-dot" style="background-color: ${turnoSistema.cor}"></span><strong>${turnoSistema.sigla}</strong> - ${turnoSistema.nome}</div>`,
-            });
-        }
-    });
-
-    const finalHTML = allLegendItems.map(item => {
-        const isActive = activeTurnos.has(item.id);
+    const finalHTML = allLegendItems.map(turno => {
+        const isActive = activeTurnos.has(turno.id);
         const classInactive = !isActive ? 'inactive' : '';
-        return item.html.replace('class="legenda-item"', `class="legenda-item ${classInactive}"`);
+        return `
+            <div class="legenda-item ${classInactive}" data-tipo="turno" data-id="${turno.id}">
+                <span class="color-dot" style="background-color: ${turno.cor || '#e2e8f0'}"></span>
+                <strong>${turno.sigla || '??'}</strong> - ${turno.nome}
+            </div>
+        `;
     }).join('');
 
     if (finalHTML.length > 0) {
@@ -243,8 +240,11 @@ function renderPainelDaEscala(escala) {
         <span class="saude-escala-text">${saudeTitle}</span>
     `;
     $('.painel-header .painel-tabs', painelContainer).innerHTML = `
-        <button class="painel-tab-btn active" data-tab="resumo">Resumo de Carga</button>
-        <button class="painel-tab-btn" data-tab="stats">Estatísticas & Legenda</button>
+        <div class="toggle-group painel-tabs-toggle-group">
+            <button class="painel-tab-btn active" data-tab="resumo">Resumo de Carga</button>
+            <button class="painel-tab-btn" data-tab="stats">Estatísticas & Legenda</button>
+            <button class="painel-tab-btn" data-tab="observacoes">Observações</button>
+        </div>
     `;
 
     let resumoHorasHTML = '<div class="painel-resumo-horas-list">';
@@ -252,12 +252,15 @@ function renderPainelDaEscala(escala) {
         const medicao = func.medicaoCarga || 'horas';
         let realizado, meta, saldo, unidade, saldoLabel;
         
+        const temOverride = escala.metasOverride && escala.metasOverride[func.id] !== undefined;
+        
         if (medicao === 'turnos') {
             realizado = escala.historico[func.id]?.turnosTrabalhados || 0;
             const { cargos } = store.getState();
             const cargo = cargos.find(c => c.id === escala.cargoId);
             const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
-            meta = calcularMetaTurnos(func, escala.inicio, escala.fim, cargoDiasOperacionais);
+            const metaOriginal = calcularMetaTurnos(func, escala.inicio, escala.fim, cargoDiasOperacionais);
+            meta = temOverride ? parseFloat(escala.metasOverride[func.id]) : metaOriginal;
 
             saldo = realizado - meta;
             unidade = ' turnos';
@@ -267,7 +270,8 @@ function renderPainelDaEscala(escala) {
             }
         } else { // Padrão 'horas'
             realizado = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
-            meta = calcularMetaHoras(func, escala.inicio, escala.fim);
+            const metaOriginal = calcularMetaHoras(func, escala.inicio, escala.fim);
+            meta = temOverride ? parseFloat(escala.metasOverride[func.id]) : metaOriginal;
             saldo = realizado - meta;
             unidade = 'h';
             saldoLabel = 'Saldo';
@@ -292,17 +296,26 @@ function renderPainelDaEscala(escala) {
         const realizadoStr = medicao === 'turnos' ? realizado.toFixed(0) : realizado.toFixed(1);
         const metaStr = medicao === 'turnos' ? meta.toFixed(0) : meta.toFixed(1);
         const saldoStr = medicao === 'turnos' ? saldo.toFixed(0) : saldo.toFixed(1);
+        const overrideIndicator = temOverride ? '<span class="meta-override-indicator" title="Meta temporária para esta escala.">*</span>' : '';
 
         resumoHorasHTML += `
-            <div class="resumo-func-item">
-                <div class="resumo-func-nome" title="${func.nome}">${func.nome}</div>
+            <div class="resumo-func-item" data-func-id="${func.id}">
+                <div class="resumo-func-nome">${func.nome}</div>
+                <div class="meta-actions">
+                    <button class="btn-edit-meta" title="Editar meta para esta escala">✏️</button>
+                    <button class="btn-confirm-edit" title="Confirmar">✔️</button>
+                    <button class="btn-cancel-edit" title="Cancelar">❌</button>
+                </div>
                 <div class="resumo-prog-container">
                     <div class="resumo-prog-bar resumo-prog-main ${barColorClass}" style="width: ${progPrincipal.toFixed(2)}%"></div>
                     <div class="resumo-prog-bar resumo-prog-overtime" style="width: ${progExtra.toFixed(2)}%"></div>
                 </div>
                 <div class="resumo-text-details">
                     <span><strong>Realizado:</strong> ${realizadoStr}${unidade}</span>
-                    <span><strong>Meta:</strong> ${metaStr}${unidade}</span>
+                    <span class="meta-container">
+                        <span class="meta-text"><strong>Meta:</strong> ${metaStr}${unidade} ${overrideIndicator}</span>
+                        <input type="number" class="meta-input" value="${meta}" step="${medicao === 'horas' ? '0.5' : '1'}">
+                    </span>
                     <span class="resumo-saldo ${saldo > 0 ? 'positivo' : (saldo < 0 ? 'negativo' : '')}">
                         <strong>${saldoLabel}:</strong> ${saldo > 0 ? '+' : ''}${saldoStr}${unidade}
                     </span>
@@ -318,53 +331,80 @@ function renderPainelDaEscala(escala) {
     if (feriadosNaEscala.length > 0) {
         feriadosHTML = `
             <ul class="painel-feriados-list">
-                ${feriadosNaEscala.map(f => `
-                    <li>
-                        <div>
-                            <span class="feriado-data">${new Date(f.date + 'T12:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</span>
-                            - <span class="feriado-nome">${f.nome}</span>
-                        </div>
-                        <span class="tag">${f.trabalha ? 'Trabalho Normal' : 'Folga Geral'}</span>
-                    </li>
-                `).join('')}
+                ${feriadosNaEscala.map(f => {
+                    const d = new Date(f.date + 'T12:00:00');
+                    const isFolga = !f.trabalha;
+                    const statusText = isFolga ? 'Folga Geral' : 'Trabalho Normal';
+                    const statusClass = isFolga ? 'feriado-folga' : 'feriado-trabalho';
+                    return `<li class="${statusClass}"><span class="feriado-data">${d.toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</span><span class="feriado-nome">${f.nome}</span><span class="feriado-status">${statusText}</span></li>`;
+                }).join('')}
             </ul>
         `;
     }
 
     const statsHTML = `
-        <div class="painel-stats-grid">
-            <div class="stat-item"><h5>Duração</h5><p>${totalDias} dias</p></div>
-            <div class="stat-item"><h5>Finais de Semana</h5><p>${totalFDS} dias</p></div>
-            <div class="stat-item"><h5>Turnos Vagos</h5><p><span class="${vagas > 0 ? 'vagas' : ''}">${vagas}</span></p></div>
-            <div class="stat-item"><h5>Total H. Extras</h5><p>${totalHorasExtras.toFixed(1)}h</p></div>
+        <div class="painel-legendas-container">
+            <h5 style="margin-top: 0; margin-bottom: 8px; color: var(--muted);">Legenda de Turnos e Ausências</h5>
+            <div class="escala-legenda turnos-legenda"></div>
         </div>
         
+        <fieldset class="regras-fieldset" style="margin-top: 24px;">
+            <legend>Estatísticas Resumidas</legend>
+            <div class="painel-stats-grid">
+                <div class="stat-item"><h5>Duração</h5><p>${totalDias} dias</p></div>
+                <div class="stat-item"><h5>Finais de Semana</h5><p>${totalFDS} dias</p></div>
+                <div class="stat-item"><h5>Turnos Vagos</h5><p><span class="${vagas > 0 ? 'vagas' : ''}">${vagas}</span></p></div>
+                <div class="stat-item"><h5>Total H. Extras</h5><p>${totalHorasExtras.toFixed(1)}h</p></div>
+            </div>
+        </fieldset>
+
         <fieldset class="regras-fieldset" style="margin-top: 24px;">
             <legend>Feriados no Período</legend>
             ${feriadosHTML || '<p class="muted" style="text-align:center; padding: 8px 0;">Nenhum feriado cadastrado para esta escala.</p>'}
         </fieldset>
+    `;
 
-        <div class="painel-legendas-container">
-            <h5 style="margin-top: 24px; margin-bottom: 8px; color: var(--muted);">Legenda de Turnos e Ausências</h5>
-            <div class="escala-legenda turnos-legenda"></div>
+    const obsTextareaId = `${escala.owner}-escala-observacoes-textarea`;
+    const observacoesHTML = `
+        <div class="painel-observacoes-content">
+            <label for="${obsTextareaId}">Observações da Escala:</label>
+            <textarea id="${obsTextareaId}" placeholder="Adicione justificativas, avisos de última hora ou qualquer anotação relevante aqui...">${escala.observacoes || ''}</textarea>
+            <p class="muted" style="font-size: 0.85rem;">* O texto preenchido será incluído na exportação da "Escala Completa" (PDF).</p>
         </div>
     `;
 
     $('.painel-content', painelContainer).innerHTML = `
         <div class="painel-tab-content active" data-tab-content="resumo">${resumoHorasHTML}</div>
         <div class="painel-tab-content" data-tab-content="stats">${statsHTML}</div>
+        <div class="painel-tab-content" data-tab-content="observacoes">${observacoesHTML}</div>
     `;
+
+    const obsTextarea = $(`#${obsTextareaId}`, painelContainer);
+    if(obsTextarea) {
+        obsTextarea.oninput = () => {
+            currentEscala.observacoes = obsTextarea.value;
+            setGeradorFormDirty(true);
+        };
+    }
 
     const turnosLegendaContainer = $('.turnos-legenda', painelContainer);
     renderEscalaLegend(escala, turnosLegendaContainer);
 
-    $$('.painel-tab-btn', painelContainer).forEach(btn => {
-        btn.onclick = () => {
-            $$('.painel-tab-btn', painelContainer).forEach(b => b.classList.remove('active'));
-            $$('.painel-tab-content', painelContainer).forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            $(`.painel-tab-content[data-tab-content="${btn.dataset.tab}"]`, painelContainer).classList.add('active');
-        };
+    $('.painel-tabs-toggle-group', painelContainer)?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.painel-tab-btn');
+        if (!btn) return;
+        
+        $$('.painel-tabs-toggle-group .painel-tab-btn', painelContainer).forEach(b => b.classList.remove('active'));
+        $$('.painel-tab-content', painelContainer).forEach(c => c.classList.remove('active'));
+        
+        btn.classList.add('active');
+        const targetContent = $(`.painel-tab-content[data-tab-content="${btn.dataset.tab}"]`, painelContainer);
+        targetContent.classList.add('active');
+
+        if (btn.dataset.tab === 'observacoes') {
+             const obsField = $(`#${obsTextareaId}`, targetContent);
+             if(obsField) obsField.focus();
+        }
     });
 
     const legendasWrapper = $('.painel-legendas-container', painelContainer);
@@ -395,6 +435,42 @@ function renderPainelDaEscala(escala) {
             const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
             if (table) {
                 $$('td.highlight', table).forEach(cell => cell.classList.remove('highlight'));
+            }
+        });
+    }
+
+    const resumoList = $('.painel-resumo-horas-list', painelContainer);
+    if(resumoList) {
+        resumoList.addEventListener('click', (event) => {
+            const funcItem = event.target.closest('.resumo-func-item');
+            if (!funcItem) return;
+            
+            const funcId = funcItem.dataset.funcId;
+
+            if (event.target.closest('.btn-edit-meta')) {
+                const outroEditando = $('.resumo-func-item.is-editing');
+                if(outroEditando) outroEditando.classList.remove('is-editing');
+                
+                funcItem.classList.add('is-editing');
+                $('.meta-input', funcItem).focus();
+            } 
+            else if (event.target.closest('.btn-cancel-edit')) {
+                funcItem.classList.remove('is-editing');
+            }
+            else if (event.target.closest('.btn-confirm-edit')) {
+                const input = $('.meta-input', funcItem);
+                const novoValor = parseFloat(input.value);
+
+                if (!isNaN(novoValor) && novoValor >= 0) {
+                    if (!currentEscala.metasOverride) currentEscala.metasOverride = {};
+                    
+                    currentEscala.metasOverride[funcId] = novoValor;
+                    setGeradorFormDirty(true);
+                    renderPainelDaEscala(currentEscala); // Re-renderiza tudo para recalcular e sair do modo de edição
+                    showToast("Meta temporária atualizada para esta escala.");
+                } else {
+                    showToast("Valor da meta inválido.", "error");
+                }
             }
         });
     }
@@ -446,7 +522,6 @@ function updateTableCells(escala) {
 
     $$('tbody tr[data-employee-row-id]', table).forEach(row => {
         const funcId = row.dataset.employeeRowId;
-        // Seleciona todas as células de data, independente da classe atual
         $$('td:not(:first-child)', row).forEach((cell, index) => {
             const date = dateRangeInclusive(escala.inicio, escala.fim)[index];
             if(!date) return;
@@ -458,7 +533,6 @@ function updateTableCells(escala) {
             
             const slot = escala.slots.find(s => s.date === date && s.assigned === funcId);
 
-            // Reseta a célula completamente
             cell.innerHTML = '';
             cell.style.backgroundColor = '';
             cell.style.color = '';
@@ -509,9 +583,7 @@ async function salvarEscalaAtual(options = {}) {
         
         const allSlotsToSnapshot = currentEscala.slots.filter(s => s.assigned).map(s => {
             const turno = allTurnos.find(t => t.id === s.turnoId);
-            if(turno && turno.isSystem) {
-                // Se for um turno de sistema, o nome e a sigla precisam estar no snapshot
-            }
+            if(turno && turno.isSystem) { }
             return s;
         });
 
@@ -522,6 +594,15 @@ async function salvarEscalaAtual(options = {}) {
             funcionarios: {},
             turnos: {}
         };
+        
+        const obsTextareaId = `${currentEscala.owner}-escala-observacoes-textarea`;
+        const obsTextarea = $(`#${obsTextareaId}`);
+        if(obsTextarea) {
+             currentEscala.observacoes = obsTextarea.value.trim();
+        } else if (!currentEscala.observacoes) {
+            currentEscala.observacoes = '';
+        }
+        
 
         funcsInvolvedIds.forEach(id => {
             const func = funcionarios.find(f => f.id === id);

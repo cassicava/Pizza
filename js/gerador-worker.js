@@ -305,7 +305,8 @@ self.onmessage = function(e) {
             excecoes: JSON.parse(JSON.stringify(excecoes)),
             feriados: [...geradorState.feriados],
             cobertura: coberturaFinal, 
-            regras: { maxDiasConsecutivos, minFolgasSabados, minFolgasDomingos }
+            regras: { maxDiasConsecutivos, minFolgasSabados, minFolgasDomingos },
+            observacoes: '', // NOVO CAMPO ADICIONADO AQUI
         };
         
         postMessage({ type: 'done', escala: escalaFinal });

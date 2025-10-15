@@ -39,6 +39,18 @@ html[data-theme="dark"] .regras-fieldset {
   background-color: rgba(0, 0, 0, 0.2);
 }
 
+html[data-theme="dark"] #page-gerar-escala .painel-header {
+    background-color: var(--card);
+}
+html[data-theme="dark"] .painel-gerenciamento .painel-header {
+    background-color: var(--card);
+}
+html[data-theme="dark"] .painel-gerenciamento .painel-tabs {
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+}
+
+
 html[data-theme="dark"] .tab-btn.active .tab-icon {
   background-color: var(--brand-2);
 }
@@ -48,13 +60,15 @@ html[data-theme="dark"] label.invalid-label {
 }
 
 html[data-theme="dark"] input.invalid,
-html[data-theme="dark"] select.invalid {
+html[data-theme="dark"] select.invalid,
+html[data-theme="dark"] textarea.invalid {
   border-color: #f87171;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
 }
 
 html[data-theme="dark"] input:focus,
-html[data-theme="dark"] select:focus {
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus {
   border-color: var(--brand);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
 }

@@ -55,8 +55,8 @@ function go(page, options = {}) {
         const transitionLogic = () => {
             if (currentPageEl) {
                 currentPageEl.classList.remove('active');
-                currentPageEl.classList.remove('fading-out'); // Limpa a classe de animação
-                // Lógica de limpeza para a página que está saindo
+                currentPageEl.classList.remove('fading-out');
+                
                 switch (currentPageId) {
                     case 'turnos': cancelEditTurno(); break;
                     case 'cargos': cancelEditCargo(); break;
@@ -64,10 +64,8 @@ function go(page, options = {}) {
                     case 'equipes': cancelEditEquipe(); break;
                     case 'gerar-escala': 
                         resetGeradorWizard(); 
-                        currentEscala = null; // Garante que a escala atual seja limpa
-                        if (typeof editorState !== 'undefined') {
-                            editorState.focusedEmployeeId = null; 
-                        }
+                        currentEscala = null;
+                        if (typeof cleanupEditor === 'function') cleanupEditor(); // Limpa a toolbox e o padding
                         break;
                 }
             }
@@ -90,7 +88,6 @@ function go(page, options = {}) {
             
             window.scrollTo(0, 0);
 
-            // Lógica de inicialização para a página que está entrando
             switch (page) {
                 case 'home': 
                     updateWelcomeMessage();
@@ -188,7 +185,6 @@ function initMainApp() {
     }));
     $("#header-settings-btn").addEventListener('click', () => go('configuracoes'));
 
-    // Converte todos os emojis estáticos da página de uma vez.
     parseEmojisInElement(document.body);
 }
 

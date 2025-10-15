@@ -25,8 +25,8 @@
 
     /* ANIMAÇÕES (CORRIGIDO) */
     transition: all 0.4s ease-in-out;
-    transform-origin: right center; /* Origem da animação para crescer da direita */
-    transform: scale(1);
+    transform-origin: right center;
+    transform: scale(1) translateX(0); /* Adicionado translateX */
     opacity: 1;
 }
 
@@ -36,22 +36,19 @@ html[data-theme="dark"] #editor-toolbox {
 }
 
 /* --- Estados da Barra --- */
+/* INÍCIO DA ALTERAÇÃO */
 #editor-toolbox.is-docked-top {
-    top: 80px;
+    top: calc(var(--header-height) + 16px); /* Colado abaixo do header */
     bottom: auto;
 }
+/* FIM DA ALTERAÇÃO */
 
-/* ANIMAÇÃO DE MINIMIZAR (CORRIGIDO) */
+/* ANIMAÇÃO DE MINIMIZAR (CORRIGIDO PARA SLIDE LATERAL) */
 #editor-toolbox.is-minimized {
     transform: translateX(110%);
     opacity: 0;
     pointer-events: none;
 }
-
-#editor-toolbox.is-docked-top.is-minimized {
-    transform: translateY(-200%); /* Mantém o efeito para cima quando no topo */
-}
-
 
 #editor-toolbox.override-active {
     box-shadow: 0 0 16px 4px rgba(239, 68, 68, 0.5);
@@ -66,7 +63,7 @@ html[data-theme="dark"] #editor-toolbox {
     width: 64px;
     height: 64px;
     z-index: 99;
-    border-radius: 14px; /* Menos arredondado */
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -74,19 +71,25 @@ html[data-theme="dark"] #editor-toolbox {
     line-height: 1;
     cursor: pointer;
 
-    /* Efeito de Vidro (igual à toolbox) */
     background: rgba(255, 255, 255, 0.5);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    color: var(--fg); /* Cor do ícone */
+    color: var(--fg);
     
-    /* Animações */
-    transition: transform 0.3s ease, opacity 0.3s;
+    transition: transform 0.3s ease, opacity 0.3s, top 0.4s ease-in-out, bottom 0.4s ease-in-out;
     transform: scale(0);
     opacity: 0;
 }
+
+/* INÍCIO DA ALTERAÇÃO */
+/* NOVO: Posicionamento do FAB no topo */
+#editor-toolbox-fab.is-docked-top {
+    top: calc(var(--header-height) + 24px);
+    bottom: auto;
+}
+/* FIM DA ALTERAÇÃO */
 
 html[data-theme="dark"] #editor-toolbox-fab {
     background: rgba(30, 30, 32, 0.7);
@@ -125,7 +128,6 @@ html[data-theme="dark"] #editor-toolbox-fab {
     border-radius: 12px;
 }
 
-/* GRUPO DE BOTÕES DA DIREITA (CORRIGIDO) */
 .toolbox-group-right {
     display: flex;
     gap: 8px;
@@ -154,7 +156,7 @@ html[data-theme="dark"] .toolbox-right-subgroup {
     flex-grow: 1;
     height: 100%;
     display: flex;
-    overflow: hidden; /* Garante que o conteúdo não vaze */
+    overflow: hidden;
 }
 
 #toolbox-dynamic-content {
@@ -177,7 +179,7 @@ html[data-theme="dark"] .toolbox-right-subgroup {
     cursor: pointer;
     transition: all 0.2s ease-out;
     color: var(--muted);
-    position: relative; /* Adicionado para corrigir posicionamento do badge */
+    position: relative;
 }
 
 .toolbox-mode-btn:hover,
@@ -239,10 +241,9 @@ html[data-theme="dark"] .toolbox-right-subgroup {
     gap: 8px;
     width: 100%;
     height: 100%;
-    animation: fadeIn 0.3s ease-out; /* Animação de entrada */
+    animation: fadeIn 0.3s ease-out;
 }
 
-/* Animações de slide para troca de funcionário */
 .card-slide-out-left { animation: slideOutToLeft 0.2s ease-out forwards; }
 .card-slide-out-right { animation: slideOutToRight 0.2s ease-out forwards; }
 
@@ -347,7 +348,6 @@ html[data-theme="dark"] .day-dot {
     background-color: rgba(255,255,255,0.1);
 }
 
-/* LAYOUT DOS PINCÉIS (CORRIGIDO) */
 .shift-brushes-card {
     display: flex;
     align-items: center;
@@ -368,7 +368,6 @@ html[data-theme="dark"] .brush-separator {
     background-color: rgba(255,255,255,0.15);
 }
 
-/* ESTILO DO PINCEL (CORRIGIDO PARA OVERFLOW) */
 .shift-brush {
     display: flex;
     flex-direction: column;
@@ -381,8 +380,8 @@ html[data-theme="dark"] .brush-separator {
     border: 2px solid transparent;
     height: 95%;
     flex-shrink: 0;
-    width: 60px; /* Largura fixa */
-    overflow: hidden; /* Esconde o texto que transborda */
+    width: 60px;
+    overflow: hidden;
     position: relative;
 }
 
@@ -390,9 +389,8 @@ html[data-theme="dark"] .brush-separator {
     background-color: rgba(0, 0, 0, 0.1);
 }
 
-/* PINCEL SELECIONADO (CORRIGIDO) */
 .shift-brush.selected {
-    border-color: transparent; /* Remove borda azul */
+    border-color: transparent;
     background-color: var(--card);
 }
 
@@ -414,24 +412,22 @@ html[data-theme="dark"] .brush-separator {
     flex-shrink: 0;
 }
 
-/* NOME DO PINCEL (CORRIGIDO COM ANIMAÇÃO DE SCROLL) */
 .brush-name {
     font-size: 0.7rem;
     font-weight: 500;
     margin-top: 4px;
     color: var(--muted);
-    white-space: nowrap; /* Impede quebra de linha */
+    white-space: nowrap;
     width: 100%;
     text-align: center;
-    display: inline-block; /* Necessário para animação de transform */
+    display: inline-block;
 }
 
-/* Animação de Marquee */
 @keyframes marquee {
   0%   { transform: translateX(5%); }
-  20%  { transform: translateX(5%); } /* Pausa no início */
-  80%  { transform: translateX(calc(-100% + 50px)); } /* 50px = largura do contêiner - margem */
-  100% { transform: translateX(calc(-100% + 50px)); } /* Pausa no final */
+  20%  { transform: translateX(5%); }
+  80%  { transform: translateX(calc(-100% + 50px)); }
+  100% { transform: translateX(calc(-100% + 50px)); }
 }
 
 .shift-brush:hover .brush-name.should-marquee {
@@ -500,7 +496,7 @@ html[data-theme="dark"] .brush-separator {
     justify-content: space-between;
     gap: 8px;
     padding: 8px;
-    border-radius: 12px; /* Unificado com outros cards */
+    border-radius: 12px;
     background: rgba(0, 0, 0, 0.05);
     height: 100%;
 }
@@ -580,7 +576,6 @@ html[data-theme="dark"] .action-row-card {
     background-color: #eef2ff;
 }
 
-/* NOVO: Estilo para indicar que o nome do funcionário é clicável */
 .escala-final-table tbody tr[data-employee-row-id] td:first-child:hover {
     cursor: pointer;
     background-color: #e0e7ff;
