@@ -6,11 +6,6 @@ function loadConfigForm() {
     const { config } = store.getState();
     const configNomeInput = $("#configNome");
     if(configNomeInput) configNomeInput.value = config.nome || '';
-
-    const theme = config.theme || 'light';
-    $$('#themeToggleGroup .toggle-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.value === theme);
-    });
 }
 
 function saveConfig() {
@@ -103,26 +98,65 @@ async function importAllData() {
 function exibirTermosDeUso(requireScrollableConfirm = false) {
     const termosDeUsoHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
-            <p><strong>Última atualização:</strong> 14 de Outubro de 2025</p>
+            <h3>🔒 ESCALA FÁCIL — TERMOS DE USO E LICENÇA DE SOFTWARE (VENDA ÚNICA)</h3>
+            <p><strong>Última atualização:</strong> 15/10/2025<br>
+            <strong>Licenciante:</strong> Escala Fácil<br>
+            <strong>Contato:</strong> escalafacil.contato@gmail.com</p>
+            <hr>
+
             <h4>1. Aceitação dos Termos</h4>
-            <p>Bem-vindo(a) ao Escala Fácil ("Software"). Ao utilizar este Software, você ("Usuário") concorda integralmente com estes Termos de Uso ("Termos"). Se você не concorda com qualquer parte destes Termos, não deve utilizar o Software.</p>
-            
+            <p>Ao utilizar o software <strong>Escala Fácil</strong> (“Software”), o usuário (“Usuário”) concorda integralmente com estes <strong>Termos de Uso e Licença</strong> (“Termos”). Se você não concorda com qualquer parte destes Termos, <strong>não deve utilizar o Software</strong>.</p>
+            <hr>
+
             <h4>2. Natureza do Software e Armazenamento de Dados</h4>
-            <p>O Escala Fácil é uma aplicação que opera <strong>exclusivamente no seu navegador de internet</strong>. Todos os dados inseridos — incluindo, mas не se limitando a, informações de funcionários, turnos, cargos e escalas — são armazenados localmente no seu dispositivo, através da tecnologia <code>localStorage</code> do navegador.</p>
-            <p><strong>Nenhum dado inserido por você é enviado, coletado ou armazenado em servidores externos.</strong> O desenvolvedor do Software не tem acesso a nenhuma de suas informações.</p>
+            <p><strong>2.1.</strong> O Escala Fácil é uma aplicação que opera <strong>exclusivamente no navegador de internet</strong>.</p>
+            <p><strong>2.2.</strong> <strong>Todos os dados inseridos</strong> (como informações de funcionários, turnos, cargos e escalas) são <strong>armazenados localmente</strong> no dispositivo do Usuário, por meio do <strong>localStorage do navegador</strong>.</p>
+            <p><strong>2.3.</strong> Nenhum dado é enviado, coletado ou armazenado em servidores externos. O desenvolvedor <strong>não tem acesso a nenhuma informação</strong> inserida pelo Usuário.</p>
+            <hr>
 
-            <h4>3. Responsabilidade do Usuário</h4>
-            <p><strong>Segurança e Backup:</strong> Você é o único responsável pela segurança e manutenção dos seus dados. O Software oferece uma funcionalidade de exportação ("backup") que deve ser utilizada regularmente para prevenir a perda de dados, que pode ocorrer ao limpar o cache do navegador, trocar de computador ou por falhas no dispositivo.</p>
-            <p><strong>Conformidade Legal:</strong> As escalas geradas pelo Software são baseadas nas regras que você define. É sua responsabilidade garantir que as escalas finais estejam em conformidade com todas as leis trabalhistas, acordos coletivos e regulamentações aplicáveis à sua operação.</p>
+            <h4>3. Licença de Uso e Propriedade Intelectual</h4>
+            <p><strong>3.1. Licença:</strong> O Licenciante concede ao Usuário uma <strong>licença perpétua, não exclusiva e intransferível</strong> para uso do Software. Esta é uma <strong>venda única</strong> — não há cobrança recorrente, suporte ou atualizações incluídas.</p>
+            <p><strong>3.2. Cessão e Transferência:</strong> Esta licença é pessoal e intransferível. O Usuário não pode revender, alugar ou ceder o software a terceiros.</p>
+            <p><strong>3.3. Restrições de Uso:</strong> É <strong>expressamente proibido</strong>:</p>
+            <ul>
+                <li>Redistribuir, revender ou sublicenciar o Software;</li>
+                <li>Modificar, copiar, traduzir ou criar versões derivadas;</li>
+                <li>Realizar engenharia reversa, descompilação ou tentativa de acesso ao código-fonte.</li>
+            </ul>
+            <p><strong>3.4. Propriedade Intelectual:</strong> O Escala Fácil é protegido pelas leis de direitos autorais e propriedade intelectual. Nenhum direito, título ou interesse é transferido ao usuário além do direito limitado de uso descrito nestes Termos.</p>
+            <p><strong>3.5. Uso Indevido:</strong> O uso, cópia ou distribuição não autorizada do Escala Fácil, no todo ou em parte, poderá resultar em medidas legais e indenizações previstas pela Lei nº 9.609/98 (Lei de Software).</p>
+            <hr>
 
-            <h4>4. Licença de Uso</h4>
-            <p>Concedemos a você uma licença limitada, não exclusiva e intransferível para usar o Software para fins pessoais ou de negócios internos. É expressamente proibido redistribuir, revender, modificar ou fazer engenharia reversa do Software.</p>
-
-            <h4>5. Limitação de Responsabilidade e Isenção de Garantias</h4>
-            <p>O Software é fornecido "COMO ESTÁ", sem garantias de qualquer tipo, expressas ou implícitas. O desenvolvedor não se responsabiliza por quaisquer danos diretos, indiretos, acidentais ou consequenciais (incluindo perda de dados, interrupção de negócios ou perdas financeiras) resultantes do uso ou da incapacidade de usar o Software.</p>
+            <h4>4. Responsabilidade do Usuário</h4>
+            <p><strong>4.1. Segurança e Backup:</strong> O Usuário é <strong>único responsável pela segurança e manutenção dos seus dados</strong>. O Software disponibiliza ferramenta de exportação (“backup”) que deve ser usada <strong>regularmente</strong>. A perda de dados causada por limpeza de cache, falha no dispositivo ou troca de computador é de responsabilidade exclusiva do Usuário.</p>
+            <p><strong>4.2. Conformidade Legal e Resultados:</strong> As escalas e informações geradas são baseadas nas regras inseridas pelo Usuário. É de sua exclusiva responsabilidade garantir que as escalas estejam <strong>em conformidade com leis trabalhistas, acordos coletivos e regulamentações aplicáveis</strong>. O Licenciante não se responsabiliza por decisões de gestão, erros de cálculo ou interpretações incorretas da legislação trabalhista.</p>
+            <hr>
             
-            <h4>6. Contato</h4>
-            <p>Se você tiver alguma dúvida sobre estes Termos de Uso, entre em contato através do e-mail: <strong>escalafacil.contato@gmail.com</strong></p>
+            <h4>5. Suporte e Atualizações</h4>
+            <p><strong>5.1.</strong> O Licenciante <strong>não é obrigado a fornecer suporte técnico</strong>, correções, manutenções ou atualizações futuras.</p>
+            <p><strong>5.2.</strong> Qualquer atualização ou versão aprimorada será considerada produto separado, sujeito a novo licenciamento.</p>
+            <hr>
+
+            <h4>6. Isenção de Garantias</h4>
+            <p>O Software é fornecido <strong>“COMO ESTÁ” (“AS IS”)</strong>, sem garantias de qualquer tipo, expressas ou implícitas, incluindo, sem limitação, garantias de comerciabilidade, adequação a uma finalidade específica, precisão ou ausência de falhas. O Licenciante <strong>não garante</strong> que o Software atenderá a requisitos específicos, nem que funcionará de forma ininterrupta, livre de erros ou segura.</p>
+            <hr>
+
+            <h4>7. Limitação de Responsabilidade</h4>
+            <p>Em nenhuma circunstância o Licenciante será responsável por <strong>quaisquer danos diretos, indiretos, acidentais, consequenciais ou punitivos</strong>, incluindo perda de dados, lucros cessantes, interrupção de negócios ou outras perdas resultantes do uso ou incapacidade de uso do Software. A responsabilidade total do Licenciante fica <strong>limitada ao valor efetivamente pago pela licença</strong>.</p>
+            <hr>
+
+            <h4>8. Rescisão e Alterações dos Termos</h4>
+            <p><strong>8.1. Rescisão:</strong> O Licenciante poderá rescindir esta licença a qualquer momento em caso de violação destes Termos. Em caso de rescisão, o Usuário deve <strong>cessar imediatamente o uso</strong> e remover todas as cópias do Software.</p>
+            <p><strong>8.2. Alterações:</strong> O Licenciante poderá modificar estes Termos a qualquer momento, publicando nova versão. O uso continuado após a atualização implica aceitação integral das alterações.</p>
+            <hr>
+
+            <h4>9. Legislação e Foro</h4>
+            <p>Estes Termos são regidos pelas <strong>leis brasileiras</strong>. Fica eleito o foro da <strong>comarca de [CIDADE - UF]</strong> como competente para resolver quaisquer controvérsias, com renúncia a qualquer outro.</p>
+            <hr>
+
+            <h4>10. Contato</h4>
+            <p>Dúvidas sobre estes Termos podem ser enviadas para:<br>
+            📩 escalafacil.contato@gmail.com</p>
         </div>
     `;
 
@@ -144,20 +178,50 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
 function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
     const politicaHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
-            <p><strong>Última atualização:</strong> 14 de Outubro de 2025</p>
-            <h4>1. O Princípio Fundamental: Seus Dados São Apenas Seus</h4>
-            <p>O Escala Fácil foi projetado com a privacidade em sua essência. Nós <strong>não coletamos, não armazenamos, não transmitimos e não temos acesso a absolutamente nenhuma informação pessoal ou de negócio</strong> que você insere no software.</p>
-            <p>Isso inclui, mas não se limita a: Nomes de funcionários, cargos, detalhes de turnos, escalas de trabalho geradas, feriados, férias, ou qualquer outra informação inserida.</p>
-            <h4>2. Como Suas Informações São Armazenadas</h4>
-            <p>Todos os dados que você cadastra no Escala Fácil são salvos diretamente no armazenamento local (<code>localStorage</code>) do seu navegador de internet, no seu próprio computador ou dispositivo. Isso significa que seus dados nunca saem do seu controle.</p>
+            <h3>🛡️ POLÍTICA DE PRIVACIDADE — ESCALA FÁCIL</h3>
+            <p><strong>Última atualização:</strong> 15/10/2025<br>
+            <strong>Contato:</strong> escalafacil.contato@gmail.com</p>
+            <hr>
+            
+            <h4>1. Princípio Fundamental: Seus Dados São Apenas Seus</h4>
+            <p>O <strong>Escala Fácil</strong> foi desenvolvido com o princípio de <strong>privacidade total</strong>:</p>
+            <ul>
+                <li>✅ Nenhum dado é coletado, armazenado, transmitido ou acessado pelo desenvolvedor.</li>
+                <li>Tudo que você insere no sistema permanece <strong>apenas no seu dispositivo</strong>.</li>
+            </ul>
+            <hr>
+
+            <h4>2. Como e Onde Seus Dados São Armazenados</h4>
+            <p><strong>2.1.</strong> Todos os dados inseridos são salvos <strong>no armazenamento local (localStorage)</strong> do seu navegador, dentro do seu próprio computador ou dispositivo.</p>
+            <p><strong>2.2.</strong> Isso significa que <strong>nenhum dado sai do seu controle</strong> — o Software não envia informações a nenhum servidor externo.</p>
+            <hr>
+            
             <h4>3. Segurança dos Dados</h4>
-            <p>Como seus dados são armazenados localmente, a segurança deles está diretamente ligada à segurança do dispositivo que você utiliza. Você é o único responsável por garantir que seu computador e navegador estejam seguros.</p>
+            <p><strong>3.1.</strong> Como os dados ficam armazenados localmente, a segurança depende <strong>diretamente da proteção do seu dispositivo e navegador</strong>.</p>
+            <p><strong>3.2.</strong> O Usuário é responsável por manter seu computador livre de vírus, realizar backups periódicos e evitar exclusão acidental dos dados.</p>
+            <hr>
+
             <h4>4. Cookies e Serviços de Terceiros</h4>
-            <p>O software Escala Fácil <strong>não utiliza cookies de rastreamento</strong>, pixels, ou qualquer serviço de análise de terceiros (como Google Analytics) para monitorar seu uso.</p>
-            <h4>5. Alterações a Esta Política de Privacidade</h4>
-            <p>Podemos atualizar nossa Política de Privacidade periodicamente. Recomendamos que você revise esta página de tempos em tempos para quaisquer alterações.</p>
+            <p>O Escala Fácil <strong>não utiliza cookies de rastreamento, pixels, nem serviços de terceiros</strong> (como Google Analytics ou APIs externas).</p>
+            <hr>
+            
+            <h4>5. Alterações desta Política</h4>
+            <p>Podemos atualizar esta Política de Privacidade ocasionalmente. As alterações serão publicadas nesta mesma página, e a data da última modificação será atualizada.</p>
+            <hr>
+
             <h4>6. Contato</h4>
-            <p>Se você tiver alguma dúvida sobre esta Política de Privacidade, entre em contato conosco através do e-mail: <strong>escalafacil.contato@gmail.com</strong></p>
+            <p>Em caso de dúvidas sobre esta Política de Privacidade, entre em contato pelo e-mail:<br>
+            📩 escalafacil.contato@gmail.com</p>
+            <hr>
+
+            <h4>📘 Resumo simples</h4>
+            <ul>
+                <li>O Escala Fácil não coleta <strong>nenhum dado</strong>.</li>
+                <li>Todos os dados ficam <strong>no seu computador</strong>.</li>
+                <li>Você é responsável por <strong>backup e segurança</strong>.</li>
+                <li>Nenhum suporte ou atualização está incluído na licença.</li>
+                <li>O uso do software implica <strong>aceite integral</strong> dos termos.</li>
+            </ul>
         </div>
     `;
 
@@ -249,19 +313,6 @@ function initConfiguracoesPage() {
     
     const shortcutsCard = $("#config-shortcuts-card");
     if(shortcutsCard) shortcutsCard.onclick = () => exibirAtalhosDeTeclado();
-
-    const themeToggleButtons = $$('#themeToggleGroup .toggle-btn');
-    themeToggleButtons.forEach(button => {
-        button.onclick = () => {
-            const selectedTheme = button.dataset.value;
-            const { config } = store.getState();
-
-            applyTheme(selectedTheme);
-            themeToggleButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            store.dispatch('SAVE_CONFIG', { ...config, theme: selectedTheme });
-        };
-    });
     
     const btnExport = $("#btn-export-data");
     if(btnExport) btnExport.onclick = exportAllData;
@@ -317,6 +368,11 @@ function initConfiguracoesPage() {
     
     // Carrega os dados iniciais no formulário ao abrir a página
     loadConfigForm();
+
+    // Atualiza o ano do copyright dinamicamente
+    const currentYear = new Date().getFullYear();
+    const copyrightYearEl = $("#copyright-year");
+    if (copyrightYearEl) copyrightYearEl.textContent = currentYear;
 }
 
 document.addEventListener('DOMContentLoaded', initConfiguracoesPage);

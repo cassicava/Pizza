@@ -202,7 +202,10 @@ function createWizardManager() {
     if (nextBtn) {
         nextBtn.onclick = (event) => {
             if (currentStep === 4) {
-                playStarBurst(event);
+                const rect = event.currentTarget.getBoundingClientRect();
+                const originX = rect.left + rect.width / 2;
+                const originY = rect.top + rect.height / 2;
+                playStarBurst(originX, originY);
                 handleStartGeneration();
             } else {
                 if (currentStep === 1) {

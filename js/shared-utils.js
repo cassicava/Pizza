@@ -239,47 +239,75 @@ function calculateFullConsecutiveWorkDays(employeeId, allSlots, targetDate, turn
     return (lastShiftIndex - firstShiftIndex + 1);
 }
 
+/**
+ * Helper para obter timestamps UTC de início e fim de um turno.
+ * @param {string} date - A data do turno (YYYY-MM-DD).
+ * @param {object} turnoInfo - O objeto do turno.
+ * @returns {{start: number, end: number}|null} - Objeto com timestamps ou null.
+ */
+function getShiftTimestampsUTC(date, turnoInfo) {
+    if (!date || !turnoInfo || !turnoInfo.inicio || !turnoInfo.fim) return null;
 
+    const [year, month, day] = date.split('-').map(Number);
+    const [startHour, startMinute] = turnoInfo.inicio.split(':').map(Number);
+    
+    const startTimestamp = Date.UTC(year, month - 1, day, startHour, startMinute);
+    const duracaoTotalMin = calcCarga(turnoInfo.inicio, turnoInfo.fim, 0, turnoInfo.diasDeDiferenca) + (turnoInfo.almocoMin || 0);
+    const endTimestamp = startTimestamp + duracaoTotalMin * 60 * 1000;
 
+    return { start: startTimestamp, end: endTimestamp };
+}
+
+/**
+ * NOVA FUNÇÃO DE VALIDAÇÃO DE DESCANSO - Mais precisa e robusta.
+ */
 function checkMandatoryRestViolation(employee, newShiftTurno, newShiftDate, allSlots, turnosMap) {
     if (newShiftTurno.isSystem) {
         return { violation: false, message: '' };
     }
 
-    const allEmployeeShifts = allSlots.filter(s => s.assigned === employee.id).sort((a, b) => a.date.localeCompare(b.date));
-    const newShiftStart = new Date(`${newShiftDate}T${newShiftTurno.inicio}`);
-    
-    // 1. Verificação para trás (o novo turno viola o descanso de um turno anterior?)
-    const shiftsBefore = allEmployeeShifts.filter(s => s.date < newShiftDate);
-    const previousShift = shiftsBefore.pop();
-    
-    if (previousShift) {
-        const prevTurnoInfo = turnosMap[previousShift.turnoId];
-        if (prevTurnoInfo && !prevTurnoInfo.isSystem && prevTurnoInfo.descansoObrigatorioHoras) {
-            const prevShiftEnd = new Date(`${previousShift.date}T${prevTurnoInfo.fim}`);
-            prevShiftEnd.setDate(prevShiftEnd.getDate() + (prevTurnoInfo.diasDeDiferenca || 0));
-            const diffHours = (newShiftStart - prevShiftEnd) / (1000 * 60 * 60);
-            if (diffHours < prevTurnoInfo.descansoObrigatorioHoras) {
-                return { violation: true, message: `Viola descanso de ${prevTurnoInfo.descansoObrigatorioHoras}h do turno anterior.` };
+    const allEmployeeShifts = allSlots
+        .filter(s => s.assigned === employee.id && turnosMap[s.turnoId] && !turnosMap[s.turnoId].isSystem)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    const newShiftTimestamps = getShiftTimestampsUTC(newShiftDate, newShiftTurno);
+    if (!newShiftTimestamps) return { violation: false, message: '' };
+
+    const newShiftIndex = allEmployeeShifts.findIndex(s => s.date >= newShiftDate);
+
+    // 1. Verificação para trás
+    const previousShiftData = (newShiftIndex > 0) 
+        ? allEmployeeShifts[newShiftIndex - 1] 
+        : allEmployeeShifts.filter(s => s.date < newShiftDate).pop();
+
+    if (previousShiftData) {
+        const prevTurnoInfo = turnosMap[previousShiftData.turnoId];
+        if (prevTurnoInfo && prevTurnoInfo.descansoObrigatorioHoras) {
+            const prevShiftTimestamps = getShiftTimestampsUTC(previousShiftData.date, prevTurnoInfo);
+            if (prevShiftTimestamps) {
+                const diffHours = (newShiftTimestamps.start - prevShiftTimestamps.end) / (1000 * 60 * 60);
+                if (diffHours < prevTurnoInfo.descansoObrigatorioHoras) {
+                    return { violation: true, message: `Viola descanso de ${prevTurnoInfo.descansoObrigatorioHoras}h do turno anterior.` };
+                }
             }
         }
     }
 
-    // 2. Verificação para frente (o novo turno impõe um descanso que é violado por um turno futuro?)
+    // 2. Verificação para frente
     if (newShiftTurno.descansoObrigatorioHoras) {
-        const nextShift = allEmployeeShifts.find(s => s.date > newShiftDate);
-        
-        if (nextShift) {
-            const nextTurnoInfo = turnosMap[nextShift.turnoId];
-            if (nextTurnoInfo && !nextTurnoInfo.isSystem) {
-                const newShiftEnd = new Date(`${newShiftDate}T${newShiftTurno.fim}`);
-                newShiftEnd.setDate(newShiftEnd.getDate() + (newShiftTurno.diasDeDiferenca || 0));
-                
-                const nextShiftStart = new Date(`${nextShift.date}T${nextTurnoInfo.inicio}`);
-                const diffHours = (nextShiftStart - newShiftEnd) / (1000 * 60 * 60);
-
-                if (diffHours < newShiftTurno.descansoObrigatorioHoras) {
-                    return { violation: true, message: `Conflito com o turno futuro. O descanso de ${newShiftTurno.descansoObrigatorioHoras}h seria violado.` };
+        const nextShiftData = (newShiftIndex !== -1 && newShiftIndex < allEmployeeShifts.length -1)
+            ? allEmployeeShifts[newShiftIndex + 1]
+            : allEmployeeShifts.find(s => s.date > newShiftDate);
+            
+        if (nextShiftData) {
+            const nextTurnoInfo = turnosMap[nextShiftData.turnoId];
+            if (nextTurnoInfo) {
+                const nextShiftTimestamps = getShiftTimestampsUTC(nextShiftData.date, nextTurnoInfo);
+                if (nextShiftTimestamps) {
+                    const diffHours = (nextShiftTimestamps.start - newShiftTimestamps.end) / (1000 * 60 * 60);
+                    if (diffHours < newShiftTurno.descansoObrigatorioHoras) {
+                        return { violation: true, message: `Conflito com o turno futuro. O descanso de ${newShiftTurno.descansoObrigatorioHoras}h seria violado.` };
+                    }
                 }
             }
         }

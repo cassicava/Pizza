@@ -88,14 +88,6 @@
     box-shadow: var(--shadow);
 }
 
-html[data-theme="dark"] .welcome-option-card {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-html[data-theme="dark"] .welcome-option-card:hover {
-    background-color: rgba(37, 99, 235, 0.1);
-}
-
 .welcome-option-icon {
     font-size: 2.5rem;
     line-height: 1;
@@ -249,10 +241,6 @@ html[data-theme="dark"] .welcome-option-card:hover {
     background-color: #eff6ff;
 }
 
-html[data-theme="dark"] .info-card:hover {
-    background-color: rgba(37, 99, 235, 0.1);
-}
-
 .info-card .icon {
     display: inline-block;
     width: 20px;
@@ -268,12 +256,6 @@ html[data-theme="dark"] .info-card:hover {
     background-color: #f0fdf4;
     color: #166534;
 }
-
-html[data-theme="dark"] .info-card.accepted {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: #a7f3d0;
-}
-
 
 .info-card.accepted .icon {
     border-color: #22c55e;

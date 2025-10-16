@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="css/02-layout.css" />
     <link rel="stylesheet" href="css/03-components.css" />
     <link rel="stylesheet" href="css/04-logo.css" />
-    <link rel="stylesheet" href="css/05-dark-theme.css" />
     <link rel="stylesheet" href="css/06-responsive.css" />
     <link rel="stylesheet" href="css/07-gerador-escala.css" />
     <link rel="stylesheet" href="css/08-welcome.css" />
@@ -27,6 +26,7 @@
     <link rel="stylesheet" href="css/16-validation.css" /> 
     <link rel="stylesheet" href="css/17-painel-gerenciamento.css" />
     <link rel="stylesheet" href="css/18-configuracoes.css" />
+    <link rel="stylesheet" href="css/20-toast-animations.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"></script>
 
@@ -61,13 +61,6 @@
                     <label for="welcome-nome-input" class="welcome-label">Primeiro, como podemos te chamar?</label>
                     <input type="text" id="welcome-nome-input" class="welcome-input"
                         placeholder="Seu nome ou nome da empresa">
-                </div>
-                <div class="welcome-form-group">
-                    <label class="welcome-label">Qual aparência você prefere?</label>
-                    <div class="toggle-group" id="welcomeThemeToggle">
-                        <button type="button" class="toggle-btn" data-value="light">☀️ Claro</button>
-                        <button type="button" class="toggle-btn" data-value="dark">🌙 Escuro</button>
-                    </div>
                 </div>
                 <button id="welcome-personalizacao-next" class="welcome-btn welcome-btn-primary">Próximo</button>
                 <button class="welcome-btn-secondary welcome-btn-back" data-to-step="1">
@@ -862,22 +855,18 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="config-item">
-                                    <div class="config-item-label">
-                                        <h3>Tema da Interface</h3>
-                                        <p>Escolha entre o tema claro ou escuro.</p>
-                                    </div>
-                                    <div class="config-item-control">
-                                        <div class="toggle-group" id="themeToggleGroup">
-                                            <button type="button" class="toggle-btn" data-value="light">☀️ Claro</button>
-                                            <button type="button" class="toggle-btn" data-value="dark">🌙 Escuro</button>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                             <div class="config-card-footer">
                                 <button id="btnSalvarConfig" class="success">💾 Salvar Preferências</button>
                             </div>
+                        </div>
+                        <div class="card" style="text-align: center;">
+                            <p style="margin: 0; font-weight: bold;">Escala Fácil v1.0.0</p>
+                            <p style="font-size: 0.9rem; color: var(--muted); margin: 4px 0 0 0;">Uma ferramenta para simplificar a criação e o gerenciamento de escalas.</p>
+                            <p style="font-size: 0.8rem; color: var(--muted); margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                                © <span id="copyright-year">2025</span> Escala Fácil — Todos os direitos reservados.<br>
+                                Uso sujeito aos Termos de Licença e Política de Privacidade.
+                            </p>
                         </div>
                     </div>
 
@@ -936,15 +925,11 @@
                         <div class="card">
                              <h2 class="config-card-title">Ajuda e Recursos</h2>
                              <div class="config-links-container">
-                                 <button class="info-link-btn" id="config-terms-card"><span>📄</span> Termos de Uso</button>
+                                 <button class="info-link-btn" id="config-terms-card"><span>🔒</span> Termos de Uso</button>
                                  <button class="info-link-btn" id="config-privacy-card"><span>🛡️</span> Política de Privacidade</button>
                                  <button class="info-link-btn" id="config-shortcuts-card"><span>⌨️</span> Atalhos de Teclado</button>
                                  <a href="mailto:escalafacil.contato@gmail.com" class="info-link-btn"><span>🐛</span> Reportar um Problema</a>
                              </div>
-                             <p class="config-card-version">
-                                <b>Escala Fácil v1.0.0</b><br>
-                                Uma ferramenta para simplificar a criação e o gerenciamento de escalas.
-                             </p>
                         </div>
                     </div>
 
@@ -1030,6 +1015,42 @@
         <p class="loader-text">Gerando escala...</p>
         <button id="loader-cancel-btn" class="danger">Cancelar Geração</button>
     </div>
+
+    <div id="download-toast" class="hidden">
+        <div class="download-toast-icon">
+            <svg class="feedback-icon" viewBox="0 0 52 52">
+                <circle class="feedback-circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="feedback-checkmark" fill="none" d="M14 27l7.8 7.8L38 22"/>
+                <path class="feedback-x" fill="none" d="M16 16 36 36 M36 16 16 36"/>
+            </svg>
+        </div>
+        <div class="download-toast-text">
+            <h3 id="download-toast-title"></h3>
+            <p id="download-toast-subtitle"></p>
+        </div>
+    </div>
+
+    <div id="download-feedback-toast">
+        <div class="feedback-toast-icon-sequence">
+            <div class="icon-set success-icons">
+                <span class="icon icon-step-1">📥</span>
+                <span class="icon icon-step-2">📁</span>
+                <span class="icon icon-step-3">✨</span>
+                <span class="icon icon-step-4">✅</span>
+            </div>
+            <div class="icon-set error-icons">
+                <span class="icon icon-step-1">📥</span>
+                <span class="icon icon-step-2">🚫</span>
+                <span class="icon icon-step-3">❌</span>
+                <span class="icon icon-step-4">⚠️</span>
+            </div>
+        </div>
+        <div class="feedback-toast-text">
+            <h3 class="feedback-toast-title"></h3>
+            <p class="feedback-toast-subtitle"></p>
+        </div>
+    </div>
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>

@@ -451,12 +451,10 @@ function playEmojiBurst(event) {
     }
 }
 
-/* --- NOVO: Efeito de Explosão de Estrelas --- */
-function playStarBurst(event) {
-    const button = event.currentTarget;
-    if (!button) return;
+/* --- CORREÇÃO: Função `playStarBurst` agora aceita coordenadas --- */
+function playStarBurst(originX, originY) {
+    if (typeof originX === 'undefined' || typeof originY === 'undefined') return;
 
-    const rect = button.getBoundingClientRect();
     const burstCount = 15;
 
     for (let i = 0; i < burstCount; i++) {
@@ -464,11 +462,11 @@ function playStarBurst(event) {
         star.className = 'star-burst-particle';
         star.textContent = '✨';
         
-        star.style.left = `${rect.left + rect.width / 2}px`;
-        star.style.top = `${rect.top + rect.height / 2}px`;
+        star.style.left = `${originX}px`;
+        star.style.top = `${originY}px`;
 
         const angle = Math.random() * 360;
-        const distance = Math.random() * 70 + 60; // Voa um pouco mais longe
+        const distance = Math.random() * 70 + 60;
         const tx = Math.cos(angle * Math.PI / 180) * distance;
         const ty = Math.sin(angle * Math.PI / 180) * distance;
         const rotation = Math.random() * 360 - 180;
@@ -561,4 +559,43 @@ function groupEscalasByMonth(escalas) {
         acc[ano][mes].push(esc);
         return acc;
     }, {});
+}
+
+let downloadToastTimeout = null;
+/**
+ * NOVA FUNÇÃO: Exibe uma notificação toast animada para feedback de downloads.
+ * @param {boolean} isSuccess - True para animação de sucesso, false para erro.
+ * @param {string} [message] - Mensagem de erro a ser exibida.
+ */
+function showDownloadToast(isSuccess, message = '') {
+    const toast = $('#download-feedback-toast');
+    if (!toast) return;
+
+    const titleEl = $('.feedback-toast-title', toast);
+    const subtitleEl = $('.feedback-toast-subtitle', toast);
+
+    if (downloadToastTimeout) {
+        clearTimeout(downloadToastTimeout);
+    }
+    
+    toast.classList.remove('visible', 'success', 'error');
+    void toast.offsetWidth;
+
+    if (isSuccess) {
+        titleEl.textContent = 'Download Concluído!';
+        subtitleEl.textContent = 'Verifique sua pasta de downloads.';
+        toast.classList.add('success');
+    } else {
+        titleEl.textContent = 'Falha no Download';
+        subtitleEl.textContent = message || 'Não foi possível gerar o arquivo.';
+        toast.classList.add('error');
+    }
+
+    parseEmojisInElement(toast);
+    
+    toast.classList.add('visible');
+
+    downloadToastTimeout = setTimeout(() => {
+        toast.classList.remove('visible');
+    }, 5000); // 5 segundos
 }

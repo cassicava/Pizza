@@ -5,8 +5,6 @@
 // --- Cache de Elementos DOM ---
 const welcomeOverlay = $("#welcome-overlay");
 const nomeInput = $("#welcome-nome-input");
-const themeToggle = $("#welcomeThemeToggle");
-const themeButtons = $$(".toggle-btn", themeToggle);
 const personalizacaoNextBtn = $("#welcome-personalizacao-next");
 const finishBtn = $("#welcome-finish-btn");
 const termsCard = $("#welcome-terms-card");
@@ -17,7 +15,6 @@ const privacyCard = $("#welcome-privacy-card");
 let onboardingState = {
     currentStep: 1,
     nome: '',
-    theme: 'light',
 };
 let termsAcceptedState = {
     terms: false,
@@ -27,8 +24,7 @@ let termsAcceptedState = {
 // --- Funções de Validação e Controle ---
 function validateWelcomeStep2() {
     const nomeValido = nomeInput.value.trim() !== '';
-    const temaSelecionado = onboardingState.theme !== null;
-    personalizacaoNextBtn.disabled = !(nomeValido && temaSelecionado);
+    personalizacaoNextBtn.disabled = !nomeValido;
 }
 
 function checkAllTermsAccepted() {
@@ -45,9 +41,6 @@ function loadOnboardingProgress() {
     if (savedState) {
         onboardingState = savedState;
         nomeInput.value = onboardingState.nome;
-        if (onboardingState.theme) {
-            handleThemeSelection(onboardingState.theme);
-        }
     }
 }
 
@@ -85,15 +78,6 @@ function showStep(stepNumber, direction = 'forward') {
             firstInput.focus();
         }
     }, 200);
-}
-
-function handleThemeSelection(theme) {
-    onboardingState.theme = theme;
-    applyTheme(theme);
-    themeButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.value === theme);
-    });
-    validateWelcomeStep2();
 }
 
 async function handleWelcomeImport() {
@@ -157,7 +141,7 @@ function finishOnboarding() {
     }
 
     onboardingState.nome = nomeInput.value.trim();
-    const initialConfig = { nome: onboardingState.nome, theme: onboardingState.theme };
+    const initialConfig = { nome: onboardingState.nome };
     store.dispatch('SAVE_CONFIG', initialConfig);
 
     localStorage.setItem('ge_onboarding_complete', 'true');
@@ -172,11 +156,6 @@ function initWelcomeScreen() {
     welcomeOverlay.classList.add('visible');
     parseEmojisInElement(welcomeOverlay);
     
-    themeButtons.forEach(btn => btn.classList.remove('active'));
-    if(onboardingState.theme) {
-        $(`.toggle-btn[data-value="${onboardingState.theme}"]`, themeToggle)?.classList.add('active');
-    }
-
     showStep(onboardingState.currentStep || 1);
 
     // --- Event Listeners ---
@@ -208,14 +187,6 @@ function initWelcomeScreen() {
         }
     };
 
-
-    themeButtons.forEach(btn => {
-        btn.onclick = () => {
-            handleThemeSelection(btn.dataset.value);
-            saveOnboardingProgress();
-        };
-    });
-    
     nomeInput.oninput = () => {
         if (nomeInput.value.length > 0) {
             nomeInput.value = nomeInput.value.charAt(0).toUpperCase() + nomeInput.value.slice(1);

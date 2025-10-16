@@ -1,5 +1,5 @@
 /**************************************
- * 📅 Visualização da Escala
+ * 📅 Visualização da Escala (v2 - Correções no Rodapé)
  **************************************/
 
 let currentEscala = null;
@@ -69,13 +69,6 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
 
     let cobertura = escala.cobertura || {};
-    if (escala.isManual) {
-        if (cargo) {
-            cargo.turnosIds.forEach(turnoId => {
-                if (!cobertura[turnoId]) cobertura[turnoId] = 0;
-            });
-        }
-    }
 
     const allFuncsInvolved = new Set();
     escala.slots.forEach(s => { if (s.assigned) allFuncsInvolved.add(s.assigned) });
@@ -100,8 +93,11 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             }
             return a.nome.localeCompare(b.nome);
         });
-
-    const turnosDoCargo = turnos.filter(t => cobertura.hasOwnProperty(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio));
+    
+    // CORREÇÃO: Define os turnos do rodapé com base nos turnos do cargo, e não apenas os com cobertura > 0.
+    const turnosDoCargo = cargo 
+        ? turnos.filter(t => !t.isSystem && cargo.turnosIds.includes(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio))
+        : [];
 
     let tableHTML = `<table class="escala-final-table" tabindex="0"><thead><tr><th>Funcionário</th>`;
     dateRange.forEach(date => {
@@ -193,6 +189,76 @@ function renderGenericEscalaTable(escala, container, options = {}) {
         tableHTML += `</tfoot>`;
     }
     container.innerHTML = tableHTML;
+}
+
+/**
+ * NOVA FUNÇÃO: Atualiza apenas o rodapé da tabela.
+ * @param {object} escala - O objeto da escala atual.
+ */
+function updateTableFooter(escala) {
+    const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
+    if (!table) return;
+
+    let tfoot = table.querySelector('tfoot');
+    if (!tfoot) {
+        tfoot = document.createElement('tfoot');
+        table.appendChild(tfoot);
+    }
+
+    const { turnos, cargos } = store.getState();
+    const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
+    const cargo = cargos.find(c => c.id === escala.cargoId);
+    const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
+    const cobertura = escala.cobertura || {};
+
+    const turnosDoCargo = cargo
+        ? turnos.filter(t => !t.isSystem && cargo.turnosIds.includes(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio))
+        : [];
+
+    let footerHTML = '';
+
+    // Gera as linhas de "Total"
+    turnosDoCargo.forEach(turno => {
+        footerHTML += `<tr class="total-row"><td><strong>Total ${turno.sigla || '??'}</strong></td>`;
+        dateRange.forEach(date => {
+            const total = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
+            footerHTML += `<td>${total}</td>`;
+        });
+        footerHTML += `</tr>`;
+    });
+
+    // Gera as linhas de "Faltam"
+    turnosDoCargo.forEach(turno => {
+        let hasVagas = false;
+        let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
+        dateRange.forEach(date => {
+            const d = new Date(date + 'T12:00:00');
+            const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
+            const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
+            const isDiaUtil = cargoDiasOperacionais.has(diaSemanaId) && !feriadoFolga;
+            
+            if (isDiaUtil) {
+                const coberturaNecessaria = cobertura[turno.id] || 0;
+                const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
+                const vagas = coberturaNecessaria - coberturaAtual;
+                
+                if (vagas > 0) {
+                    hasVagas = true;
+                    rowVagasHTML += `<td style="color: var(--danger); font-weight: bold;">${vagas}</td>`;
+                } else {
+                    rowVagasHTML += `<td></td>`;
+                }
+            } else {
+                rowVagasHTML += `<td></td>`;
+            }
+        });
+        rowVagasHTML += `</tr>`;
+        if (hasVagas) {
+            footerHTML += rowVagasHTML;
+        }
+    });
+
+    tfoot.innerHTML = footerHTML;
 }
 
 
@@ -506,6 +572,8 @@ function renderEscalaTable(escala) {
 
 function updateTableAfterEdit(escala) {
     updateTableCells(escala);
+    // ADIÇÃO: Chama a nova função para atualizar o rodapé
+    updateTableFooter(escala);
     renderPainelDaEscala(escala);
 }
 

@@ -28,10 +28,6 @@ function updateHomeScreenDashboard() {
     if($("#home-equipes-count")) $("#home-equipes-count").textContent = equipes.length > 0 ? `${equipes.length} cadastrada(s)` : '';
 }
 
-function applyTheme(theme) {
-    document.documentElement.dataset.theme = theme;
-}
-
 function go(page, options = {}) {
     if (isNavigating) return;
 
@@ -171,9 +167,6 @@ function renderRouter(actionName) {
 
 function initMainApp() {
     store.subscribe(renderRouter);
-
-    const { config } = store.getState();
-    applyTheme(config.theme || 'light');
 
     renderRouter('LOAD_STATE');
     go("home"); 

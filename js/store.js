@@ -22,7 +22,7 @@ const store = {
         funcionarios: [],
         equipes: [],
         escalas: [],
-        config: { nome: '', theme: 'light' },
+        config: { nome: '' },
     },
 
     // 2. LISTENERS: Funções que serão chamadas quando o estado mudar.
@@ -81,7 +81,7 @@ const store = {
             state.turnos = loadJSON(KEYS.turnos, []);
             state.cargos = loadJSON(KEYS.cargos, []);
             state.equipes = loadJSON(KEYS.equipes, []);
-            state.config = loadJSON(KEYS.config, { nome: '', theme: 'light' });
+            state.config = loadJSON(KEYS.config, { nome: '' });
 
             
             // Garante que os turnos de sistema (folga, férias) estejam sempre presentes e atualizados no estado

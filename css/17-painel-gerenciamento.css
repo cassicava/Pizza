@@ -28,10 +28,6 @@
     padding: 4px;
     width: fit-content;
 }
-html[data-theme="dark"] .painel-gerenciamento .painel-tabs {
-    background-color: var(--card); /* Mantém o fundo do card como container no dark mode */
-}
-
 
 .painel-gerenciamento .painel-tab-btn {
     border: none;
@@ -49,10 +45,6 @@ html[data-theme="dark"] .painel-gerenciamento .painel-tabs {
     background-color: var(--card);
     color: var(--brand);
     box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
-}
-
-html[data-theme="dark"] .painel-gerenciamento .painel-tab-btn.active {
-     box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
 }
 
 .painel-gerenciamento .painel-content {
@@ -80,11 +72,6 @@ html[data-theme="dark"] .painel-gerenciamento .painel-tab-btn.active {
 .painel-tab-content .card-lista:hover {
     transform: none;
 }
-
-html[data-theme="dark"] .painel-tab-content .card-lista {
-    border: none;
-}
-
 
 /* Remove margens e bordas desnecessárias dos formulários dentro das abas */
 .painel-tab-content > .card {

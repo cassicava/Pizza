@@ -53,14 +53,8 @@
     color: var(--danger-2);
     font-weight: bold;
 }
-html[data-theme="dark"] .danger-text {
-    color: #fca5a5;
-}
 .warning-text {
     color: #d97706;
-}
-html[data-theme="dark"] .warning-text {
-    color: #fdba74;
 }
 
 /* Media queries para ajustar os grids em telas menores */

@@ -21,7 +21,7 @@ function hideExportModal() {
  */
 function generateVisaoGeralPDF(escala) {
     // Validação de dados: Garante que a escala tenha um snapshot válido.
-    if (!escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
+    if (!escala || !escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
         throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
     }
     const { cargos } = store.getState();
@@ -172,11 +172,9 @@ function generateVisaoGeralPDF(escala) {
     turnosNaEscalaIds.forEach(turnoId => {
         const t = getTurnoInfo(turnoId);
         if (t.sigla && t.nome) {
-            // INÍCIO DA CORREÇÃO DEFINITIVA
-            const text = (t.isSystem || !t.inicio) // Verifica se é sistema OU se não tem horário
+            const text = (t.isSystem || !t.inicio)
                 ? `${t.sigla} - ${t.nome}`
                 : `${t.sigla} - ${t.nome}\n(${t.inicio} - ${t.fim})`;
-            // FIM DA CORREÇÃO DEFINITIVA
             legendItems.push({ color: t.cor, text: text, isSystem: t.isSystem, inicio: t.inicio });
         }
     });
@@ -432,7 +430,6 @@ function generateRelatorioDiarioPDF(escala) {
                     return; 
                 }
 
-                // INÍCIO DA CORREÇÃO DEFINITIVA: Corrige o título para turnos de sistema
                 const tituloTurno = (turno.isSystem || !turno.inicio)
                     ? turno.nome
                     : `${turno.nome} (${turno.inicio} - ${turno.fim})`;
@@ -462,7 +459,6 @@ function generateRelatorioDiarioPDF(escala) {
 
                         yPos += 25; 
                     });
-                    // FIM DA CORREÇÃO DEFINITIVA
 
                     const finalCardHeight = yPos - cardY - 10;
                     doc.setFillColor(turno.cor || '#cccccc');
@@ -498,7 +494,10 @@ function generateRelatorioDiarioPDF(escala) {
 async function handleExport(exportFn) {
     if (!currentEscalaToExport) return;
 
-    const isDirty = (currentEscala && currentEscala.id === currentEscalaToExport.id) && dirtyForms['gerar-escala'];
+    // Usar uma variável local para garantir que o objeto não seja perdido
+    let escalaParaProcessar = currentEscalaToExport;
+
+    const isDirty = (currentEscala && currentEscala.id === escalaParaProcessar.id) && dirtyForms['gerar-escala'];
 
     if (isDirty) {
         const { confirmed } = await showConfirm({
@@ -513,50 +512,57 @@ async function handleExport(exportFn) {
             setGeradorFormDirty(false); 
             
             const { escalas } = store.getState();
-            currentEscalaToExport = escalas.find(e => e.id === currentEscalaToExport.id);
+            // Atualiza a variável local com a versão mais recente do store
+            escalaParaProcessar = escalas.find(e => e.id === escalaParaProcessar.id);
         }
     }
     
-    await exportFn(currentEscalaToExport);
+    // Esconde o modal de opções ANTES de iniciar o loader e o processo
+    hideExportModal();
+    
+    // Passa a variável local para a função de exportação
+    await exportFn(escalaParaProcessar);
 }
 
 async function initPdfExport() {
     $('#btnExportCancelar').addEventListener('click', hideExportModal);
 
-    $('#btnExportVisaoGeral').addEventListener('click', () => handleExport(async (escala) => {
-        showLoader('Gerando PDF da Escala Completa...');
-        await new Promise(res => setTimeout(res, 50));
-        try {
+    const performExport = (loaderMessage, exportAction) => {
+        handleExport(async (escala) => {
+            showLoader(loaderMessage);
+            // CORREÇÃO: Aguarda um ciclo para garantir que o loader seja exibido antes do bloqueio
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            try {
+                await exportAction(escala);
+                hideLoader();
+                // Aguarda o próximo quadro de animação para mostrar o feedback
+                requestAnimationFrame(() => showDownloadToast(true));
+            } catch (e) {
+                console.error("Erro durante a exportação:", e);
+                hideLoader();
+                // Aguarda o próximo quadro de animação para mostrar o feedback de erro
+                requestAnimationFrame(() => showDownloadToast(false, e.message));
+            }
+        });
+    };
+
+    $('#btnExportVisaoGeral').addEventListener('click', () => {
+        performExport('Gerando PDF da Escala Completa...', (escala) => {
             const doc = generateVisaoGeralPDF(escala);
             doc.save(`${escala.nome.replace(/\s/g, '_')}.pdf`);
-        } catch (e) {
-            console.error("Erro ao gerar PDF da visão geral:", e);
-            showToast(e.message || "Erro ao gerar o PDF da escala completa.", 'error');
-        } finally {
-            hideLoader();
-            hideExportModal();
-        }
-    }));
+        });
+    });
     
-    $('#btnExportVisaoDiaria').addEventListener('click', () => handleExport(async (escala) => {
-        showLoader('Gerando Relatório Diário...');
-        await new Promise(res => setTimeout(res, 50));
-        try {
+    $('#btnExportVisaoDiaria').addEventListener('click', () => {
+        performExport('Gerando Relatório Diário...', (escala) => {
             const doc = generateRelatorioDiarioPDF(escala);
             doc.save(`relatorio_diario_${escala.nome.replace(/\s/g, '_')}.pdf`);
-        } catch (e) {
-            console.error("Erro ao gerar PDF do relatório diário:", e);
-            showToast(e.message || "Erro ao gerar o PDF do relatório diatório.", 'error');
-        } finally {
-            hideLoader();
-            hideExportModal();
-        }
-    }));
+        });
+    });
 
-    $('#btnExportAmbos').addEventListener('click', () => handleExport(async (escala) => {
-        showLoader('Gerando arquivos...');
-        await new Promise(res => setTimeout(res, 50));
-        try {
+    $('#btnExportAmbos').addEventListener('click', () => {
+        performExport('Gerando arquivos...', async (escala) => {
             const geralPDF = generateVisaoGeralPDF(escala);
             showLoader('Gerando arquivo 2 de 2...');
             await new Promise(res => setTimeout(res, 50));
@@ -572,15 +578,8 @@ async function initPdfExport() {
             
             const zipBlob = await zip.generateAsync({ type: "blob" });
             triggerDownload(zipBlob, `export_escala_${nomeBase}.zip`);
-
-        } catch (e) {
-            console.error("Erro ao gerar arquivo ZIP:", e);
-            showToast(e.message || "Erro ao gerar o arquivo ZIP.", 'error');
-        } finally {
-            hideLoader();
-            hideExportModal();
-        }
-    }));
+        });
+    });
 }
 
 document.addEventListener('DOMContentLoaded', initPdfExport);

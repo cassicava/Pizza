@@ -1,5 +1,5 @@
 /**************************************************************
- * 🛠️ Lógica do Editor Manual (v5.9 - Correção de Conflitos e UI)
+ * 🛠️ Lógica do Editor Manual (v6.0 - Correções de Conflitos e UI)
  **************************************************************/
 
 const editorState = {
@@ -24,24 +24,17 @@ const toolboxState = {
 
 let marqueeObserver = null;
 
-/* INÍCIO DA ALTERAÇÃO */
-/**
- * Adiciona ou remove padding da página ativa para evitar que a toolbox sobreponha o conteúdo.
- * @param {boolean} reset - Se verdadeiro, remove todo o padding adicionado.
- */
 function updatePagePaddingForToolbox(reset = false) {
     const activePage = $('.page.active');
     if (!activePage) return;
 
-    // Aumentado o espaçamento para 120px para dar mais "respiro"
     const toolboxHeight = 120; 
 
-    // Limpa os paddings antes de aplicar o novo, para evitar conflitos
     activePage.style.paddingTop = '';
     activePage.style.paddingBottom = '';
 
     if (reset || toolboxState.isMinimized) {
-        return; // Se resetando ou minimizado, não aplica padding
+        return;
     }
 
     if (toolboxState.dockPosition === 'top') {
@@ -50,7 +43,6 @@ function updatePagePaddingForToolbox(reset = false) {
         activePage.style.paddingBottom = `${toolboxHeight}px`;
     }
 }
-/* FIM DA ALTERAÇÃO */
 
 function saveToolboxState() {
     localStorage.setItem('ge_toolbox_state', JSON.stringify({
@@ -74,12 +66,10 @@ function loadToolboxState() {
     toolboxState.dockPosition = savedState?.dockPosition || 'bottom';
     editorState.enforceRules = savedState?.enforceRules !== false;
 
-    // Aplica classes de posicionamento
     toolbox.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
     fab.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
     toolbox.classList.toggle('override-active', !editorState.enforceRules);
 
-    // Controla visibilidade
     if (toolboxState.isMinimized) {
         toolbox.classList.add('is-minimized');
         fab.classList.remove('hidden');
@@ -88,7 +78,6 @@ function loadToolboxState() {
         fab.classList.add('hidden');
     }
 
-    // Atualiza ícones dos botões
     const dockBtnSpan = $('#toggle-dock-btn span');
     if(dockBtnSpan) {
         dockBtnSpan.textContent = toolboxState.dockPosition === 'top' ? '🔽' : '🔼';
@@ -96,7 +85,6 @@ function loadToolboxState() {
     }
     parseEmojisInElement(toolbox);
     
-    // Aplica o padding inicial na página
     updatePagePaddingForToolbox();
 }
 
@@ -134,18 +122,13 @@ function toggleDockPosition() {
     saveToolboxState();
 }
 
-/* INÍCIO DA ALTERAÇÃO */
-/**
- * Esconde a toolbox e reseta o padding da página. Chamada ao navegar para outra tela.
- */
 function cleanupEditor() {
     const toolbox = $("#editor-toolbox");
     const fab = $("#editor-toolbox-fab");
     if (toolbox) toolbox.classList.add("hidden");
     if (fab) fab.classList.add("hidden");
-    updatePagePaddingForToolbox(true); // Reseta o padding
+    updatePagePaddingForToolbox(true);
 }
-/* FIM DA ALTERAÇÃO */
 
 
 function findPotentialConflicts(employeeId, turnoId, date, escala) {
@@ -225,7 +208,13 @@ function initEditor() {
     loadToolboxState();
 
     $$(".toolbox-mode-btn, .toolbox-tool-btn, .toolbox-window-btn, #editor-toolbox-fab").forEach(btn => btn.onclick = null);
-    $("#toolbox-dynamic-content").innerHTML = '';
+    
+    const dynamicContent = $("#toolbox-dynamic-content");
+    dynamicContent.innerHTML = '';
+    dynamicContent.onclick = null;
+    dynamicContent.onmouseover = null;
+    dynamicContent.onmouseout = null;
+
     document.onkeydown = null;
     const tableWrap = $(`#${currentEscala.owner}-escalaTabelaWrap`);
     if (tableWrap) {
@@ -255,8 +244,11 @@ function initEditor() {
         tableWrap.onclick = handleTableClick; 
         tableWrap.onmouseover = handleTableMouseover;
     }
+    
+    dynamicContent.onclick = handleToolboxClick;
+    dynamicContent.onmouseover = handleToolboxMouseover;
+    dynamicContent.onmouseout = handleToolboxMouseout;
 
-    $("#toolbox-dynamic-content").onclick = handleToolboxClick;
     document.onkeydown = handleKeyboardNav;
 
     setEditMode('employee');
@@ -428,12 +420,32 @@ function renderConflictsView() {
     if (conflicts.length === 0) {
         return `<div class="toolbox-info-text">Nenhum conflito encontrado. Bom trabalho! ✅</div>`;
     }
+
+    // Agrupa conflitos por funcionário
+    const conflictsByEmployee = conflicts.reduce((acc, conflict) => {
+        if (!acc[conflict.employeeId]) {
+            acc[conflict.employeeId] = {
+                employeeName: conflict.employeeName,
+                dates: new Set()
+            };
+        }
+        acc[conflict.employeeId].dates.add(conflict.date);
+        return acc;
+    }, {});
+
     let html = '<div class="conflicts-view-container">';
-    conflicts.forEach(conflict => {
-        html += `<div class="conflict-list-item" data-employee-id="${conflict.employeeId}" data-date="${conflict.date}">
-                    <strong>${conflict.employeeName.split(' ')[0]} em ${new Date(conflict.date + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}:</strong> ${conflict.message}
+    for (const employeeId in conflictsByEmployee) {
+        const data = conflictsByEmployee[employeeId];
+        const sortedDates = Array.from(data.dates).sort();
+        const formattedDates = sortedDates.map(date => 
+            `<span class="badge" style="cursor: pointer;" data-date="${date}">${new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}</span>`
+        ).join(' ');
+
+        html += `<div class="conflict-list-item" data-employee-id="${employeeId}">
+                    <strong>${data.employeeName.split(' ')[0]}:</strong> 
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${formattedDates}</div>
                  </div>`;
-    });
+    }
     html += `</div>`;
     return html;
 }
@@ -482,8 +494,13 @@ function handleToolboxClick(event) {
     const navArrow = target.closest('.nav-arrow');
     const conflictItem = target.closest('.conflict-list-item');
     const actionButton = target.closest('[data-action]');
+    const dateBadge = target.closest('.badge[data-date]');
 
-    if (conflictItem) handleConflictPanelClick(event);
+    if (conflictItem && dateBadge) {
+        handleConflictPanelClick(event, true);
+    } else if (conflictItem) {
+        handleConflictPanelClick(event, false);
+    }
     if (shiftBrush && !shiftBrush.hasAttribute('disabled')) handleSelectShiftBrush(shiftBrush.dataset.turnoId);
     if (navArrow) {
         if (navArrow.id === 'next-employee-btn') showNextEmployee(true);
@@ -494,6 +511,29 @@ function handleToolboxClick(event) {
         if (action === 'toggle-rules') handleToggleRules(actionButton.dataset.value);
         if (action === 'clear-assignments') handleClearAssignments();
         if (action === 'show-shortcuts') exibirAtalhosDeTeclado();
+    }
+}
+
+function handleToolboxMouseover(event) {
+    const badge = event.target.closest('.badge[data-date]');
+    const conflictItem = event.target.closest('.conflict-list-item');
+    if (badge && conflictItem) {
+        const employeeId = conflictItem.dataset.employeeId;
+        const date = badge.dataset.date;
+        const cell = $(`#${currentEscala.owner}-escalaTabelaWrap td[data-employee-id="${employeeId}"][data-date="${date}"]`);
+        if (cell) {
+            cell.classList.add('cell-hover-highlight');
+        }
+    }
+}
+
+function handleToolboxMouseout(event) {
+    const badge = event.target.closest('.badge[data-date]');
+    if (badge) {
+        const highlightedCell = $('.cell-hover-highlight');
+        if (highlightedCell) {
+            highlightedCell.classList.remove('cell-hover-highlight');
+        }
     }
 }
 
@@ -704,8 +744,9 @@ function handleRemoveShiftClick(slotId) {
         currentEscala.historico[employeeId].turnosTrabalhados -= 1;
     }
     
+    // CORREÇÃO: Trata a remoção de turnos de equipe e cobertura da mesma forma
     const isGeradaAutomaticamente = !currentEscala.isManual;
-    const temCoberturaDefinida = isGeradaAutomaticamente && (currentEscala.cobertura[slot.turnoId] || 0) > 0;
+    const temCoberturaDefinida = isGeradaAutomaticamente && ((currentEscala.cobertura && currentEscala.cobertura[slot.turnoId] > 0) || slot.equipeId);
     
     if (temCoberturaDefinida) {
         slot.assigned = null;
@@ -896,16 +937,33 @@ function updateConflictTabBadge() {
     }
 }
 
-function handleConflictPanelClick(event) {
+function handleConflictPanelClick(event, isDateBadge) {
     const item = event.target.closest('.conflict-list-item');
     if (!item) return;
-    const { employeeId, date } = item.dataset;
-    const cell = $(`#${currentEscala.owner}-escalaTabelaWrap td[data-employee-id="${employeeId}"][data-date="${date}"]`);
-    if (cell) {
-        cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        cell.classList.remove('cell-highlight-animation');
-        void cell.offsetWidth;
-        cell.classList.add('cell-highlight-animation');
+
+    const { employeeId } = item.dataset;
+    let date = null;
+    if (isDateBadge) {
+        const badge = event.target.closest('.badge[data-date]');
+        if(badge) date = badge.dataset.date;
+    }
+
+    if (date) {
+        const cell = $(`#${currentEscala.owner}-escalaTabelaWrap td[data-employee-id="${employeeId}"][data-date="${date}"]`);
+        if (cell) {
+            cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            cell.classList.remove('cell-highlight-animation');
+            void cell.offsetWidth;
+            cell.classList.add('cell-highlight-animation');
+        }
+    } else {
+        const row = $(`#${currentEscala.owner}-escalaTabelaWrap tr[data-employee-row-id="${employeeId}"]`);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'start' });
+            if (!row.classList.contains('employee-row-highlight')) {
+                highlightEmployeeRow(employeeId);
+            }
+        }
     }
 }
 
@@ -917,7 +975,6 @@ function validateEmployeeSchedule(employeeId, escala) {
     const maxDias = (escala.regras && escala.regras.maxDiasConsecutivos) || 6;
     
     const conflitos = [];
-    const conflitoMessages = new Set(); 
 
     const turnosDoFunc = escala.slots.filter(s => s.assigned === employeeId).sort((a, b) => a.date.localeCompare(b.date));
     
@@ -928,19 +985,13 @@ function validateEmployeeSchedule(employeeId, escala) {
 
         const restValidation = checkMandatoryRestViolation(employee, turnoAtualInfo, turnoAtual.date, escala.slots, turnosMap);
         if (restValidation.violation) {
-            if (!conflitoMessages.has(restValidation.message)) {
-                conflitos.push({ employeeId, date: turnoAtual.date, message: restValidation.message });
-                conflitoMessages.add(restValidation.message);
-            }
+            conflitos.push({ employeeId, date: turnoAtual.date, message: restValidation.message });
         }
         
         const dias = calculateFullConsecutiveWorkDays(employeeId, escala.slots, turnoAtual.date, turnosMap);
         if (dias > maxDias) {
             const msg = `Excede ${maxDias} dias consecutivos.`;
-            if (!conflitoMessages.has(msg)) {
-                conflitos.push({ employeeId, date: turnoAtual.date, message: msg });
-                conflitoMessages.add(msg);
-            }
+            conflitos.push({ employeeId, date: turnoAtual.date, message: msg });
         }
     }
     return conflitos;

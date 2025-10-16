@@ -21,7 +21,7 @@ self.onmessage = function(e) {
         const cargo = cargos.find(c => c.id === cargoId);
         if (!cargo) throw new Error("Cargo selecionado não foi encontrado.");
         
-        const cargoDiasOperacionais = cargo.regras.dias || DIAS_SEMANA.map(d => d.id); // NOVO: Pega dias do cargo
+        const cargoDiasOperacionais = cargo.regras.dias || DIAS_SEMANA.map(d => d.id);
 
         const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
         const equipesMap = Object.fromEntries(equipes.map(eq => [eq.id, eq]));
@@ -44,37 +44,49 @@ self.onmessage = function(e) {
         });
 
         let slots = [];
-        dateRange.forEach(date => {
+        const turnosDoCargoSet = new Set(Object.keys(cobertura));
+        Object.keys(coberturaPorEquipe).forEach(turnoId => turnosDoCargoSet.add(turnoId));
+
+        // LÓGICA DE CRIAÇÃO DE SLOTS CORRIGIDA
+        dateRange.forEach((date, dateIndex) => {
             const diaSemana = new Date(date + 'T12:00:00');
             const diaSemanaId = DIAS_SEMANA[diaSemana.getUTCDay()].id;
             const feriadoDoDia = feriados.find(f => f.date === date);
-            
-            if (feriadoDoDia && !feriadoDoDia.trabalha) {
-                return;
+
+            if ((feriadoDoDia && !feriadoDoDia.trabalha) || !cargo.regras.dias.includes(diaSemanaId)) {
+                return; // Pula dia de folga geral ou dia que o cargo não opera
             }
 
-            if (cargo.regras.dias.includes(diaSemanaId)) {
-                const turnosDoDia = new Set(Object.keys(cobertura));
-                Object.keys(coberturaPorEquipe).forEach(turnoId => turnosDoDia.add(turnoId));
+            turnosDoCargoSet.forEach(turnoId => {
+                // 1. Adiciona slots para cobertura individual/complementar
+                const coberturaIndividual = cobertura[turnoId] || 0;
+                for (let i = 0; i < coberturaIndividual; i++) {
+                    slots.push({ date, turnoId, assigned: null, id: uid() });
+                }
 
-                turnosDoDia.forEach(turnoId => {
-                    const coberturaIndividual = cobertura[turnoId] || 0;
-                    let coberturaTotalEquipes = 0;
-                    if (coberturaPorEquipe[turnoId]) {
-                        coberturaPorEquipe[turnoId].forEach(regra => {
-                            const equipe = equipesMap[regra.equipeId];
-                            if(equipe) coberturaTotalEquipes += equipe.funcionarioIds.length;
-                        });
-                    }
-                    const totalCobertura = coberturaTotalEquipes + coberturaIndividual;
-                    for (let i = 0; i < totalCobertura; i++) {
-                        slots.push({ date, turnoId, assigned: null, id: uid() });
-                    }
-                });
-            }
+                // 2. Adiciona slots para equipes que trabalham neste dia
+                if (coberturaPorEquipe[turnoId]) {
+                    coberturaPorEquipe[turnoId].forEach(regra => {
+                        const equipe = equipesMap[regra.equipeId];
+                        if (!equipe) return;
+
+                        const startIndex = dateRange.indexOf(regra.start);
+                        if (startIndex === -1) return;
+
+                        const ciclo = regra.work + regra.off;
+                        const diaNoCiclo = (dateIndex - startIndex) % ciclo;
+
+                        // Se a equipe está no período de trabalho do ciclo
+                        if (diaNoCiclo >= 0 && diaNoCiclo < regra.work) {
+                            for (let i = 0; i < equipe.funcionarioIds.length; i++) {
+                                slots.push({ date, turnoId, assigned: null, id: uid() });
+                            }
+                        }
+                    });
+                }
+            });
         });
         
-        // NOVO CÓDIGO PARA ADICIONAR AUSÊNCIAS DEFINIDAS
         postMessage({ type: 'progress', message: 'Agendando ausências...' });
         
         todosFuncsDoCargo.forEach(func => {
@@ -83,18 +95,16 @@ self.onmessage = function(e) {
                     const datasAusencia = excecoes[func.id][tipoId];
                     if (datasAusencia && datasAusencia.length > 0) {
                         datasAusencia.forEach(data => {
-                            slots.push({
-                                id: uid(),
-                                date: data,
-                                turnoId: tipoId, 
-                                assigned: func.id 
-                            });
+                            // Adiciona slot de ausência apenas se não houver um turno já alocado para essa pessoa no dia
+                            const hasExistingShift = slots.some(s => s.assigned === func.id && s.date === data);
+                            if (!hasExistingShift) {
+                                slots.push({ id: uid(), date: data, turnoId: tipoId, assigned: func.id });
+                            }
                         });
                     }
                 }
             }
         });
-        // FIM DO NOVO CÓDIGO
         
         postMessage({ type: 'progress', message: 'Alocando equipes fixas...' });
         const funcsEmEquipesAlocadas = new Set();
@@ -117,7 +127,7 @@ self.onmessage = function(e) {
                         const todosMembrosDisponiveis = equipe.funcionarioIds.every(funcId => {
                             const func = funcionariosMap.get(funcId);
                             return func && 
-                                   !excecoesMap[funcId]?.has(date) && // Verifica se o dia não é exceção (folga, férias, etc)
+                                   !excecoesMap[funcId]?.has(date) &&
                                    func.disponibilidade?.[turnoId]?.includes(diaSemanaId);
                         });
 
@@ -125,9 +135,11 @@ self.onmessage = function(e) {
                             const slotsDisponiveis = slots.filter(s => s.date === date && s.turnoId === turnoId && !s.assigned);
                             if (slotsDisponiveis.length >= equipe.funcionarioIds.length) {
                                 equipe.funcionarioIds.forEach((funcId, i) => {
-                                    slotsDisponiveis[i].assigned = funcId;
-                                    slotsDisponiveis[i].equipeId = equipe.id;
-                                    funcsEmEquipesAlocadas.add(funcId);
+                                    if(slotsDisponiveis[i]) {
+                                        slotsDisponiveis[i].assigned = funcId;
+                                        slotsDisponiveis[i].equipeId = equipe.id;
+                                        funcsEmEquipesAlocadas.add(funcId);
+                                    }
                                 });
                             }
                         }
@@ -156,10 +168,9 @@ self.onmessage = function(e) {
         const metaHorasMap = new Map();
         const metaTurnosMap = new Map();
         
-        // CORREÇÃO: A meta agora é calculada para todos, não apenas individuais
         todosFuncsDoCargo.forEach(f => {
             if (f.medicaoCarga === 'turnos') {
-                metaTurnosMap.set(f.id, calcularMetaTurnos(f, inicio, fim, cargoDiasOperacionais)); // NOVO: Passa dias operacionais
+                metaTurnosMap.set(f.id, calcularMetaTurnos(f, inicio, fim, cargoDiasOperacionais));
             } else {
                 metaHorasMap.set(f.id, calcularMetaHoras(f, inicio, fim));
             }
@@ -167,7 +178,6 @@ self.onmessage = function(e) {
         
         postMessage({ type: 'progress', message: 'Ajustando metas para feriados...'});
         feriados.filter(feriado => feriado.descontaMeta && !feriado.trabalha).forEach(feriado => {
-            // CORREÇÃO: Filtra funcionários que folgaram E não estavam em exceção (evita dupla contagem)
             const funcsQueFolgaram = todosFuncsDoCargo.filter(f => 
                 !slots.some(s => s.date === feriado.date && s.assigned === f.id) &&
                 !excecoesMap[f.id].has(feriado.date)
@@ -207,18 +217,15 @@ self.onmessage = function(e) {
                 const slotMonth = slot.date.substring(0, 7);
 
                 const candidatos = funcsIndividuais.map(f => {
-                    // CORREÇÃO: Cria uma lista de slots temporária para o cálculo de descanso e dias consecutivos
                     const tempSlots = [...slots, { date: slot.date, turnoId: slot.turnoId, assigned: f.id }];
 
                     if (excecoesMap[f.id].has(slot.date)) return null;
                     if (!f.disponibilidade[turno.id]?.includes(slotDiaSemanaId)) return null;
                     if (slots.some(s => s.assigned === f.id && s.date === slot.date)) return null;
                     
-                    // Validações
                     if (checkMandatoryRestViolation(f, turno, slot.date, tempSlots, turnosMap).violation) return null;
                     if (calculateFullConsecutiveWorkDays(f.id, tempSlots, slot.date, turnosMap) > maxDiasConsecutivos) return null;
 
-                    // Regra de Folga de Fim de Semana
                     if (slotDate.getUTCDay() === 6 || slotDate.getUTCDay() === 0) {
                         const workedWeekends = slots.filter(s => s.assigned === f.id && s.date.startsWith(slotMonth))
                             .reduce((acc, cur) => {
@@ -230,7 +237,6 @@ self.onmessage = function(e) {
 
                         const monthData = weekendDataByMonth[slotMonth];
                         
-                        // CORREÇÃO: A lógica de folga de fim de semana deve ser "Se o funcionário TRABALHAR, ele viola a folga mínima".
                         if (slotDate.getUTCDay() === 6 && (monthData.totalSaturdays - (workedWeekends.saturdays + 1)) < minFolgasSabados) return null;
                         if (slotDate.getUTCDay() === 0 && (monthData.totalSundays - (workedWeekends.sundays + 1)) < minFolgasDomingos) return null;
                     }
@@ -246,7 +252,7 @@ self.onmessage = function(e) {
                         if (usarHoraExtra && !f.fazHoraExtra) return null;
                         
                         score = (turnosAtuais / (metaTurnos || 1)) * 100;
-                    } else { // 'horas'
+                    } else {
                         const horasAtuais = historico[f.id].horasTrabalhadas;
                         const metaHoras = metaHorasMap.get(f.id) || 0;
                         
@@ -281,32 +287,14 @@ self.onmessage = function(e) {
         
         postMessage({ type: 'progress', message: 'Finalizando escala...' });
 
-        // --- INÍCIO DA CORREÇÃO ---
-        // Recalcula o objeto de cobertura para incluir a contagem das equipes,
-        // garantindo que a linha "Faltam" na tabela de visualização seja precisa.
-        const coberturaFinal = { ...cobertura }; 
-
-        for (const turnoId in coberturaPorEquipe) {
-            if (!coberturaFinal[turnoId]) {
-                coberturaFinal[turnoId] = 0;
-            }
-            coberturaPorEquipe[turnoId].forEach(regra => {
-                const equipe = equipesMap[regra.equipeId];
-                if (equipe && equipe.funcionarioIds) {
-                    coberturaFinal[turnoId] += equipe.funcionarioIds.length;
-                }
-            });
-        }
-        // --- FIM DA CORREÇÃO ---
-
         const nomeEscala = generateEscalaNome(cargo.nome, inicio, fim);
         const escalaFinal = {
             id: uid(), nome: nomeEscala, cargoId, inicio, fim, slots, historico,
             excecoes: JSON.parse(JSON.stringify(excecoes)),
             feriados: [...geradorState.feriados],
-            cobertura: coberturaFinal, 
+            cobertura: { ...cobertura },
             regras: { maxDiasConsecutivos, minFolgasSabados, minFolgasDomingos },
-            observacoes: '', // NOVO CAMPO ADICIONADO AQUI
+            observacoes: '',
         };
         
         postMessage({ type: 'done', escala: escalaFinal });

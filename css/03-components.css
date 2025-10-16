@@ -541,11 +541,6 @@ button.danger:hover {
     background-color: rgba(0, 0, 0, 0.05);
 }
 
-html[data-theme="dark"] .tab-btn:hover .tab-icon,
-html[data-theme="dark"] .tab-btn:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
 #sidebar:hover .tab-text {
     opacity: 1;
     transition-delay: 0.1s;

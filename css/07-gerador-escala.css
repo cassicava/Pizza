@@ -93,9 +93,6 @@
   display: flex;
   flex-direction: column;
 }
-html[data-theme="dark"] .regras-fieldset {
-    background-color: rgba(0,0,0,0.2);
-}
 
 .regras-fieldset legend {
   font-weight: bold;
@@ -188,9 +185,6 @@ html[data-theme="dark"] .regras-fieldset {
 .calendar-day:not(.empty):hover {
   background-color: #e0e7ff;
 }
-html[data-theme="dark"] .calendar-day:not(.empty):hover {
-  background-color: rgba(99, 102, 241, 0.2);
-}
 
 .calendar-header.weekend-header {
     color: var(--danger);
@@ -223,9 +217,6 @@ html[data-theme="dark"] .calendar-day:not(.empty):hover {
 }
 .calendar-day.is-holiday-off {
   background-color: #dbeafe;
-}
-html[data-theme="dark"] .calendar-day.is-holiday-off {
-  background-color: rgba(59, 130, 246, 0.2);
 }
 
 .holiday-editor-wrapper {
@@ -407,10 +398,6 @@ html[data-theme="dark"] .calendar-day.is-holiday-off {
 .is-ferias-dot { background-color: #a5f3fc; }
 .is-afastamento-dot { background-color: #fed7aa; }
 
-html[data-theme="dark"] .is-folga-dot { background-color: #059669; }
-html[data-theme="dark"] .is-ferias-dot { background-color: #0891b2; }
-html[data-theme="dark"] .is-afastamento-dot { background-color: #ea580c; }
-
 .ausencia-plus-symbol {
     font-size: 10px;
     font-weight: bold;
@@ -497,10 +484,6 @@ html[data-theme="dark"] .is-afastamento-dot { background-color: #ea580c; }
   background-color: #fee2e2;
 }
 
-html[data-theme="dark"] .escala-final-table th.weekend {
-  background-color: #4c1d1d;
-}
-
 .escala-final-table th.feriado {
   background-color: #dbeafe;
   color: var(--brand);
@@ -509,15 +492,6 @@ html[data-theme="dark"] .escala-final-table th.weekend {
 .escala-final-table th.feriado-folga {
     background-color: #e0e7ff;
     background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 6px);
-}
-html[data-theme="dark"] .escala-final-table th.feriado-folga {
-    background-color: #312e81;
-}
-
-
-html[data-theme="dark"] .escala-final-table th.feriado {
-  background-color: var(--brand-2);
-  color: #e0eaff;
 }
 
 .escala-final-table th:first-child,
@@ -542,10 +516,6 @@ html[data-theme="dark"] .escala-final-table th.feriado {
 .escala-final-table tbody tr:nth-child(even) td:first-child {
   background-color: var(--bg);
 }
-html[data-theme="dark"] .escala-final-table tbody tr:nth-child(even) td:first-child {
-    background-color: #2a2a2c;
-}
-
 
 .escala-final-table tfoot tr {
   background-color: var(--bg);
@@ -565,18 +535,10 @@ html[data-theme="dark"] .escala-final-table tbody tr:nth-child(even) td:first-ch
   background-color: #fffbe5;
 }
 
-html[data-theme="dark"] .escala-final-table tfoot .vagas-row {
-  background-color: #423c1b;
-}
-
 .celula-fechada {
   background-color: #f1f5f9;
   background-image: repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(0,0,0,0.04) 4px, rgba(0,0,0,0.04) 8px);
   cursor: not-allowed;
-}
-html[data-theme="dark"] .celula-fechada {
-  background-color: #1e293b;
-  background-image: repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(255,255,255,0.04) 4px, rgba(255,255,255,0.04) 8px);
 }
 
 .celula-feriado-folga {
@@ -588,11 +550,6 @@ html[data-theme="dark"] .celula-fechada {
   text-align: center;
   vertical-align: middle;
 }
-html[data-theme="dark"] .celula-feriado-folga {
-  background-color: #312e81;
-  color: #c7d2fe;
-}
-
 
 .celula-turno:hover {
   transform: scale(1.05);
@@ -643,10 +600,6 @@ html[data-theme="dark"] .celula-feriado-folga {
 .legenda-item:hover {
   border-color: var(--brand);
   background-color: #eff6ff;
-}
-
-html[data-theme="dark"] .legenda-item:hover {
-  background-color: rgba(37, 99, 235, 0.1);
 }
 
 .legenda-item.inactive {
@@ -795,10 +748,6 @@ html[data-theme="dark"] .legenda-item:hover {
   box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
 }
 
-html[data-theme="dark"] .painel-tab-btn.active {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
-}
-
 .painel-tab-content {
   display: none;
 }
@@ -828,10 +777,6 @@ html[data-theme="dark"] .painel-tab-btn.active {
     border: 1px solid var(--border);
     border-radius: 12px;
     background-color: var(--bg);
-}
-
-html[data-theme="dark"] .resumo-func-item {
-    background-color: rgba(255, 255, 255, 0.03);
 }
 
 .resumo-func-nome {
@@ -869,9 +814,6 @@ html[data-theme="dark"] .resumo-func-item {
     background-color: rgba(0,0,0,0.05);
     color: var(--fg);
 }
-html[data-theme="dark"] .meta-actions button:hover {
-    background-color: rgba(255,255,255,0.1);
-}
 
 .resumo-prog-container {
     grid-area: prog;
@@ -881,9 +823,6 @@ html[data-theme="dark"] .meta-actions button:hover {
     position: relative;
     overflow: hidden;
     border: 1px solid var(--border);
-}
-html[data-theme="dark"] .resumo-prog-container {
-    background-color: rgba(0,0,0,0.2);
 }
 
 .resumo-text-details {
@@ -910,17 +849,11 @@ html[data-theme="dark"] .resumo-prog-container {
     border: 1px solid var(--border);
     background: var(--card);
 }
-html[data-theme="dark"] .meta-input {
-    background: var(--bg);
-}
 
 .meta-input::-webkit-outer-spin-button,
 .meta-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
-}
-.meta-input[type=number] {
-  -moz-appearance: textfield;
 }
 
 .meta-input:focus {
@@ -1043,15 +976,6 @@ html[data-theme="dark"] .meta-input {
 .painel-feriados-list li.feriado-folga {
     border-color: #a7f3d0;
     background-color: #dcfce7;
-}
-
-html[data-theme="dark"] .painel-feriados-list li.feriado-trabalho {
-    border-color: #3b82f6;
-    background-color: rgba(37, 99, 235, 0.15);
-}
-html[data-theme="dark"] .painel-feriados-list li.feriado-folga {
-    border-color: #059669;
-    background-color: rgba(5, 150, 105, 0.15);
 }
 
 .painel-feriados-list .feriado-data {

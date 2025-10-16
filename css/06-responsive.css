@@ -4,6 +4,17 @@
         max-width: 95%;
     }
 
+    /* NOVO: Diminui o espaçamento lateral em telas menores */
+    .page {
+        padding-left: 32px;
+        padding-right: 32px;
+    }
+    #page-home {
+        padding-left: 160px;
+        padding-right: 160px;
+    }
+    /* FIM DA ALTERAÇÃO */
+
     .animated-brand-text {
         font-size: 2.0rem; /* Reduzido */
     }

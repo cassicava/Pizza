@@ -30,11 +30,6 @@
     opacity: 1;
 }
 
-html[data-theme="dark"] #editor-toolbox {
-    background: rgba(30, 30, 32, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 /* --- Estados da Barra --- */
 /* INÍCIO DA ALTERAÇÃO */
 #editor-toolbox.is-docked-top {
@@ -91,11 +86,6 @@ html[data-theme="dark"] #editor-toolbox {
 }
 /* FIM DA ALTERAÇÃO */
 
-html[data-theme="dark"] #editor-toolbox-fab {
-    background: rgba(30, 30, 32, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 #editor-toolbox-fab:not(.hidden) {
     transform: scale(1);
     opacity: 1;
@@ -123,7 +113,6 @@ html[data-theme="dark"] #editor-toolbox-fab {
     height: 100%;
     padding: 4px;
     gap: 4px;
-    flex-shrink: 0;
     background-color: rgba(0, 0, 0, 0.07);
     border-radius: 12px;
 }
@@ -144,12 +133,6 @@ html[data-theme="dark"] #editor-toolbox-fab {
     gap: 4px;
     background-color: rgba(0, 0, 0, 0.07);
     border-radius: 12px;
-}
-
-
-html[data-theme="dark"] .toolbox-group-left,
-html[data-theme="dark"] .toolbox-right-subgroup {
-    background-color: rgba(0, 0, 0, 0.2);
 }
 
 .toolbox-content-wrapper {
@@ -259,10 +242,6 @@ html[data-theme="dark"] .toolbox-right-subgroup {
     position: relative;
 }
 
-html[data-theme="dark"] .toolbox-card {
-    background: rgba(0, 0, 0, 0.2);
-}
-
 .employee-selector-card {
     gap: 4px;
 }
@@ -325,9 +304,6 @@ html[data-theme="dark"] .toolbox-card {
     border-radius: 999px;
     overflow: hidden;
 }
-html[data-theme="dark"] .progress-bar-container-compact {
-    background-color: rgba(0,0,0,0.3);
-}
 
 .workload-text-compact {
     font-size: 0.75rem;
@@ -344,10 +320,6 @@ html[data-theme="dark"] .progress-bar-container-compact {
     transition: background-color 0.2s, border-color 0.2s;
 }
 
-html[data-theme="dark"] .day-dot {
-    background-color: rgba(255,255,255,0.1);
-}
-
 .shift-brushes-card {
     display: flex;
     align-items: center;
@@ -362,10 +334,6 @@ html[data-theme="dark"] .day-dot {
     background-color: rgba(0,0,0,0.15);
     margin: 0 4px;
     flex-shrink: 0;
-}
-
-html[data-theme="dark"] .brush-separator {
-    background-color: rgba(255,255,255,0.15);
 }
 
 .shift-brush {
@@ -525,11 +493,6 @@ html[data-theme="dark"] .brush-separator {
     padding: 4px;
 }
 
-html[data-theme="dark"] .action-row-card {
-    background-color: rgba(0, 0, 0, 0.2);
-}
-
-
 .action-row-card:hover {
     background-color: var(--card);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -579,14 +542,6 @@ html[data-theme="dark"] .action-row-card {
 .escala-final-table tbody tr[data-employee-row-id] td:first-child:hover {
     cursor: pointer;
     background-color: #e0e7ff;
-}
-html[data-theme="dark"] .escala-final-table tbody tr[data-employee-row-id] td:first-child:hover {
-    background-color: rgba(99, 102, 241, 0.2);
-}
-
-
-html[data-theme="dark"] .escala-final-table tr.employee-row-highlight td:first-child {
-    background-color: rgba(37, 99, 235, 0.15);
 }
 
 .progress-bar {
@@ -678,4 +633,13 @@ html[data-theme="dark"] .escala-final-table tr.employee-row-highlight td:first-c
     border-width: 5px;
     border-style: solid;
     border-color: var(--danger) transparent transparent transparent;
+}
+
+/* NOVO: Estilo para o highlight da célula ao passar o mouse na lista de conflitos */
+.escala-final-table .cell-hover-highlight {
+    outline: 3px solid #facc15; /* Amarelo vibrante */
+    outline-offset: -3px;
+    box-shadow: 0 0 12px #facc15;
+    z-index: 5;
+    transition: all 0.1s ease-in-out;
 }
