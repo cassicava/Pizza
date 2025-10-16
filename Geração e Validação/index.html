@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerador de Chaves - Escala Fácil</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; }
+        input { padding: 8px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; border: none; background-color: #2563eb; color: white; border-radius: 4px; cursor: pointer; }
+        #resultado { margin-top: 20px; font-weight: bold; font-family: monospace; font-size: 1.2rem; background: #eee; padding: 10px; border-radius: 4px; user-select: all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerador de Chaves de Licença</h1>
+        <p>Gere chaves para o aplicativo Escala Fácil.</p>
+        <button id="gerarBtn">Gerar Nova Chave</button>
+        <div id="resultado">Sua chave aparecerá aqui...</div>
+    </div>
+
+    <script>
+        // ESTE SEGREDO DEVE SER O MESMO USADO NO BACKEND RUST DO TAURI
+        const SEGREDO = "EscalaFacil-2025-SegredoParaValidacaoUnica";
+
+        function gerarParteAleatoria() {
+            return Math.random().toString(36).substring(2, 6).toUpperCase();
+        }
+
+        async function calcularChecksum(payload) {
+            const dataToHash = `${payload}-${SEGREDO}`;
+            const encoder = new TextEncoder();
+            const data = encoder.encode(dataToHash);
+            const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            // Usamos os primeiros 4 caracteres do hash como checksum
+            return hashHex.substring(0, 4).toUpperCase();
+        }
+
+        document.getElementById('gerarBtn').addEventListener('click', async () => {
+            const parte1 = gerarParteAleatoria();
+            const parte2 = gerarParteAleatoria();
+            const payload = `${parte1}-${parte2}`;
+            const checksum = await calcularChecksum(payload);
+
+            const chaveCompleta = `EF25-${parte1}-${parte2}-${checksum}`;
+            document.getElementById('resultado').textContent = chaveCompleta;
+        });
+    </script>
+</body>
+</html>
