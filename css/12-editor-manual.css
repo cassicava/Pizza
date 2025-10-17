@@ -31,12 +31,10 @@
 }
 
 /* --- Estados da Barra --- */
-/* INÍCIO DA ALTERAÇÃO */
 #editor-toolbox.is-docked-top {
     top: calc(var(--header-height) + 16px); /* Colado abaixo do header */
     bottom: auto;
 }
-/* FIM DA ALTERAÇÃO */
 
 /* ANIMAÇÃO DE MINIMIZAR (CORRIGIDO PARA SLIDE LATERAL) */
 #editor-toolbox.is-minimized {
@@ -78,13 +76,11 @@
     opacity: 0;
 }
 
-/* INÍCIO DA ALTERAÇÃO */
 /* NOVO: Posicionamento do FAB no topo */
 #editor-toolbox-fab.is-docked-top {
     top: calc(var(--header-height) + 24px);
     bottom: auto;
 }
-/* FIM DA ALTERAÇÃO */
 
 #editor-toolbox-fab:not(.hidden) {
     transform: scale(1);
@@ -246,32 +242,23 @@
     gap: 4px;
 }
 
-.employee-selector-card .nav-arrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    font-size: 1.5rem;
-    color: var(--muted);
-    border-radius: 50%;
-    border: 1px solid transparent;
-}
-
-.employee-selector-card .nav-arrow:hover {
-    border-color: var(--border);
-}
-
-
-.employee-selector-card h5 {
-    margin: 0 8px;
+/* NOVO: Estilo para o select de funcionário */
+.employee-selector-card select {
+    background: transparent;
+    border: none;
     font-size: 1rem;
     font-weight: 600;
-    white-space: nowrap;
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 4px;
+    border-radius: 6px;
+    width: 100%;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+.employee-selector-card select:focus {
+    outline: none;
+    background: rgba(255,255,255,0.4);
 }
 
 .employee-indicators-card {
@@ -509,6 +496,11 @@
 
 .escala-final-table .editable-cell {
     position: relative;
+}
+
+/* CORREÇÃO: Garante o cursor de ponteiro sobre as células de turno */
+.escala-final-table .editable-cell[data-turno-id] {
+    cursor: pointer;
 }
 
 .escala-final-table .editable-cell:hover::after {

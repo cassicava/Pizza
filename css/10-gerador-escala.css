@@ -417,6 +417,12 @@
 
 /* --- ESTILOS DA VISUALIZAÇÃO DA ESCALA --- */
 
+/* ADICIONADO: Espaçamento entre o card da tabela e o card do painel */
+#gerador-painel-escala,
+#salva-painel-escala {
+    margin-top: 16px;
+}
+
 #gerador-escalaView.hidden,
 #escalaSalvaView.hidden {
   display: none !important;
@@ -427,7 +433,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* NOVO: Garante que o container da visão da escala ocupe o espaço restante */
   flex-grow: 1;
   min-height: 0;
 }
@@ -436,14 +441,15 @@
 #escalaSalvaView > .card:has(#escalaSalvaTabelaWrap) {
     flex-grow: 1; 
     display: flex; 
+    flex-direction: column;
     min-height: 0; 
 }
 
 
 #gerador-escalaTabelaWrap,
 #escalaSalvaTabelaWrap {
-  overflow: auto; /* Habilita scroll em ambas as direções */
-  max-width: 100%; /* Garante que não ultrapasse a largura do card pai */
+  overflow: auto;
+  max-width: 100%;
   flex-grow: 1;
 }
 
@@ -471,9 +477,9 @@
 .escala-final-table th {
   background-color: var(--bg);
   font-weight: 600;
-  position: sticky; /* NOVO: Torna o cabeçalho fixo */
-  top: 0;          /* NOVO: Cola no topo do container de rolagem */
-  z-index: 3;      /* NOVO: Garante que fique sobre as células */
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 
 .escala-final-table tbody tr:nth-child(even) {
@@ -507,7 +513,6 @@
   padding-left: 12px;
 }
 
-/* NOVO: Garante que o canto superior esquerdo (TH da primeira coluna) fique acima de tudo */
 .escala-final-table th:first-child {
     z-index: 4;
 }
@@ -519,9 +524,9 @@
 
 .escala-final-table tfoot tr {
   background-color: var(--bg);
-  position: sticky; /* NOVO: Torna o rodapé fixo */
-  bottom: 0;       /* NOVO: Cola na base do container de rolagem */
-  z-index: 3;      /* NOVO: Garante que fique sobre as células */
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
 }
 
 .escala-final-table tfoot td {
@@ -615,12 +620,20 @@
   color: var(--brand);
 }
 
+/* NOVO: Centralização do cabeçalho */
+.escala-view-header-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+}
+
 .escala-title-container {
   position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-grow: 1;
   justify-content: center;
 }
 .escala-title-text {

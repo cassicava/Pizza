@@ -191,9 +191,16 @@ function saveEquipeFromForm() {
         return;
     }
 
+    // CORREÇÃO: Adicionada a validação de nome de equipe duplicado
+    const { equipes } = store.getState();
+    const nome = equipeNomeInput.value.trim();
+    if (equipes.some(e => e.nome.toLowerCase() === nome.toLowerCase() && e.id !== editingEquipeId)) {
+        return showToast("Já existe uma equipe com este nome.");
+    }
+
     const equipeData = {
         id: editingEquipeId || uid(),
-        nome: equipeNomeInput.value.trim(),
+        nome: nome,
         cargoId: equipeCargoSelect.value,
         turnoId: equipeTurnoSelect.value,
         funcionarioIds: $$('input[name="equipeFuncionario"]:checked').map(chk => chk.value)

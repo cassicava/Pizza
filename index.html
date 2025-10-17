@@ -31,6 +31,8 @@
     <link rel="stylesheet" href="css/19-painel-abas.css" />
     <link rel="stylesheet" href="css/20-configuracoes.css" />
     <link rel="stylesheet" href="css/21-animacoes-notificacoes.css" />
+    <link rel="stylesheet" href="css/22-painel-ajuda.css" />
+    <link rel="stylesheet" href="css/23-foco-individual.css" />
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"></script>
@@ -172,6 +174,7 @@
     <main class="container">
         <header id="main-header">
             <h1 id="page-title"></h1>
+            <button id="context-help-btn">💡 Ajuda</button>
             <div class="header-user-info">
                 <h2 id="welcomeTitle" class="welcome-title"></h2>
                 <button id="header-settings-btn" class="header-action-btn" title="Configurações" aria-label="Abrir Configurações">⚙️</button>
@@ -227,7 +230,7 @@
         </section>
 
         <section id="page-turnos" class="page">
-            <div class="card painel-gerenciamento">
+            <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
                         <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
@@ -335,7 +338,7 @@
         </section>
 
         <section id="page-cargos" class="page">
-            <div class="card painel-gerenciamento">
+            <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
                         <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
@@ -412,7 +415,7 @@
         </section>
 
         <section id="page-funcionarios" class="page">
-             <div class="card painel-gerenciamento">
+             <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
                         <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
@@ -539,7 +542,7 @@
         </section>
 
         <section id="page-equipes" class="page">
-            <div class="card painel-gerenciamento">
+            <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
                         <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
@@ -697,10 +700,16 @@
                      <div class="form-row" style="margin: 0; justify-content: space-between; align-items: center;">
                         <button id="btnExcluirEscalaGerador" class="danger" style="margin: 0;">🔥 Descartar</button>
                         
-                        <div id="gerador-escala-title-container" class="escala-title-container">
-                            <h2 class="escala-title-text" id="gerador-escalaViewTitle"></h2>
-                            <input type="text" class="escala-title-input" id="gerador-escalaViewTitleInput" />
-                            <button class="escala-title-edit-btn" id="gerador-escala-edit-title-btn" title="Editar nome da escala" aria-label="Editar nome da escala">✏️</button>
+                        <div class="escala-view-header-center">
+                            <div id="gerador-escala-title-container" class="escala-title-container">
+                                <h2 class="escala-title-text" id="gerador-escalaViewTitle"></h2>
+                                <input type="text" class="escala-title-input" id="gerador-escalaViewTitleInput" />
+                                <button class="escala-title-edit-btn" id="gerador-escala-edit-title-btn" title="Editar nome da escala" aria-label="Editar nome da escala">✏️</button>
+                            </div>
+                            <div class="painel-tabs" id="gerador-view-tabs">
+                                <button class="painel-tab-btn active" data-tab="geral">Edição Geral</button>
+                                <button class="painel-tab-btn" data-tab="individual">Edição Individual</button>
+                            </div>
                         </div>
                         
                         <div class="bottom-actions-container" style="margin: 0;">
@@ -708,15 +717,35 @@
                         </div>
                     </div>
                 </div>
-                <div class="card card-lista">
-                    <div id="gerador-escalaTabelaWrap"></div>
-                </div>
-                <div id="gerador-painel-escala" class="card card-lista">
-                    <div class="painel-header">
-                        <h3 class="painel-title"></h3>
-                        <div class="painel-tabs"></div>
+
+                <div class="painel-tab-content active" data-tab-content="geral">
+                    <div class="card card-table-container">
+                        <div id="gerador-escalaTabelaWrap"></div>
                     </div>
-                    <div class="painel-content"></div>
+                    <div id="gerador-painel-escala" class="card">
+                        <div class="painel-header">
+                            <h3 class="painel-title"></h3>
+                            <div class="painel-tabs"></div>
+                        </div>
+                        <div class="painel-content"></div>
+                    </div>
+                </div>
+
+                <div class="painel-tab-content" data-tab-content="individual">
+                    <div id="gerador-foco-individual-container" class="card">
+                        <div class="foco-coluna-ferramentas">
+                            <div id="foco-ferramentas-selecao"></div>
+                            <fieldset>
+                                <legend>Ferramentas de Edição</legend>
+                                <div id="foco-ferramentas-modos"></div>
+                                <div id="foco-ferramentas-metricas"></div>
+                                <div id="foco-ferramentas-pinceis"></div>
+                            </fieldset>
+                        </div>
+                        <div class="foco-coluna-calendario">
+                            <div id="gerador-foco-calendario"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -736,7 +765,14 @@
                  <div class="card">
                     <div class="form-row" style="margin: 0; justify-content: space-between; align-items: center;">
                         <button id="btnVoltarParaLista" class="secondary button-voltar" style="margin: 0;"><b>&lt;</b> Voltar para a Lista</button>
-                        <h2 id="escalaSalvaViewTitle" style="margin: 0; font-size: 1.5rem;"></h2>
+                        
+                        <div class="escala-view-header-center">
+                            <h2 id="escalaSalvaViewTitle" style="margin: 0; font-size: 1.5rem;"></h2>
+                            <div class="painel-tabs" id="salva-view-tabs">
+                                <button class="painel-tab-btn active" data-tab="geral">Edição Geral</button>
+                                </div>
+                        </div>
+
                         <div style="display: flex; gap: 8px;">
                             <button id="btnEditarEscalaSalva" class="secondary">✏️ Editar Escala</button>
                             <button id="btnExcluirEscalaSalva" class="danger">🔥 Excluir</button>
@@ -744,15 +780,18 @@
                         </div>
                     </div>
                 </div>
-                <div class="card card-lista">
-                    <div id="escalaSalvaTabelaWrap"></div>
-                </div>
-                <div id="salva-painel-escala" class="card card-lista">
-                     <div class="painel-header">
-                        <h3 class="painel-title"></h3>
-                        <div class="painel-tabs"></div>
+                
+                <div class="painel-tab-content active" data-tab-content="geral">
+                    <div class="card">
+                        <div id="escalaSalvaTabelaWrap"></div>
                     </div>
-                    <div class="painel-content"></div>
+                    <div id="salva-painel-escala" class="card">
+                         <div class="painel-header">
+                            <h3 class="painel-title"></h3>
+                            <div class="painel-tabs"></div>
+                        </div>
+                        <div class="painel-content"></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1055,6 +1094,16 @@
             <p class="feedback-toast-subtitle"></p>
         </div>
     </div>
+    
+    <div id="help-panel-backdrop"></div>
+    <aside id="help-panel">
+        <div id="help-panel-header">
+            <h3 id="help-panel-title">Ajuda</h3>
+            <button id="help-panel-close-btn">❌</button>
+        </div>
+        <div id="help-panel-content">
+            </div>
+    </aside>
 
 
    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1078,6 +1127,7 @@
     <script src="js/F-boas-vindas.js"></script>
     <script src="js/Q-modulo-relatorios.js"></script>
     <script src="js/S-exportador-pdf.js"></script>
+    <script src="js/T-ajuda-contextual.js"></script>
     <script src="js/A-principal.js"></script>
 </body>
 

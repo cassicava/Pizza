@@ -25,3 +25,23 @@
   animation: animated-gradient-text 6s linear infinite;
   color: #fff;
 }
+
+
+
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(
+        800px circle at var(--mouse-x, 50vw) var(--mouse-y, 50vh),
+        rgba(37, 99, 235, 0.05),
+        transparent 40%
+    );
+    z-index: -1;
+    pointer-events: none;
+    transition: background-position 0.2s ease-out;
+}

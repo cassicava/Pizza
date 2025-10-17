@@ -97,3 +97,21 @@ fieldset:focus-within > legend, /* O seletor ">" garante que só o legend direto
 .fieldset-wrapper:focus-within legend {
     color: var(--brand);
 }
+
+/* Adicionar ao final de 15-campos-animados.css */
+@keyframes subtle-glow {
+  from {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+  }
+  to {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.6);
+  }
+}
+
+.animated-field input:focus,
+.animated-field select:focus {
+    outline: none;
+    border-color: var(--brand);
+    /* Animação de pulsar */
+    animation: subtle-glow 0.8s alternate infinite ease-in-out;
+}

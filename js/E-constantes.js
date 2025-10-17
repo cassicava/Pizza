@@ -36,7 +36,7 @@ const TURNOS_SISTEMA_AUSENCIA = {
     },
     [TURNO_AFASTAMENTO_ID]: {
         id: TURNO_AFASTAMENTO_ID,
-        nome: "Afastamento",
+        nome: "Afast.", // Abreviação para caber no pincel
         sigla: "AF",
         cor: "#ffedd5", // Laranja Suave
         isSystem: true,

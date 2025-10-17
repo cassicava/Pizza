@@ -1,5 +1,5 @@
 /**************************************************************
- * 🛠️ Lógica do Editor Manual (v6.0 - Correções de Conflitos e UI)
+ * 🛠️ Lógica do Editor Manual (v7.1 - Correção de Erro)
  **************************************************************/
 
 const editorState = {
@@ -19,10 +19,12 @@ const editorState = {
 
 const toolboxState = {
     isMinimized: false,
-    dockPosition: 'bottom', // 'top' or 'bottom'
+    dockPosition: 'bottom',
 };
 
 let marqueeObserver = null;
+
+// --- INICIALIZAÇÃO E CONTROLE DE UI ---
 
 function updatePagePaddingForToolbox(reset = false) {
     const activePage = $('.page.active');
@@ -130,6 +132,27 @@ function cleanupEditor() {
     updatePagePaddingForToolbox(true);
 }
 
+function setupViewTabs(owner) {
+    const tabsContainer = $(`#${owner}-view-tabs`);
+    if (!tabsContainer) return;
+
+    tabsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.painel-tab-btn');
+        if (!btn || btn.classList.contains('active')) return;
+
+        $$('.painel-tab-btn', tabsContainer).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const targetTab = btn.dataset.tab;
+        $$(`#${owner}-escalaView > .painel-tab-content`).forEach(content => {
+            content.classList.toggle('active', content.dataset.tabContent === targetTab);
+        });
+
+        renderCurrentView(owner);
+    });
+}
+
+// --- LÓGICA DE VALIDAÇÃO ---
 
 function findPotentialConflicts(employeeId, turnoId, date, escala) {
     const { turnos, funcionarios } = store.getState();
@@ -154,6 +177,8 @@ function findPotentialConflicts(employeeId, turnoId, date, escala) {
 
     return conflitos;
 }
+
+// --- INICIALIZAÇÃO DO EDITOR ---
 
 function initEditor() {
     const toolbox = $("#editor-toolbox");
@@ -204,7 +229,6 @@ function initEditor() {
     const fab = $("#editor-toolbox-fab");
     if (!toolbox || !fab) return;
 
-    toolbox.classList.remove("hidden");
     loadToolboxState();
 
     $$(".toolbox-mode-btn, .toolbox-tool-btn, .toolbox-window-btn, #editor-toolbox-fab").forEach(btn => btn.onclick = null);
@@ -248,6 +272,12 @@ function initEditor() {
     dynamicContent.onclick = handleToolboxClick;
     dynamicContent.onmouseover = handleToolboxMouseover;
     dynamicContent.onmouseout = handleToolboxMouseout;
+    // Adiciona listener para o novo select
+    dynamicContent.addEventListener('change', (e) => {
+        if (e.target.id === 'toolbox-employee-select') {
+            handleEmployeeSelectChange(e);
+        }
+    });
 
     document.onkeydown = handleKeyboardNav;
 
@@ -331,22 +361,20 @@ function renderFocusedEmployeeView() {
     const { focusedEmployeeId, scheduleOrderedFuncs } = editorState;
     if (!focusedEmployeeId) return `<div class="toolbox-info-text">Nenhum funcionário para editar nesta escala.</div>`;
 
-    const employee = scheduleOrderedFuncs.find(f => f.id === focusedEmployeeId);
-    if (!employee) return `<div class="toolbox-info-text">Funcionário não encontrado.</div>`;
-    
     const { turnos } = store.getState();
+    const employee = scheduleOrderedFuncs.find(f => f.id === focusedEmployeeId);
     const turnosDeTrabalho = turnos.filter(t => !t.isSystem && employee.disponibilidade && employee.disponibilidade[t.id]);
     const turnosDeSistema = Object.values(TURNOS_SISTEMA_AUSENCIA);
     
+    const selectOptions = scheduleOrderedFuncs.map(f => `<option value="${f.id}" ${f.id === focusedEmployeeId ? 'selected' : ''}>${f.nome}</option>`).join('');
+    
     const selectorCard = `
         <div class="toolbox-card employee-selector-card">
-            <button id="prev-employee-btn" class="nav-arrow" title="Anterior (Q)">◀</button>
-            <h5>${employee.nome}</h5>
-            <button id="next-employee-btn" class="nav-arrow" title="Próximo (E)">▶</button>
+            <select id="toolbox-employee-select" title="Trocar de funcionário (Q/E)">${selectOptions}</select>
         </div>`;
 
     const indicatorsCard = `
-        <div class="toolbox-card employee-indicators-card" data-employee-id="${employee.id}">
+        <div class="toolbox-card employee-indicators-card" data-employee-id="${focusedEmployeeId}">
             <div class="workload-summary-compact">
                 <span class="indicator-label">Carga:</span>
                 <div class="progress-bar-container-compact">
@@ -360,9 +388,9 @@ function renderFocusedEmployeeView() {
 
     const brushesCard = `
         <div class="toolbox-card shift-brushes-card">
-            ${turnosDeSistema.map(t => renderBrush(t, employee)).join('')}
+            ${turnosDeSistema.map(t => renderBrush(t, editorState.selectedShiftBrush)).join('')}
             <div class="brush-separator"></div>
-            ${turnosDeTrabalho.map(t => renderBrush(t, employee)).join('')}
+            ${turnosDeTrabalho.map(t => renderBrush(t, editorState.selectedShiftBrush)).join('')}
         </div>`;
 
     setTimeout(() => {
@@ -371,18 +399,6 @@ function renderFocusedEmployeeView() {
     }, 0);
 
     return `<div class="focused-employee-view">${selectorCard}${indicatorsCard}${brushesCard}</div>`;
-}
-
-function renderBrush(turno, employee) {
-    const isSelected = editorState.selectedShiftBrush === turno.id;
-    const textColor = getContrastingTextColor(turno.cor);
-    const isDisabled = !turno.isSystem && (!employee.disponibilidade || !employee.disponibilidade[turno.id]);
-
-    return `
-        <div class="shift-brush ${isSelected ? 'selected' : ''}" data-turno-id="${turno.id}" title="${turno.nome}" ${isDisabled ? 'disabled' : ''}>
-            <div class="brush-icon" style="background-color: ${turno.cor}; color: ${textColor}">${turno.sigla}</div>
-            <span class="brush-name">${turno.nome}</span>
-        </div>`;
 }
 
 function renderActionsView() {
@@ -421,7 +437,6 @@ function renderConflictsView() {
         return `<div class="toolbox-info-text">Nenhum conflito encontrado. Bom trabalho! ✅</div>`;
     }
 
-    // Agrupa conflitos por funcionário
     const conflictsByEmployee = conflicts.reduce((acc, conflict) => {
         if (!acc[conflict.employeeId]) {
             acc[conflict.employeeId] = {
@@ -449,6 +464,8 @@ function renderConflictsView() {
     html += `</div>`;
     return html;
 }
+
+// --- EVENT HANDLERS ---
 
 function handleTableClick(event) {
     const cell = event.target.closest('td');
@@ -491,7 +508,6 @@ function handleTableMouseover(event) {
 function handleToolboxClick(event) {
     const target = event.target;
     const shiftBrush = target.closest('.shift-brush');
-    const navArrow = target.closest('.nav-arrow');
     const conflictItem = target.closest('.conflict-list-item');
     const actionButton = target.closest('[data-action]');
     const dateBadge = target.closest('.badge[data-date]');
@@ -502,10 +518,6 @@ function handleToolboxClick(event) {
         handleConflictPanelClick(event, false);
     }
     if (shiftBrush && !shiftBrush.hasAttribute('disabled')) handleSelectShiftBrush(shiftBrush.dataset.turnoId);
-    if (navArrow) {
-        if (navArrow.id === 'next-employee-btn') showNextEmployee(true);
-        if (navArrow.id === 'prev-employee-btn') showPrevEmployee(true);
-    }
     if (actionButton) {
         const action = actionButton.dataset.action;
         if (action === 'toggle-rules') handleToggleRules(actionButton.dataset.value);
@@ -549,8 +561,8 @@ function handleKeyboardNav(event) {
     const key = event.key;
     let { row, col } = editorState.selectedCellCoords;
 
-    if (key.toLowerCase() === 'q') { event.preventDefault(); showPrevEmployee(true); return; }
-    if (key.toLowerCase() === 'e') { event.preventDefault(); showNextEmployee(true); return; }
+    if (key.toLowerCase() === 'q') { event.preventDefault(); showPrevEmployee(false); return; }
+    if (key.toLowerCase() === 'e') { event.preventDefault(); showNextEmployee(false); return; }
 
     if (!isNaN(key) && key >= 1 && key <= 9) {
         event.preventDefault();
@@ -585,6 +597,19 @@ function handleKeyboardNav(event) {
         focusCell(row, col);
     }
 }
+
+function handleEmployeeSelectChange(event) {
+    const newEmployeeId = event.target.value;
+    const newIndex = editorState.scheduleOrderedFuncs.findIndex(f => f.id === newEmployeeId);
+    
+    if (newIndex !== -1 && newIndex !== editorState.focusedEmployeeIndex) {
+        editorState.focusedEmployeeIndex = newIndex;
+        updateFocusedEmployee(false); // Não animar na troca pelo select
+    }
+}
+
+
+// --- LÓGICA DE EDIÇÃO (AÇÕES) ---
 
 function updateAllIndicators() { const card = $(".employee-indicators-card"); if (card) updateIndicatorsInCard(card); }
 
@@ -744,7 +769,6 @@ function handleRemoveShiftClick(slotId) {
         currentEscala.historico[employeeId].turnosTrabalhados -= 1;
     }
     
-    // CORREÇÃO: Trata a remoção de turnos de equipe e cobertura da mesma forma
     const isGeradaAutomaticamente = !currentEscala.isManual;
     const temCoberturaDefinida = isGeradaAutomaticamente && ((currentEscala.cobertura && currentEscala.cobertura[slot.turnoId] > 0) || slot.equipeId);
     
@@ -763,23 +787,24 @@ function handleRemoveShiftClick(slotId) {
     highlightEmployeeRow(employeeId);
 }
 
-function handleEmployeePaint(cell) { 
-    if (!editorState.focusedEmployeeId || !editorState.selectedShiftBrush) { 
-        showToast("Selecione um turno na Barra de Ferramentas para começar a pintar."); 
-        return; 
-    } 
-    const { date, employeeId: cellEmployeeId, turnoId: cellTurnoId, slotId } = cell.dataset; 
-    if (cellEmployeeId !== editorState.focusedEmployeeId) { 
-        showToast("Você só pode pintar turnos na linha do funcionário selecionado."); 
-        return; 
-    } 
-    if (cellTurnoId === editorState.selectedShiftBrush) { 
-        handleRemoveShiftClick(slotId); 
-    } else { 
-        handleAddShiftClick(editorState.focusedEmployeeId, editorState.selectedShiftBrush, date); 
+function handleEmployeePaint(cell) {
+    const { date, employeeId, turnoId: cellTurnoId, slotId } = cell.dataset;
+    if (employeeId !== editorState.focusedEmployeeId) {
+        showToast("Você só pode pintar turnos na linha do funcionário focado.");
+        return;
+    }
+    if (!editorState.selectedShiftBrush) {
+        showToast("Selecione um turno na Barra de Ferramentas para pintar.");
+        return;
+    }
+    if (cellTurnoId === editorState.selectedShiftBrush) {
+        handleRemoveShiftClick(slotId);
+    } else {
+        handleAddShiftClick(editorState.focusedEmployeeId, editorState.selectedShiftBrush, date);
     }
     clearCellFocus();
 }
+
 
 async function handleEraseClick(cell) { 
     const { slotId } = cell.dataset; 
@@ -809,6 +834,7 @@ async function handleClearAssignments() {
     }
 }
 
+// --- NAVEGAÇÃO E FOCO ---
 
 function showNextEmployee(animate = false) { if (editorState.scheduleOrderedFuncs.length === 0) return; editorState.focusedEmployeeIndex = (editorState.focusedEmployeeIndex + 1) % editorState.scheduleOrderedFuncs.length; editorState.animationDirection = 'right'; updateFocusedEmployee(animate); }
 
@@ -817,8 +843,10 @@ function showPrevEmployee(animate = false) { if (editorState.scheduleOrderedFunc
 function updateFocusedEmployee(animate = false) {
     editorState.focusedEmployeeId = editorState.scheduleOrderedFuncs[editorState.focusedEmployeeIndex].id;
     highlightEmployeeRow(editorState.focusedEmployeeId);
+    
     const contentEl = $("#toolbox-dynamic-content");
     const currentView = $(".focused-employee-view", contentEl);
+    
     if (animate && currentView) {
         const outClass = editorState.animationDirection === 'right' ? 'card-slide-out-left' : 'card-slide-out-right';
         currentView.classList.add(outClass);
@@ -853,7 +881,11 @@ function focusCell(row, col) {
     } 
 }
 
-function clearCellFocus() { const focused = $('.cell-focused'); if (focused) focused.classList.remove('cell-focused'); editorState.selectedCellCoords = { row: -1, col: -1 }; }
+function clearCellFocus() { 
+    const focused = $('.cell-focused'); 
+    if (focused) focused.classList.remove('cell-focused'); 
+    editorState.selectedCellCoords = { row: -1, col: -1 }; 
+}
 
 function handleSelectShiftBrush(turnoId) {
     editorState.selectedShiftBrush = (editorState.selectedShiftBrush === turnoId) ? null : turnoId;
@@ -872,6 +904,8 @@ function highlightEmployeeRow(employeeId) {
         }
     }
 }
+
+// --- LÓGICA DE VALIDAÇÃO (EXECUTADA APÓS EDIÇÕES) ---
 
 function runSurgicalValidation(employeeIdsToUpdate) {
     const { funcionarios } = store.getState();

@@ -179,65 +179,60 @@ function mergeTimeIntervals(turnos) {
     return { is24h: false, inicio, fim };
 }
 
-
 /**
- * FUNÇÃO REESCRITA: Calcula a sequência completa de dias de trabalho, contando corretamente os turnos noturnos.
+ * FUNÇÃO CORRIGIDA: Calcula a sequência completa de dias de trabalho, contando corretamente os turnos noturnos.
  */
 function calculateFullConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMap) {
     const employeeShifts = allSlots
         .filter(s => s.assigned === employeeId && turnosMap[s.turnoId] && !turnosMap[s.turnoId].isSystem)
-        .sort((a, b) => a.date.localeCompare(b.date));
+        .map(s => ({
+            ...s,
+            startDate: new Date(`${s.date}T${turnosMap[s.turnoId].inicio}`).getTime(),
+            endDate: new Date(`${s.date}T${turnosMap[s.turnoId].inicio}`).getTime() + (turnosMap[s.turnoId].cargaMin * 60 * 1000)
+        }))
+        .sort((a, b) => a.startDate - b.startDate);
 
     if (employeeShifts.length === 0) return 0;
-
-    const targetShiftIndex = employeeShifts.findIndex(s => s.date === targetDate);
     
-    // Se a data alvo não tiver um turno, não há sequência a partir dela
-    if (targetShiftIndex === -1) return 0;
+    const targetShift = employeeShifts.find(s => s.date === targetDate);
+    if (!targetShift) return 0;
 
-    let firstShiftIndex = targetShiftIndex;
-    // Anda para trás para encontrar o início da sequência
-    for (let i = targetShiftIndex; i > 0; i--) {
+    let currentSequence = [];
+    let bestSequence = [];
+
+    for (let i = 0; i < employeeShifts.length; i++) {
         const currentShift = employeeShifts[i];
-        const prevShift = employeeShifts[i - 1];
         
-        const prevTurnoInfo = turnosMap[prevShift.turnoId];
-        const prevShiftEndDate = addDays(prevShift.date, (prevTurnoInfo.diasDeDiferenca || 0));
-        
-        // A data seguinte ao fim do turno anterior
-        const dayAfterPrevShiftEnd = addDays(prevShiftEndDate, 1);
-        
-        // Se a data de início do turno atual for posterior ao primeiro dia livre após o turno anterior,
-        // significa que houve uma folga (gap) e a sequência foi quebrada.
-        if (currentShift.date > dayAfterPrevShiftEnd) {
-            break;
+        if (currentSequence.length === 0) {
+            currentSequence.push(currentShift);
+        } else {
+            const lastShiftInSequence = currentSequence[currentSequence.length - 1];
+            const lastShiftEndDate = new Date(lastShiftInSequence.date + 'T00:00:00Z');
+            lastShiftEndDate.setUTCDate(lastShiftEndDate.getUTCDate() + (turnosMap[lastShiftInSequence.turnoId].diasDeDiferenca || 0));
+            
+            const nextDayAfterLastShift = new Date(lastShiftEndDate);
+            nextDayAfterLastShift.setUTCDate(nextDayAfterLastShift.getUTCDate() + 1);
+
+            const currentShiftDate = new Date(currentShift.date + 'T00:00:00Z');
+
+            if (currentShiftDate > nextDayAfterLastShift) {
+                // Quebrou a sequência, começa uma nova
+                currentSequence = [currentShift];
+            } else {
+                // Continua a sequência
+                currentSequence.push(currentShift);
+            }
         }
         
-        firstShiftIndex = i - 1;
-    }
-
-    let lastShiftIndex = targetShiftIndex;
-    // Anda para frente para encontrar o fim da sequência
-    for (let i = targetShiftIndex; i < employeeShifts.length - 1; i++) {
-        const currentShift = employeeShifts[i];
-        const nextShift = employeeShifts[i + 1];
-
-        const currentTurnoInfo = turnosMap[currentShift.turnoId];
-        const currentShiftEndDate = addDays(currentShift.date, (currentTurnoInfo.diasDeDiferenca || 0));
-        
-        const dayAfterCurrentShiftEnd = addDays(currentShiftEndDate, 1);
-
-        // Se a data de início do próximo turno for posterior ao primeiro dia livre, a sequência quebrou.
-        if (nextShift.date > dayAfterCurrentShiftEnd) {
-            break;
+        // Se a sequência atual contém o turno alvo, ela é a candidata a ser a "melhor"
+        if (currentSequence.some(s => s.id === targetShift.id)) {
+            bestSequence = [...currentSequence];
         }
-        
-        lastShiftIndex = i + 1;
     }
     
-    // A contagem de dias consecutivos é o número de turnos na sequência encontrada.
-    return (lastShiftIndex - firstShiftIndex + 1);
+    return bestSequence.length;
 }
+
 
 /**
  * Helper para obter timestamps UTC de início e fim de um turno.

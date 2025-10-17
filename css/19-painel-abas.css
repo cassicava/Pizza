@@ -60,8 +60,9 @@
     display: block;
 }
 
-/* Esconde o card de lista antigo dentro da nova estrutura, pois ele não é mais necessário */
-.painel-tab-content .card-lista {
+/* Esconde os cards que servem apenas como wrappers de formulário dentro das abas de CRUD */
+.painel-crud .painel-tab-content > .card,
+.painel-crud .painel-tab-content .card-lista {
     margin-top: 0;
     padding: 0;
     border: none;
@@ -69,18 +70,8 @@
     background-color: transparent;
 }
 
-.painel-tab-content .card-lista:hover {
+/* Desativa o efeito de hover nesses cards wrapper */
+.painel-crud .painel-tab-content > .card:hover,
+.painel-crud .painel-tab-content .card-lista:hover {
     transform: none;
-}
-
-/* Remove margens e bordas desnecessárias dos formulários dentro das abas */
-.painel-tab-content > .card {
-    padding: 0;
-    border: none;
-    box-shadow: none;
-    background-color: transparent;
-}
-
-.painel-tab-content > .card:hover {
-     transform: none;
 }

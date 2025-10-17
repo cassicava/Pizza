@@ -175,22 +175,79 @@
     line-height: 1; 
 }
 
-/* Adiciona um separador e estilo para a informação de versão movida */
-.config-card-version {
-    text-align: center;
-    font-size: 0.8rem;
-    color: var(--muted);
-    line-height: 1.4;
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
+/* --- Estilos para o Card de Apoio (PIX) --- */
+.support-card-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: center;
 }
 
-/* Ajuste no card de Apoio (PIX) */
-.config-pane[data-pane="sobre"] .support-card-content {
-    grid-template-columns: 1.5fr 1fr; /* Dá mais espaço para a coluna da direita (PIX) */
-    gap: 32px;
+.support-card-col-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
+
+#pix-details {
+    width: 100%;
+    /* ALTERAÇÃO AQUI: Definindo uma largura máxima intermediária */
+    max-width: 300px; 
+    text-align: center;
+}
+
+.pix-qr-code-placeholder {
+    width: 150px;
+    height: 150px;
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background-color: var(--bg);
+}
+.pix-qr-code-placeholder span {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.pix-key-container {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding-left: 12px;
+    width: 100%;
+}
+
+#pix-key-text {
+    flex-grow: 1;
+    font-size: 0.85rem;
+    color: var(--fg);
+    text-align: left;
+    white-space: normal;
+    word-break: break-all;
+    padding: 4px 0;
+}
+
+#btn-copy-pix {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 8px;
+    border-radius: 0 12px 12px 0;
+}
+#btn-copy-pix:hover {
+    background-color: rgba(0,0,0,0.1);
+    color: var(--fg);
+}
+
 
 /* --- Responsividade --- */
 @media (max-width: 992px) {
@@ -204,7 +261,7 @@
         display: flex;
         justify-content: flex-start;
     }
-    .config-pane[data-pane="sobre"] .support-card-content {
+    .support-card-content {
         grid-template-columns: 1fr; /* Coloca o PIX abaixo do texto em telas menores */
     }
 }

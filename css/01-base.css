@@ -28,6 +28,11 @@
     transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out, border-color 0.3s ease-in-out;
 }
 
+html {
+  /* ADICIONADO: Habilita a rolagem suave em toda a página */
+  scroll-behavior: smooth;
+}
+
 html,
 body {
   margin: 0;

@@ -70,6 +70,11 @@ function go(page, options = {}) {
             if (nextPageEl) {
                 nextPageEl.classList.add('active');
             }
+
+            // --- INTEGRAÇÃO DO SISTEMA DE AJUDA ---
+            toggleHelpPanel(false); // Garante que o painel feche ao navegar
+            loadHelpContent(page);  // Carrega o conteúdo de ajuda para a nova página
+            // -----------------------------------------
             
             $$(".tab-btn").forEach(b => b.classList.remove("active"));
             const activeTab = $(`.tab-btn[data-page="${page}"]`);
@@ -182,6 +187,13 @@ function initMainApp() {
 }
 
 function init() {
+
+window.addEventListener('mousemove', e => {
+        document.body.style.setProperty('--mouse-x', `${e.clientX}px`);
+        document.body.style.setProperty('--mouse-y', `${e.clientY}px`);
+    });
+
+
     store.dispatch('LOAD_STATE');
     const onboardingComplete = localStorage.getItem('ge_onboarding_complete') === 'true';
     if (!onboardingComplete) {

@@ -1,8 +1,67 @@
 /**************************************
- * 📅 Visualização da Escala (v2 - Correções no Rodapé)
+ * 📅 Visualização da Escala (v3 - Abas Geral e Foco Individual)
  **************************************/
 
 let currentEscala = null;
+// NOVO: Estado para a aba de Foco Individual
+let focoIndividualState = {
+    selectedEmployeeId: null,
+    selectedBrushId: null,
+    editMode: 'employee', // 'employee' ou 'eraser'
+};
+
+// --- NOVOS HANDLERS PARA A ABA DE FOCO INDIVIDUAL (MOVIDOS PARA CÁ) ---
+
+function handleFocoFuncChange(event) {
+    focoIndividualState.selectedEmployeeId = event.target.value;
+    focoIndividualState.selectedBrushId = null; // Reseta o pincel ao trocar de func
+    renderFocoIndividualView(currentEscala.owner);
+}
+
+function handleFocoModeChange(event) {
+    const button = event.target.closest('[data-mode]');
+    if (!button) return;
+    focoIndividualState.editMode = button.dataset.mode;
+    renderFocoFerramentasModos(currentEscala.owner);
+}
+
+function handleFocoBrushClick(event) {
+    const brush = event.target.closest('.shift-brush');
+    if (!brush) return;
+
+    const turnoId = brush.dataset.turnoId;
+    focoIndividualState.selectedBrushId = focoIndividualState.selectedBrushId === turnoId ? null : turnoId;
+    
+    renderFocoFerramentasPinceis(currentEscala.owner);
+}
+
+function handleFocoCalendarClick(event) {
+    const dayCell = event.target.closest('.calendar-day:not(.empty)');
+    if (!dayCell || dayCell.classList.contains('celula-fechada')) return;
+
+    const date = dayCell.dataset.date;
+    const employeeId = focoIndividualState.selectedEmployeeId;
+    const existingSlot = currentEscala.slots.find(s => s.assigned === employeeId && s.date === date);
+
+    if (focoIndividualState.editMode === 'eraser') {
+        if (existingSlot) {
+            handleRemoveShiftClick(existingSlot.id);
+        }
+    } 
+    else if (focoIndividualState.editMode === 'employee') {
+        const brushId = focoIndividualState.selectedBrushId;
+        if (!brushId) {
+            showToast("Selecione um pincel de turno para começar a editar.");
+            return;
+        }
+        if (existingSlot && existingSlot.turnoId === brushId) {
+            handleRemoveShiftClick(existingSlot.id);
+        } else {
+            handleAddShiftClick(employeeId, brushId, date);
+        }
+    }
+}
+
 
 function renderEscalaLegend(escala, container) {
     const {
@@ -94,7 +153,6 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             return a.nome.localeCompare(b.nome);
         });
     
-    // CORREÇÃO: Define os turnos do rodapé com base nos turnos do cargo, e não apenas os com cobertura > 0.
     const turnosDoCargo = cargo 
         ? turnos.filter(t => !t.isSystem && cargo.turnosIds.includes(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio))
         : [];
@@ -191,10 +249,6 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     container.innerHTML = tableHTML;
 }
 
-/**
- * NOVA FUNÇÃO: Atualiza apenas o rodapé da tabela.
- * @param {object} escala - O objeto da escala atual.
- */
 function updateTableFooter(escala) {
     const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
     if (!table) return;
@@ -217,7 +271,6 @@ function updateTableFooter(escala) {
 
     let footerHTML = '';
 
-    // Gera as linhas de "Total"
     turnosDoCargo.forEach(turno => {
         footerHTML += `<tr class="total-row"><td><strong>Total ${turno.sigla || '??'}</strong></td>`;
         dateRange.forEach(date => {
@@ -227,7 +280,6 @@ function updateTableFooter(escala) {
         footerHTML += `</tr>`;
     });
 
-    // Gera as linhas de "Faltam"
     turnosDoCargo.forEach(turno => {
         let hasVagas = false;
         let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
@@ -542,20 +594,16 @@ function renderPainelDaEscala(escala) {
     }
 }
 
+// --- FUNÇÕES DE RENDERIZAÇÃO PRINCIPAIS ---
+
 function renderEscalaTable(escala) {
     currentEscala = escala;
-    const container = $(`#${escala.owner}-escalaTabelaWrap`);
-
-    const cardPai = container.closest('.card');
-    if (cardPai) {
-        cardPai.classList.add('card-table-container');
-    }
-
-    renderGenericEscalaTable(escala, container, {
-        isInteractive: true
-    });
-    renderPainelDaEscala(escala);
-
+    
+    // Configura o estado inicial do Foco Individual
+    const funcsDaEscala = store.getState().funcionarios.filter(f => escala.historico && escala.historico[f.id]);
+    focoIndividualState.selectedEmployeeId = funcsDaEscala.length > 0 ? funcsDaEscala[0].id : null;
+    focoIndividualState.selectedBrushId = null;
+    focoIndividualState.editMode = 'employee';
 
     $(`#${escala.owner}-wizard-container`).classList.add('hidden');
     $(`#${escala.owner}-escalaView`).classList.remove('hidden');
@@ -565,16 +613,253 @@ function renderEscalaTable(escala) {
     if (titleTextEl) titleTextEl.textContent = escala.nome;
     if (titleInputEl) titleInputEl.value = escala.nome;
 
+    renderCurrentView(escala.owner);
+    setupViewTabs(escala.owner);
+
     if (typeof initEditor === 'function') {
         initEditor();
     }
 }
 
+function renderCurrentView(owner) {
+    const tabsContainer = $(`#${owner}-view-tabs`);
+    const activeTab = tabsContainer ? $('.painel-tab-btn.active', tabsContainer)?.dataset.tab : 'geral';
+
+    const toolbox = $("#editor-toolbox");
+    const fab = $("#editor-toolbox-fab");
+
+    if (activeTab === 'geral') {
+        renderEscalaGeralView(owner);
+        if (toolbox) toolbox.classList.remove('hidden');
+        loadToolboxState();
+    } else if (activeTab === 'individual') {
+        renderFocoIndividualView(owner);
+        if (toolbox) toolbox.classList.add('hidden');
+        if (fab) fab.classList.add('hidden');
+        updatePagePaddingForToolbox(true);
+    }
+}
+
+function renderEscalaGeralView(owner) {
+    const container = $(`#${owner}-escalaTabelaWrap`);
+    renderGenericEscalaTable(currentEscala, container, { isInteractive: true });
+    renderPainelDaEscala(currentEscala);
+}
+
+function renderFocoIndividualView(owner) {
+    const container = $(`#gerador-foco-individual-container`);
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="foco-coluna-ferramentas">
+            <div id="foco-ferramentas-selecao"></div>
+            <fieldset>
+                <legend>Ferramentas de Edição</legend>
+                <div id="foco-ferramentas-modos"></div>
+                <div id="foco-ferramentas-metricas"></div>
+                <div id="foco-ferramentas-pinceis"></div>
+            </fieldset>
+        </div>
+        <div class="foco-coluna-calendario">
+            <div id="gerador-foco-calendario"></div>
+        </div>
+    `;
+
+    renderFocoFerramentasSelecao(owner);
+    renderFocoFerramentasModos(owner);
+    renderFocoFerramentasMetricas(owner);
+    renderFocoFerramentasPinceis(owner);
+    renderFocoIndividualCalendar(owner);
+}
+
+function renderFocoFerramentasSelecao(owner) {
+    const container = $(`#foco-ferramentas-selecao`);
+    if (!container) return;
+
+    const { funcionarios } = store.getState();
+    const funcsDaEscala = funcionarios
+        .filter(f => currentEscala.historico && currentEscala.historico[f.id])
+        .sort((a,b) => a.nome.localeCompare(b.nome));
+
+    const selectOptions = funcsDaEscala.map(f => `<option value="${f.id}" ${f.id === focoIndividualState.selectedEmployeeId ? 'selected' : ''}>${f.nome}</option>`).join('');
+
+    container.innerHTML = `
+        <label for="${owner}-foco-select-func" class="form-label">Selecionar Funcionário:</label>
+        <select id="${owner}-foco-select-func">${selectOptions}</select>
+    `;
+    const select = $(`#${owner}-foco-select-func`);
+    if (select) select.onchange = handleFocoFuncChange;
+}
+
+function renderFocoFerramentasModos(owner) {
+    const container = $(`#foco-ferramentas-modos`);
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="toggle-group">
+            <button class="toolbox-mode-btn ${focoIndividualState.editMode === 'employee' ? 'active' : ''}" data-mode="employee" title="Pincel de Turnos">🎨 Pincel</button>
+            <button class="toolbox-mode-btn ${focoIndividualState.editMode === 'eraser' ? 'active' : ''}" data-mode="eraser" title="Apagar Turnos">🗑️ Apagar</button>
+        </div>
+    `;
+    const modeToggle = $('.toggle-group', container);
+    if(modeToggle) modeToggle.onclick = handleFocoModeChange;
+    parseEmojisInElement(container);
+}
+
+function renderFocoFerramentasMetricas(owner) {
+    const container = $(`#foco-ferramentas-metricas`);
+    if (!container) return;
+    
+    const employeeId = focoIndividualState.selectedEmployeeId;
+    if(!employeeId) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="toolbox-card employee-indicators-card" data-employee-id="${employeeId}" style="margin-top: 16px;">
+            <div class="workload-summary-compact">
+                <span class="indicator-label">Carga:</span>
+                <div class="progress-bar-container-compact">
+                    <div class="progress-bar progress-bar-main"></div>
+                    <div class="progress-bar progress-bar-overtime"></div>
+                </div>
+                <span class="workload-text-compact">0/0</span>
+            </div>
+            <div class="consecutive-days-container"></div>
+        </div>
+    `;
+    const card = $('.employee-indicators-card', container);
+    if (card) updateIndicatorsInCard(card);
+}
+
+function renderFocoFerramentasPinceis(owner) {
+    const container = $(`#foco-ferramentas-pinceis`);
+    if(!container) return;
+
+    const selectedFunc = store.getState().funcionarios.find(f => f.id === focoIndividualState.selectedEmployeeId);
+    let systemBrushesHTML = '';
+    let normalBrushesHTML = '';
+
+    if (selectedFunc) {
+        const { turnos } = store.getState();
+        const turnosDeTrabalho = turnos.filter(t => !t.isSystem && selectedFunc.disponibilidade && selectedFunc.disponibilidade[t.id]);
+        const turnosDeSistema = Object.values(TURNOS_SISTEMA_AUSENCIA);
+        
+        systemBrushesHTML = turnosDeSistema.map(t => renderBrush(t, focoIndividualState.selectedBrushId)).join('');
+        normalBrushesHTML = turnosDeTrabalho.map(t => renderBrush(t, focoIndividualState.selectedBrushId)).join('');
+    }
+
+    container.innerHTML = `
+        <div class="pinceis-container" style="margin-top: 16px;">
+            <div class="pinceis-row-sistema">${systemBrushesHTML}</div>
+            <div class="brush-separator"></div>
+            <div class="pinceis-row-normal">${normalBrushesHTML}</div>
+        </div>
+    `;
+    container.onclick = handleFocoBrushClick;
+}
+
+function renderFocoIndividualCalendar(owner) {
+    const container = $(`#gerador-foco-calendario`);
+    if (!container) return;
+
+    const { turnos, cargos } = store.getState();
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
+    const getTurnoInfo = (turnoId) => allTurnos.find(t => t.id === turnoId) || {};
+    const funcId = focoIndividualState.selectedEmployeeId;
+    const today = new Date().toISOString().slice(0, 10);
+    const cargo = cargos.find(c => c.id === currentEscala.cargoId);
+    const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
+
+    const rangeSet = new Set(dateRangeInclusive(currentEscala.inicio, currentEscala.fim));
+    const months = {};
+    rangeSet.forEach(date => {
+        const monthKey = date.substring(0, 7);
+        if (!months[monthKey]) months[monthKey] = true;
+    });
+
+    let html = '';
+    const sortedMonthKeys = Object.keys(months).sort();
+    for (const monthKey of sortedMonthKeys) {
+        const [year, month] = monthKey.split('-').map(Number);
+        const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+        const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
+
+        html += `<div class="calendar-instance"><h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4><div class="calendar-grid">${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
+        
+        for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
+            const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+            if (!rangeSet.has(date)) {
+                html += '<div class="calendar-day empty"></div>';
+                continue;
+            }
+
+            const slot = currentEscala.slots.find(s => s.date === date && s.assigned === funcId);
+            const turno = slot ? getTurnoInfo(slot.turnoId) : null;
+            const d = new Date(date + 'T12:00:00');
+            const dayOfWeek = d.getUTCDay();
+            const diaSemanaId = DIAS_SEMANA[dayOfWeek].id;
+
+            let classes = 'calendar-day';
+            if ([0, 6].includes(dayOfWeek)) classes += ' weekend';
+            if (date === today) classes += ' day-today';
+            
+            const feriadoFolga = currentEscala.feriados.find(f => f.date === date && !f.trabalha);
+            const isCargoDiaNaoUtil = !cargoDiasOperacionais.has(diaSemanaId);
+
+            if (feriadoFolga || isCargoDiaNaoUtil) {
+                classes += ' celula-fechada';
+            }
+
+            let shiftHTML = '<div class="day-shift-info"></div>';
+            if (turno) {
+                const textColor = getContrastingTextColor(turno.cor);
+                shiftHTML = `<div class="day-shift-info" style="background-color: ${turno.cor};">
+                                <span class="day-shift-sigla" style="color: ${textColor};">${turno.sigla}</span>
+                             </div>`;
+            }
+            
+            html += `<div class="${classes}" data-date="${date}">
+                        <span class="day-number">${dayNumber}</span>
+                        ${shiftHTML}
+                     </div>`;
+        }
+        html += '</div></div>';
+    }
+    container.innerHTML = html;
+
+    const calendarGrid = $('.calendar-grid', container);
+    if(calendarGrid) calendarGrid.onclick = handleFocoCalendarClick;
+}
+
+function renderBrush(turno, selectedBrushId) {
+    const isSelected = selectedBrushId === turno.id;
+    const textColor = getContrastingTextColor(turno.cor);
+
+    return `
+        <div class="shift-brush ${isSelected ? 'selected' : ''}" data-turno-id="${turno.id}" title="${turno.nome}">
+            <div class="brush-icon" style="background-color: ${turno.cor}; color: ${textColor}">${turno.sigla}</div>
+            <span class="brush-name">${turno.nome}</span>
+        </div>`;
+}
+
+// --- FUNÇÕES DE ATUALIZAÇÃO ---
+
 function updateTableAfterEdit(escala) {
+    const owner = escala.owner;
+    // Atualiza ambas as visualizações para manter a sincronia
     updateTableCells(escala);
-    // ADIÇÃO: Chama a nova função para atualizar o rodapé
     updateTableFooter(escala);
     renderPainelDaEscala(escala);
+    
+    // Se a aba de foco individual estiver visível, re-renderiza seu conteúdo
+    const tabsContainer = $(`#${owner}-view-tabs`);
+    const activeTab = tabsContainer ? $('.painel-tab-btn.active', tabsContainer)?.dataset.tab : 'geral';
+    if (activeTab === 'individual') {
+        renderFocoIndividualView(owner);
+    }
 }
 
 function updateTableCells(escala) {
@@ -649,11 +934,7 @@ async function salvarEscalaAtual(options = {}) {
         } = store.getState();
         const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
         
-        const allSlotsToSnapshot = currentEscala.slots.filter(s => s.assigned).map(s => {
-            const turno = allTurnos.find(t => t.id === s.turnoId);
-            if(turno && turno.isSystem) { }
-            return s;
-        });
+        const allSlotsToSnapshot = currentEscala.slots.filter(s => s.assigned);
 
         const funcsInvolvedIds = new Set(allSlotsToSnapshot.map(s => s.assigned));
         const turnosInvolvedIds = new Set(allSlotsToSnapshot.map(s => s.turnoId));
