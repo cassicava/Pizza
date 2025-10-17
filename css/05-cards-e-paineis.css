@@ -35,6 +35,11 @@
     margin-top: 14px;
 }
 
+/* NOVO: Wrapper para os cards da home page, permitindo o posicionamento correto do step */
+.home-card-wrapper {
+    position: relative;
+}
+
 .home-card {
     display: block;
     text-decoration: none;
@@ -42,6 +47,9 @@
     cursor: pointer;
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     border: 1px solid rgba(255, 255, 255, 0.4);
+    /* Adicionado para o efeito ripple funcionar */
+    position: relative;
+    overflow: hidden;
 }
 
 .card-step, .card-optional-step {
@@ -58,6 +66,8 @@
     border: 3px solid var(--card);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     padding: 4px 12px;
+    z-index: 1; /* Garante que a etiqueta fique sobre o card */
+    transition: transform 0.2s ease-in-out; /* ADICIONADO: Para animar o movimento da etiqueta */
 }
 
 .card-step {
@@ -68,10 +78,18 @@
     background-color: var(--secondary);
 }
 
-.home-card:hover {
+/* ALTERADO: O gatilho do hover agora é o wrapper, afetando tanto o card quanto a etiqueta */
+.home-card-wrapper:hover .home-card {
     transform: translateY(-6px);
     box-shadow: 0 12px 30px rgba(0, 0, 0, .12);
 }
+
+/* ADICIONADO: Regra para mover a etiqueta junto com o card */
+.home-card-wrapper:hover .card-step,
+.home-card-wrapper:hover .card-optional-step {
+    transform: translateY(-6px);
+}
+
 
 .home-card h3 {
     margin: 4px 0 6px;
@@ -197,6 +215,7 @@
     transition: all 0.2s ease-in-out;
     cursor: pointer;
     position: relative;
+    overflow: hidden;
 }
 
 .escala-card:hover {

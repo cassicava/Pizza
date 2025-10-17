@@ -612,3 +612,40 @@ function showDownloadToast(isSuccess, message = '') {
         toast.classList.remove('visible');
     }, 5000); // 5 segundos
 }
+
+
+function createRipple(event) {
+    const button = event.currentTarget;
+
+    // Remove ondulações antigas para evitar acúmulo
+    const oldRipple = button.querySelector(".ripple");
+    if(oldRipple) {
+        oldRipple.remove();
+    }
+
+    const circle = document.createElement("span");
+    const diameter = Math.max(button.clientWidth, button.clientHeight);
+    const radius = diameter / 2;
+
+    circle.style.width = circle.style.height = `${diameter}px`;
+    const rect = button.getBoundingClientRect();
+    circle.style.left = `${event.clientX - rect.left - radius}px`;
+    circle.style.top = `${event.clientY - rect.top - radius}px`;
+    circle.classList.add("ripple");
+
+    button.appendChild(circle);
+}
+
+// Função para aplicar o efeito a todos os botões
+function applyRippleEffectToAllButtons() {
+    const buttons = document.querySelectorAll("button, .btn-cta, .home-card, .escala-card, .welcome-option-card"); // Aplica a vários tipos de botões
+    for (const button of buttons) {
+        if (getComputedStyle(button).position === "static") {
+            button.style.position = "relative";
+        }
+        button.style.overflow = "hidden";
+        button.addEventListener("mousedown", createRipple); // Mudar para mousedown para melhor feedback visual
+    }
+}
+
+document.addEventListener('DOMContentLoaded', applyRippleEffectToAllButtons);
