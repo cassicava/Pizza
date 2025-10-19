@@ -33,6 +33,7 @@
     <link rel="stylesheet" href="css/21-animacoes-notificacoes.css" />
     <link rel="stylesheet" href="css/22-painel-ajuda.css" />
     <link rel="stylesheet" href="css/23-foco-individual.css" />
+    <link rel="stylesheet" href="css/24-splash-screen.css" />
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"></script>
@@ -40,6 +41,25 @@
 </head>
 
 <body>
+    <div id="splash-screen">
+        <div class="splash-logo-container">
+            <span class="logo-compact">EF</span>
+        </div>
+        <div class="splash-grid">
+            <div class="grid-line h-line h-line-1"></div>
+            <div class="grid-line h-line h-line-2"></div>
+            <div class="grid-line h-line h-line-3"></div>
+            <div class="grid-line v-line v-line-1"></div>
+            <div class="grid-line v-line v-line-2"></div>
+            <div class="grid-line v-line v-line-3"></div>
+        </div>
+        <div class="splash-text-container">
+            <h2 id="splash-title">Bem-vindo(a) de volta,</h2>
+            <h1 id="splash-user-name" class="animated-brand-text"></h1>
+            <p id="splash-subtitle">Organizando seu dia...</p>
+        </div>
+    </div>
+
 
     <div id="welcome-overlay">
         <div class="welcome-card">
@@ -78,20 +98,16 @@
                 <h2 class="welcome-title">Como vamos simplificar o seu dia a dia:</h2>
                 <ul class="welcome-features-list">
                     <li class="welcome-feature-item"><span>🚀</span>
-                        <div><strong>Geração Inteligente:</strong> Crie escalas complexas em minutos, não em horas.
-                        </div>
+                        <div><strong>Geração Inteligente:</strong> Crie escalas complexas em minutos, não em horas.</div>
                     </li>
                     <li class="welcome-feature-item"><span>✅</span>
-                        <div><strong>Prevenção de Erros:</strong> Nosso algoritmo evita conflitos e garante o descanso
-                            obrigatório da equipe.</div>
+                        <div><strong>Prevenção de Erros:</strong> Evite conflitos de horário e garanta o descanso da equipe.</div>
                     </li>
                     <li class="welcome-feature-item"><span>🎨</span>
-                        <div><strong>Edição Rápida e Visual:</strong> Use a Barra de Ferramentas para ajustar, trocar e
-                            alocar turnos de forma ágil e intuitiva.</div>
+                        <div><strong>Edição Rápida e Visual:</strong> Ajuste, troque e aloque turnos de forma ágil e intuitiva.</div>
                     </li>
                     <li class="welcome-feature-item"><span>📂</span>
-                        <div><strong>Tudo Centralizado:</strong> Mantenha turnos, cargos e funcionários organizados em
-                            um só lugar.</div>
+                        <div><strong>Tudo Centralizado:</strong> Mantenha cadastros e escalas organizados em um só lugar.</div>
                     </li>
                 </ul>
                 <button id="welcome-proposta-next" class="welcome-btn welcome-btn-primary">Próximo</button>
@@ -181,7 +197,7 @@
             </div>
         </header>
 
-        <section id="page-home" class="page active">
+        <section id="page-home" class="page">
             
             <h2 class="home-section-title">Cadastros Essenciais</h2>
             <div class="grid-4-col">
@@ -241,8 +257,8 @@
             <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
-                        <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
-                        <button class="painel-tab-btn" data-tab="formulario">Novo Turno</button>
+                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Cadastrados</button>
+                        <button class="painel-tab-btn" data-tab="formulario">📝 Novo Turno</button>
                     </div>
                     <div class="painel-actions">
                         <button class="primary btn-add-new" data-action="add-new">➕ Adicionar Novo Turno</button>
@@ -349,8 +365,8 @@
             <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
-                        <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
-                        <button class="painel-tab-btn" data-tab="formulario">Novo Cargo</button>
+                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Cadastrados</button>
+                        <button class="painel-tab-btn" data-tab="formulario">📝 Novo Cargo</button>
                     </div>
                     <div class="painel-actions">
                         <button class="primary btn-add-new" data-action="add-new">➕ Adicionar Novo Cargo</button>
@@ -426,8 +442,8 @@
              <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
-                        <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
-                        <button class="painel-tab-btn" data-tab="formulario">Novo Funcionário</button>
+                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Cadastrados</button>
+                        <button class="painel-tab-btn" data-tab="formulario">📝 Novo Funcionário</button>
                     </div>
                     <div class="painel-actions">
                         <button class="primary btn-add-new" data-action="add-new">➕ Adicionar Novo Funcionário</button>
@@ -553,8 +569,8 @@
             <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
-                        <button class="painel-tab-btn active" data-tab="gerenciar">Gerenciar Cadastrados</button>
-                        <button class="painel-tab-btn" data-tab="formulario">Nova Equipe</button>
+                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Cadastrados</button>
+                        <button class="painel-tab-btn" data-tab="formulario">📝 Nova Equipe</button>
                     </div>
                     <div class="painel-actions">
                         <button class="primary btn-add-new" data-action="add-new">➕ Adicionar Nova Equipe</button>
@@ -760,13 +776,18 @@
         
         <section id="page-escalas-salvas" class="page">
             <div id="listaEscalasContainer" class="card card-lista">
-                <h2>Lista de Escalas</h2>
-                <div class="form-row" style="margin-top:0; align-items: flex-end;">
-                    <label style="flex-grow: 1; max-width: 400px;">Filtrar por Cargo:
+                <h2>Lista de Escalas Salvas</h2>
+                <div class="grid-2-col" style="margin-top: 16px; gap: 16px;">
+                    <div class="form-group">
+                        <label for="filtroEscalasCargo" class="form-label">Filtrar por Cargo</label>
                         <select id="filtroEscalasCargo"></select>
-                    </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="filtroEscalasAno" class="form-label">Filtrar por Ano</label>
+                        <select id="filtroEscalasAno"></select>
+                    </div>
                 </div>
-                <div id="listaEscalas"></div>
+                <div id="listaEscalas" style="margin-top: 24px;"></div>
             </div>
 
             <div id="escalaSalvaView" class="hidden">
@@ -805,78 +826,57 @@
         </section>
 
         <section id="page-relatorios" class="page">
-            <div class="card card-lista">
-                <h2>Analisar Relatório de Escala</h2>
-                <div class="form-row" style="align-items: flex-end; margin-top: 0;">
-                    <label style="flex-grow: 1; max-width: 400px;">Selecione o Cargo:
+            <div class="card">
+                <h2 style="margin-top:0; margin-bottom: 16px; font-size: 1.5rem;">Análise de Relatórios</h2>
+                <div class="grid-2-col" style="gap: 16px;">
+                    <div class="form-group">
+                        <label for="relatorioCargoSelect" class="form-label">Selecione um Cargo</label>
                         <select id="relatorioCargoSelect"></select>
-                    </label>
-                </div>
-                <div id="relatoriosEscalaListContainer"></div>
-            </div>
-
-            <div id="relatorios-container" class="hidden">
-                <div class="relatorios-grid-3" style="margin-top: 24px; gap: 16px;">
-                    <div class="card summary-card-small">
-                        <h4>Total de Horas Extras</h4>
-                        <p id="summary-horas-extras">0h</p>
                     </div>
-                    <div class="card summary-card-small">
-                        <h4>Total de Funcionários</h4>
-                        <p id="summary-total-funcs">0</p>
-                    </div>
-                    <div class="card card-lista">
-                        <h2>Distribuição de Turnos</h2>
-                        <div class="chart-container">
-                            <canvas id="turnosChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid-2-col" style="margin-top: 16px; align-items: start;">
-                    <div class="card card-lista" id="horasChartContainerWrapper" style="display: none;">
-                        <h2>Horas Trabalhadas vs. Meta</h2>
-                        <div class="chart-container" style="height:350px">
-                            <canvas id="horasChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="card card-lista" id="turnosChartContainerWrapper" style="display: none;">
-                        <h2>Turnos Realizados vs. Meta</h2>
-                        <div class="chart-container" style="height:350px">
-                            <canvas id="metaTurnosChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card card-lista" style="margin-top: 16px;">
-                    <h2>Folgas de Fim de Semana</h2>
-                    <div class="grid-2-col" style="gap: 24px; align-items: start;">
-                        <div>
-                            <h4>Sábados</h4>
-                            <div class="chart-container" style="height:350px">
-                                <canvas id="folgasSabadoChart"></canvas>
-                            </div>
-                        </div>
-                        <div>
-                            <h4>Domingos</h4>
-                            <div class="chart-container" style="height:350px">
-                                <canvas id="folgasDomingoChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid-2-col" style="margin-top: 16px; gap: 16px; align-items: start;">
-                    <div class="card card-lista">
-                        <h2>Distribuição de Turnos por Funcionário</h2>
-                        <div id="distribuicaoTurnosContainer"></div>
-                    </div>
-                    <div class="card card-lista">
-                        <h2>Resumo de Ausências (Férias/Folgas)</h2>
-                        <div id="ausenciasContainer"></div>
+                    <div class="form-group">
+                        <label for="relatorioAnoSelect" class="form-label">Selecione um Ano</label>
+                        <select id="relatorioAnoSelect"></select>
                     </div>
                 </div>
             </div>
+        
+            <div id="relatoriosEscalaListContainer" style="margin-top: 24px;"></div>
+        
+            <div id="relatorios-dashboard-container" class="hidden">
+                <div id="dashboard-header-container"></div>
+        
+                <div id="dashboard-content">
+                    <div class="dashboard-pane active" data-pane="visao-geral">
+                        <div class="kpi-grid">
+                            <div class="card kpi-card"><h4>Total de Horas</h4><p id="kpi-total-horas">0h</p></div>
+                            <div class="card kpi-card"><h4>Horas Extras</h4><p id="kpi-horas-extras">0h</p></div>
+                            <div class="card kpi-card"><h4>Total de Ausências</h4><p id="kpi-ausencias">0</p></div>
+                            <div class="card kpi-card"><h4>Turno Mais Frequente</h4><p id="kpi-turno-frequente">-</p></div>
+                        </div>
+        
+                        <div class="card" style="margin-top: 24px;">
+                            <h3 class="config-card-title">Resumo por Funcionário</h3>
+                            <div id="relatorio-ranking-table-container"></div>
+                        </div>
+        
+                        <div class="grid-2-col" style="margin-top: 24px; align-items: start;">
+                            <div class="card">
+                                <h3 class="config-card-title">Distribuição Geral de Turnos</h3>
+                                <div class="chart-container" style="height: 300px;"><canvas id="geralTurnosChart"></canvas></div>
+                            </div>
+                            <div class="card">
+                                <h3 class="config-card-title">Folgas de Fim de Semana</h3>
+                                <div class="chart-container" style="height: 300px;"><canvas id="folgasChart"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+        
+                    <div class="dashboard-pane" data-pane="analise-individual">
+                        <div id="analise-individual-content"></div>
+                    </div>
+                </div>
+            </div>
+        
             <div id="relatorios-empty-state"></div>
         </section>
 

@@ -34,6 +34,16 @@
     to { opacity: 0; }
 }
 
+/* ADICIONADO: Animação de flash para itens salvos */
+@keyframes flash-update {
+    0% { background-color: rgba(34, 197, 94, 0.2); }
+    100% { background-color: transparent; }
+}
+.flash-update {
+    animation: flash-update 1.5s ease-out forwards;
+}
+
+
 /* Animações de Slide para Componentes */
 @keyframes slideInFromRight {
     from {
@@ -190,3 +200,19 @@
 .anim-slide-out-right { position: absolute; animation: slideOutToRight 0.2s ease-out forwards; }
 
 .new-item { animation: fadeInRow 0.5s ease-out forwards; }
+
+/* Animação de "pop" para os cards da home */
+@keyframes pop-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    70% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

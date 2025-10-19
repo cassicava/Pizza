@@ -1,0 +1,138 @@
+/**************************************
+ * ✨ Animação da Tela de Boas-Vindas (Splash Screen)
+ **************************************/
+
+#splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg); 
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    transition: opacity 0.5s ease-out; /* Transição de saída suave */
+}
+
+/* --- Elementos da Animação --- */
+
+.splash-logo-container {
+    position: absolute;
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.splash-logo-container .logo-compact {
+    font-size: 4rem; 
+    font-weight: 700; 
+    position: relative;
+    opacity: 1;
+}
+
+.splash-grid {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.grid-line {
+    position: absolute;
+    background-color: rgba(37, 99, 235, 0.1); 
+    opacity: 0;
+}
+
+.h-line { width: 0%; height: 1px; left: 0; }
+.v-line { height: 0%; width: 1px; top: 0; }
+
+.h-line-1 { top: 40%; }
+.h-line-2 { top: 50%; }
+.h-line-3 { top: 60%; }
+
+.v-line-1 { left: 45%; }
+.v-line-2 { left: 50%; }
+.v-line-3 { left: 55%; }
+
+.splash-text-container {
+    position: absolute;
+    text-align: center;
+    color: var(--fg);
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+#splash-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+#splash-user-name {
+    font-size: 3rem;
+    margin: 4px 0 8px 0;
+}
+
+#splash-subtitle {
+    font-size: 1rem;
+    color: var(--muted);
+    margin: 0;
+}
+
+
+/* --- Sequência da Animação de Entrada --- */
+
+/* 1. Logo aparece */
+#splash-screen.animate .splash-logo-container {
+    animation: splash-logo-fade-in 0.6s ease-out forwards;
+}
+@keyframes splash-logo-fade-in {
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* 2. Grade se expande */
+#splash-screen.animate .grid-line {
+    animation: splash-grid-expand 1s ease-out 0.6s forwards;
+}
+@keyframes splash-grid-expand {
+    0% { opacity: 0; }
+    30% { opacity: 1; }
+    100% { opacity: 1; }
+}
+#splash-screen.animate .h-line { animation-name: splash-grid-expand-h; }
+#splash-screen.animate .v-line { animation-name: splash-grid-expand-v; }
+
+@keyframes splash-grid-expand-h {
+    from { width: 0%; left: 50%; }
+    to { width: 120%; left: -10%; }
+}
+@keyframes splash-grid-expand-v {
+    from { height: 0%; top: 50%; }
+    to { height: 120%; top: -10%; }
+}
+
+/* 3. Logo desaparece (AJUSTADO) */
+#splash-screen.animate .splash-logo-container {
+    animation: splash-logo-fade-in 0.6s ease-out forwards, 
+               splash-logo-fade-out 0.3s ease-in 1.3s forwards; /* EF some mais rápido */
+}
+@keyframes splash-logo-fade-out {
+    to { opacity: 0; transform: scale(0.9); }
+}
+
+/* 4. Texto aparece (AJUSTADO) */
+#splash-screen.animate .splash-text-container {
+    animation: splash-text-fade-in 1s ease-out 1.6s forwards; /* Texto entra mais cedo */
+}
+@keyframes splash-text-fade-in {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* --- Animação de Saída --- */
+
+#splash-screen.closing {
+    opacity: 0;
+    pointer-events: none;
+}

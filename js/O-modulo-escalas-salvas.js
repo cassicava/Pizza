@@ -4,6 +4,12 @@
 
 let escalaParaEditar = null; 
 
+// NOVO: Estado para gerenciar os filtros da página
+const escalasSalvasState = {
+    cargoId: null,
+    ano: null,
+};
+
 function renderFiltroEscalasCargo() {
     const { escalas, cargos } = store.getState();
     const filtroSelect = $("#filtroEscalasCargo");
@@ -21,33 +27,50 @@ function renderFiltroEscalasCargo() {
     filtroSelect.value = valorAtual;
 }
 
+function renderFiltroEscalasAno() {
+    const { escalas } = store.getState();
+    const anoSelect = $("#filtroEscalasAno");
+    if (!anoSelect) return;
+
+    const cargoId = escalasSalvasState.cargoId;
+    const escalasParaFiltrar = cargoId ? escalas.filter(e => e.cargoId === cargoId) : [];
+    
+    const anosDisponiveis = [...new Set(escalasParaFiltrar.map(e => e.inicio.substring(0, 4)))].sort((a, b) => b.localeCompare(a));
+    
+    anoSelect.innerHTML = `<option value="">Selecione um ano...</option>`;
+    anosDisponiveis.forEach(ano => {
+        const option = document.createElement('option');
+        option.value = ano;
+        option.textContent = ano;
+        anoSelect.appendChild(option);
+    });
+    anoSelect.disabled = !cargoId || anosDisponiveis.length === 0;
+}
+
 function renderEscalasList() {
     const { escalas } = store.getState();
-    const filtroCargoSelect = $("#filtroEscalasCargo");
     const container = $("#listaEscalas");
     container.innerHTML = ""; 
 
-    const cargoFiltro = filtroCargoSelect ? filtroCargoSelect.value : '';
+    const { cargoId, ano } = escalasSalvasState;
 
-    if (escalas.length === 0) {
-        container.innerHTML = `<div class="empty-state" style="padding: 24px;">
-            <div class="empty-state-icon">🗂️</div>
-            <h3>Nenhuma Escala Salva</h3>
-            <p>As escalas que você gerar e salvar aparecerão aqui para consulta futura.</p>
-        </div>`;
-        parseEmojisInElement(container);
+    if (!cargoId || !ano) {
+        let message = "Selecione um cargo e um ano para ver as escalas salvas.";
+        if (cargoId && !ano) {
+            message = "Agora, selecione um ano.";
+        }
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">${message}</p>`;
         return;
     }
 
-    if (!cargoFiltro) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Selecione um cargo para ver as escalas salvas.</p>`;
-        return;
-    }
-
-    const escalasFiltradas = escalas.filter(e => e.cargoId === cargoFiltro);
+    const escalasFiltradas = escalas.filter(e => {
+        const matchCargo = !cargoId || e.cargoId === cargoId;
+        const matchAno = !ano || e.inicio.startsWith(ano);
+        return matchCargo && matchAno;
+    });
 
     if (escalasFiltradas.length === 0) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma escala encontrada para este cargo.</p>`;
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma escala encontrada para os filtros selecionados.</p>`;
         return;
     }
 
@@ -86,13 +109,15 @@ function renderEscalasList() {
                 const card = document.createElement("div");
                 card.className = "escala-card";
                 card.dataset.viewId = esc.id;
-                const periodo = `${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
+                const periodo = `<strong>Período:</strong> ${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
+                const modificadoEm = esc.lastModified ? `<p class="muted" style="font-size: 0.8rem; margin-top: 8px;">Atualizado em: ${formatISODate(esc.lastModified)}</p>` : '';
 
                 card.innerHTML = `
                     <div class="escala-card-status ${statusClass}" title="${statusTitle}">${statusIcon}</div>
                     <div class="escala-card-content">
                         <h3>${esc.nome}</h3>
                         <p class="muted">${periodo}</p>
+                        ${modificadoEm}
                     </div>
                 `;
                 gridContainer.appendChild(card);
@@ -107,7 +132,7 @@ function verEscalaSalva(id) {
     const escala = escalas.find(e => e.id === id);
     if (escala) {
         escalaParaEditar = escala;
-        currentEscala = escala; // Garante que currentEscala também seja setado
+        currentEscala = escala; 
         escala.owner = 'salva';
 
         $("#escalaSalvaViewTitle").textContent = escala.nome || 'Visualização da Escala';
@@ -158,7 +183,7 @@ function initEscalasSalvasPage() {
         $('#escalaSalvaView').classList.add('hidden');
         $('#listaEscalasContainer').classList.remove('hidden');
         escalaParaEditar = null;
-        currentEscala = null; // Limpa a escala atual ao voltar
+        currentEscala = null; 
     };
     $("#btnEditarEscalaSalva").onclick = editEscalaSalva;
 
@@ -168,8 +193,6 @@ function initEscalasSalvasPage() {
         }
     };
     
-    // CORREÇÃO: O botão de exportar agora usa o handler do pdf-export.js,
-    // que verifica por alterações não salvas.
     const exportBtn = $("#btnExportarPDF");
     if(exportBtn) {
         exportBtn.onclick = () => {
@@ -179,19 +202,33 @@ function initEscalasSalvasPage() {
         };
     }
 
-
-    const pageContainer = $("#page-escalas-salvas");
-    if(pageContainer) {
-        const filtroCargoSelect = $("#filtroEscalasCargo");
-        if (filtroCargoSelect) {
-            filtroCargoSelect.addEventListener('change', renderEscalasList);
-        }
-
-        const listaEscalas = $("#listaEscalas");
-        if(listaEscalas) {
-            listaEscalas.addEventListener('click', handleEscalasSalvasContainerClick);
-        }
+    const filtroCargoSelect = $("#filtroEscalasCargo");
+    if (filtroCargoSelect) {
+        filtroCargoSelect.addEventListener('change', () => {
+            escalasSalvasState.cargoId = filtroCargoSelect.value;
+            escalasSalvasState.ano = null; 
+            renderFiltroEscalasAno(); 
+            renderEscalasList();
+        });
     }
+    
+    const filtroAnoSelect = $("#filtroEscalasAno");
+    if (filtroAnoSelect) {
+        filtroAnoSelect.addEventListener('change', () => {
+            escalasSalvasState.ano = filtroAnoSelect.value;
+            renderEscalasList();
+        });
+    }
+
+    const listaEscalas = $("#listaEscalas");
+    if(listaEscalas) {
+        listaEscalas.addEventListener('click', handleEscalasSalvasContainerClick);
+    }
+
+    // Chamadas iniciais
+    renderFiltroEscalasCargo();
+    renderFiltroEscalasAno();
+    renderEscalasList(); // Renderiza a mensagem inicial
 }
 
 document.addEventListener('DOMContentLoaded', initEscalasSalvasPage);

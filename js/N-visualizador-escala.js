@@ -928,6 +928,9 @@ async function salvarEscalaAtual(options = {}) {
         showToast: shouldShowToast = true
     } = options;
     if (currentEscala) {
+        // Adiciona/Atualiza a data de modificação
+        currentEscala.lastModified = new Date().toISOString();
+
         const {
             funcionarios,
             turnos

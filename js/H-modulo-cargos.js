@@ -3,7 +3,7 @@
  **************************************/
 
 let editingCargoId = null;
-let lastAddedCargoId = null;
+let lastSavedCargoId = null;
 
 // Referência à função de troca de abas
 let switchCargosTab = () => {};
@@ -252,9 +252,13 @@ function renderCargos() {
     });
     parseEmojisInElement(tblCargosBody);
 
-    if (lastAddedCargoId) {
-        tblCargosBody.querySelector(`tr[data-cargo-id="${lastAddedCargoId}"]`)?.classList.add('new-item');
-        lastAddedCargoId = null;
+    if (lastSavedCargoId) {
+        const row = tblCargosBody.querySelector(`tr[data-cargo-id="${lastSavedCargoId}"]`);
+        if(row) {
+            row.classList.add('flash-update');
+            setTimeout(() => row.classList.remove('flash-update'), 1500);
+        }
+        lastSavedCargoId = null;
     }
 }
 
@@ -316,17 +320,11 @@ async function saveCargoFromForm() {
             const equipesAfetadas = equipes.filter(e => e.cargoId === editingCargoId && turnosRemovidosIds.includes(e.turnoId));
             if (equipesAfetadas.length > 0) {
                 const nomesEquipes = equipesAfetadas.map(e => `"${e.nome}"`).join(', ');
-                const { confirmed } = await showConfirm({
-                    title: "Confirmar Alteração?",
-                    message: `Ao remover o(s) turno(s) associado(s), a(s) seguinte(s) equipe(s) será(ão) excluída(s): <strong>${nomesEquipes}</strong>. Deseja continuar?`,
-                    confirmText: "Sim, Excluir Equipe(s)"
+                showInfoModal({
+                    title: "Ação Bloqueada",
+                    contentHTML: `<p>Não é possível remover o(s) turno(s) porque a(s) seguinte(s) equipe(s) depende(m) dele(s): <strong>${nomesEquipes}</strong>.</p><p>Por favor, edite ou exclua esta(s) equipe(s) primeiro.</p>`
                 });
-
-                if (!confirmed) return;
-
-                equipesAfetadas.forEach(equipe => {
-                    store.dispatch('DELETE_EQUIPE', equipe.id);
-                });
+                return;
             }
         }
         
@@ -336,12 +334,11 @@ async function saveCargoFromForm() {
         );
 
         if (funcsAfetados.length > 0) {
-            const { confirmed } = await showConfirm({
-                title: "Risco de Perda de Dados",
-                message: `Ao remover turno(s) deste cargo, as configurações de disponibilidade e preferência para este(s) turno(s) serão <strong>permanentemente apagadas</strong> para ${funcsAfetados.length} funcionário(s). Deseja continuar?`,
-                confirmText: "Sim, Apagar Dados"
+            showInfoModal({
+                title: "Ação Bloqueada",
+                contentHTML: `<p>Não é possível remover o(s) turno(s) deste cargo, pois isso apagaria as configurações de disponibilidade de <strong>${funcsAfetados.length} funcionário(s)</strong>.</p><p>Primeiro, edite o(s) funcionário(s) para remover a disponibilidade do(s) turno(s) em questão, ou mude-os de cargo.</p>`
             });
-            if (!confirmed) return;
+            return;
         }
     }
 
@@ -357,10 +354,7 @@ async function saveCargoFromForm() {
         }
     };
 
-    const isEditing = !!editingCargoId;
-    if (!isEditing) {
-        lastAddedCargoId = cargoData.id;
-    }
+    lastSavedCargoId = cargoData.id;
 
     store.dispatch('SAVE_CARGO', cargoData);
     
@@ -396,7 +390,7 @@ function editCargoInForm(id) {
     parseEmojisInElement(btnSalvarCargo);
     setCargoFormDirty(false);
 
-    formTabButtonCargos.textContent = `Editando: ${cargo.nome}`;
+    formTabButtonCargos.innerHTML = `📝 Editando: ${cargo.nome}`;
     switchCargosTab('formulario');
 }
 
@@ -416,7 +410,7 @@ function cancelEditCargo() {
     updateCargoRegrasExplicacao();
 
     btnSalvarCargo.textContent = "💾 Salvar Cargo";
-    formTabButtonCargos.textContent = "Novo Cargo"; // Redefine o título da aba
+    formTabButtonCargos.innerHTML = "📝 Novo Cargo";
     parseEmojisInElement(btnSalvarCargo);
     setCargoFormDirty(false);
     
@@ -425,27 +419,39 @@ function cancelEditCargo() {
 
 async function deleteCargo(id) {
     const { escalas, funcionarios } = store.getState();
-    
+    const blockingIssues = [];
+
+    // 1. Verificar em escalas salvas
     const escalasAfetadas = escalas.filter(e => e.cargoId === id);
     if (escalasAfetadas.length > 0) {
         const plural = escalasAfetadas.length > 1;
-        showInfoModal({
-            title: "Exclusão Bloqueada",
-            contentHTML: `<p>Este cargo não pode ser excluído porque está sendo utilizado por <strong>${escalasAfetadas.length} escala${plural ? 's' : ''} salva${plural ? 's' : ''}</strong>.</p><p>Para preservar o histórico, a exclusão não é permitida. Se este cargo não é mais necessário, considere renomeá-lo para "Arquivado" ou "Inativo".</p>`
-        });
-        return;
+        blockingIssues.push(`Está sendo utilizado em <strong>${escalasAfetadas.length} escala${plural ? 's' : ''} salva${plural ? 's' : ''}</strong>.`);
     }
 
+    // 2. Verificar em funcionários ativos
     const funcsUsando = funcionarios.filter(f => f.cargoId === id && f.status !== 'arquivado');
     if (funcsUsando.length > 0) {
         const nomesFuncs = funcsUsando.map(f => `<strong>${f.nome}</strong>`).join(', ');
+        blockingIssues.push(`Está sendo utilizado pelo(s) funcionário(s): ${nomesFuncs}.`);
+    }
+
+    // 3. Mostrar modal unificado se houver problemas
+    if (blockingIssues.length > 0) {
+        const messageHTML = `
+            <p>Este cargo não pode ser excluído pelos seguintes motivos:</p>
+            <ul>
+                ${blockingIssues.map(issue => `<li>${issue}</li>`).join('')}
+            </ul>
+            <p>Por favor, resolva estas dependências antes de tentar excluir o cargo.</p>
+        `;
         showInfoModal({
             title: "Exclusão Bloqueada",
-            contentHTML: `<p>Este cargo não pode ser excluído porque está sendo utilizado pelo(s) seguinte(s) funcionário(s):</p><p>${nomesFuncs}</p><p>Por favor, altere o cargo do(s) funcionário(s) ou arquive-o(s) antes de excluir o cargo.</p>`
+            contentHTML: messageHTML
         });
         return;
     }
 
+    // 4. Se não houver problemas, prosseguir com a confirmação de exclusão
     await handleDeleteItem({
         id,
         itemName: 'Cargo',
@@ -475,7 +481,7 @@ function initCargosPage() {
 
     $('.btn-add-new', pageCargos).addEventListener('click', () => {
         cancelEditCargo();
-        formTabButtonCargos.textContent = "Novo Cargo";
+        formTabButtonCargos.innerHTML = "📝 Novo Cargo";
         switchCargosTab('formulario');
     });
 

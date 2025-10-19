@@ -181,7 +181,7 @@ main.container {
   animation: fadeOut 0.2s ease-out forwards;
 }
 
-#page-home {
+#page-home, #page-home.fading-out {
     padding-top: 96px;
     padding-left: 192px;
     padding-right: 192px;
@@ -218,4 +218,31 @@ main.container {
 
 .grid-2-col {
     grid-template-columns: 1fr 1fr;
+}
+
+
+/* --- Animação "Pop" dos Cards da Home --- */
+.home-card-wrapper {
+    opacity: 0; /* Inicia invisível */
+}
+
+#page-home.active .home-card-wrapper {
+    animation: pop-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Atrasos em cascata para a primeira linha de cards */
+#page-home.active .grid-4-col .home-card-wrapper:nth-child(1) { animation-delay: 0.1s; }
+#page-home.active .grid-4-col .home-card-wrapper:nth-child(2) { animation-delay: 0.2s; }
+#page-home.active .grid-4-col .home-card-wrapper:nth-child(3) { animation-delay: 0.3s; }
+#page-home.active .grid-4-col .home-card-wrapper:nth-child(4) { animation-delay: 0.4s; }
+
+/* Atrasos em cascata para a segunda linha de cards */
+#page-home.active .grid-3-col a:nth-child(1) { animation-delay: 0.5s; }
+#page-home.active .grid-3-col a:nth-child(2) { animation-delay: 0.6s; }
+#page-home.active .grid-3-col a:nth-child(3) { animation-delay: 0.7s; }
+
+/* Adicionado: aplica a animação aos cards da segunda linha também */
+#page-home.active .grid-3-col .card {
+    opacity: 0; /* Inicia invisível */
+    animation: pop-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }

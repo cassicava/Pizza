@@ -13,7 +13,7 @@ const helpContentData = {
                 <p>Use o botão <strong>✏️ Editar</strong> para modificar um turno existente ou <strong>🔥 Excluir</strong> para removê-lo (só é possível se o turno não estiver em uso).</p>
             </div>
             <div class="help-card">
-                <h4>📝 Novo Turno / Formulário</h4>
+                <h4>📝 Novo Turno</h4>
                 <p>Aqui você define as características de um horário de trabalho.</p>
                 <p><strong>Nome e Sigla:</strong> Um nome descritivo (ex: "Noturno 12h") e uma sigla curta de 2 letras (ex: "N1") que será exibida na grade da escala para economizar espaço.</p>
                 <p><strong>Cor:</strong> Escolha uma cor para identificar facilmente o turno na escala visual.</p>
@@ -37,7 +37,7 @@ const helpContentData = {
                 <p>Um "Cargo" representa uma função, um setor ou um posto de trabalho (ex: "Enfermeiro Chefe", "Recepção", "Segurança"). Ele funciona como um "agrupador" que conecta <strong>Turnos</strong> e <strong>Funcionários</strong>.</p>
             </div>
             <div class="help-card">
-                <h4>📝 Novo Cargo / Formulário</h4>
+                <h4>📝 Novo Cargo</h4>
                 <p>Ao criar um cargo, você define duas coisas essenciais:</p>
                 <p><strong>1. Turnos Associados:</strong> Marque todos os turnos que um profissional deste cargo está habilitado a cumprir. Um "Enfermeiro", por exemplo, pode trabalhar em turnos de 6h, 8h ou 12h.</p>
                 <p><strong>2. Regras de Funcionamento:</strong> Indique em quais dias da semana e em qual faixa de horário o cargo precisa de cobertura. Se a "Recepção" só funciona de segunda a sexta, das 08:00 às 18:00, o gerador de escala saberá que não precisa alocar ninguém fora desses períodos.</p>
@@ -76,7 +76,7 @@ const helpContentData = {
                 <p>Qualquer funcionário que <strong>não</strong> pertencer a uma equipe será considerado um "coringa" pelo sistema, sendo alocado individualmente para preencher as vagas restantes.</p>
             </div>
             <div class="help-card">
-                <h4>📝 Criando uma Equipe</h4>
+                <h4>📝 Nova Equipe</h4>
                 <p><strong>1. Nome, Cargo e Turno:</strong> Dê um nome à equipe (ex: "Equipe A - Noturno"), e defina o Cargo e o Turno que este grupo irá cobrir.</p>
                 <p><strong>2. Membros:</strong> Selecione os funcionários que farão parte deste grupo. Apenas funcionários do cargo selecionado e que tenham disponibilidade para o turno escolhido aparecerão na lista.</p>
                 <p><strong>Importante:</strong> Um funcionário não pode pertencer a mais de uma equipe, para evitar conflitos de alocação.</p>
@@ -95,7 +95,7 @@ const helpContentData = {
                 <p><strong>Passo 4: Cobertura:</strong> Aqui você informa a "demanda". Defina quantos funcionários são necessários por turno (<strong>Individual</strong>) ou configure o padrão de trabalho das suas <strong>Equipes</strong> (ex: trabalham 2 dias e folgam 2).</p>
             </div>
             <div class="help-card">
-                <h4>🎨 Visualização e Edição</h4>
+                <h4>🎨 Edição Geral e Individual</h4>
                 <p>Após a escala ser gerada, você pode fazer ajustes finos. A tela é dividida em duas abas:</p>
                 <p><strong>Edição Geral:</strong> Mostra a grade completa da escala e ativa a <strong>Barra de Ferramentas</strong> na parte inferior, permitindo que você selecione um funcionário e "pinte" ou "apague" turnos. O editor avisará sobre possíveis conflitos com as regras.</p>
                 <p><strong>Edição Individual:</strong> Oferece uma visão focada em um único funcionário por vez, com um calendário mensal e ferramentas dedicadas para uma edição mais detalhada.</p>

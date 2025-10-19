@@ -3,8 +3,7 @@
  **************************************/
 
 let editingFuncId = null;
-let lastAddedFuncId = null;
-let funcDisponibilidadeTemporaria = {};
+let lastSavedFuncId = null;
 
 // Referência à função de troca de abas
 let switchFuncionariosTab = () => {};
@@ -311,9 +310,13 @@ function renderFuncs() {
 
     tblFuncionariosBody.appendChild(fragment);
 
-    if (lastAddedFuncId) {
-        tblFuncionariosBody.querySelector(`tr[data-func-id="${lastAddedFuncId}"]`)?.classList.add('new-item');
-        lastAddedFuncId = null;
+    if (lastSavedFuncId) {
+        const row = tblFuncionariosBody.querySelector(`tr[data-func-id="${lastSavedFuncId}"]`);
+        if(row) {
+            row.classList.add('flash-update');
+            setTimeout(() => row.classList.remove('flash-update'), 1500);
+        }
+        lastSavedFuncId = null;
     }
 }
 
@@ -337,50 +340,60 @@ async function saveFuncFromForm() {
     if (documento && funcionarios.some(f => f.documento?.toLowerCase() === documento.toLowerCase() && f.id !== editingFuncId)) {
         return showToast("O número do documento já está em uso por outro funcionário.");
     }
+
+    // Cria a nova disponibilidade a partir do formulário para verificação
+    const disponibilidadeFinal = {};
+    for (const turnoId in funcDisponibilidadeTemporaria) {
+        const dias = Object.keys(funcDisponibilidadeTemporaria[turnoId]);
+        if (dias.length > 0) {
+            disponibilidadeFinal[turnoId] = dias;
+        }
+    }
     
+    // VERIFICAÇÕES DE EQUIPE
     if (editingFuncId) {
         const funcOriginal = funcionarios.find(f => f.id === editingFuncId);
         const novoCargoId = funcCargoSelect.value;
-        
-        if (funcOriginal && funcOriginal.cargoId !== novoCargoId) {
-            const equipeDoFunc = equipes.find(e => e.funcionarioIds.includes(editingFuncId));
-            if (equipeDoFunc) {
-                const { confirmed } = await showConfirm({
-                    title: "Remover Funcionário da Equipe?",
-                    message: `Ao alterar o cargo deste funcionário, ele será removido da equipe "${equipeDoFunc.nome}", pois ela pertence a um cargo diferente. Deseja continuar?`,
-                    confirmText: "Sim, Continuar"
-                });
+        const equipeDoFunc = equipes.find(e => e.funcionarioIds.includes(editingFuncId));
 
-                if (!confirmed) {
-                    funcCargoSelect.value = funcOriginal.cargoId; 
-                    return; 
-                }
-                
-                equipeDoFunc.funcionarioIds = equipeDoFunc.funcionarioIds.filter(id => id !== editingFuncId);
-                store.dispatch('SAVE_EQUIPE', equipeDoFunc);
+        // 1. Verificação por MUDANÇA DE CARGO
+        if (funcOriginal && funcOriginal.cargoId !== novoCargoId && equipeDoFunc) {
+            const { confirmed } = await showConfirm({
+                title: "Remover Funcionário da Equipe?",
+                message: `Ao alterar o cargo deste funcionário, ele será removido da equipe "${equipeDoFunc.nome}", pois ela pertence a um cargo diferente. Deseja continuar?`,
+                confirmText: "Sim, Continuar"
+            });
+            if (!confirmed) {
+                funcCargoSelect.value = funcOriginal.cargoId; 
+                return; 
             }
+            equipeDoFunc.funcionarioIds = equipeDoFunc.funcionarioIds.filter(id => id !== editingFuncId);
+            store.dispatch('SAVE_EQUIPE', equipeDoFunc);
+        }
+        // 2. Verificação por MUDANÇA DE DISPONIBILIDADE (NOVO)
+        else if (equipeDoFunc && !disponibilidadeFinal[equipeDoFunc.turnoId]) {
+             const { confirmed } = await showConfirm({
+                title: "Remover Funcionário da Equipe?",
+                message: `Ao remover a disponibilidade para o turno da equipe "${equipeDoFunc.nome}", este funcionário será removido dela. Deseja continuar?`,
+                confirmText: "Sim, Continuar"
+            });
+            if (!confirmed) return; // Aborta o salvamento
+            
+            equipeDoFunc.funcionarioIds = equipeDoFunc.funcionarioIds.filter(id => id !== editingFuncId);
+            store.dispatch('SAVE_EQUIPE', equipeDoFunc);
         }
     }
 
 
-    const disponibilidadeFinal = {};
     const preferenciasFinal = {};
     for (const turnoId in funcDisponibilidadeTemporaria) {
         const dias = funcDisponibilidadeTemporaria[turnoId];
-        const diasDisponiveis = [];
         const diasPreferenciais = [];
-
         for (const diaId in dias) {
-            if (dias[diaId] === 'disponivel' || dias[diaId] === 'preferencial') {
-                diasDisponiveis.push(diaId);
-            }
             if (dias[diaId] === 'preferencial') {
                 diasPreferenciais.push(diaId);
             }
         }
-        
-        disponibilidadeFinal[turnoId] = diasDisponiveis;
-        
         if (diasPreferenciais.length > 0) {
             preferenciasFinal[turnoId] = diasPreferenciais;
         }
@@ -400,9 +413,7 @@ async function saveFuncFromForm() {
         preferencias: preferenciasFinal,
     };
 
-    if (!editingFuncId) {
-        lastAddedFuncId = funcData.id;
-    }
+    lastSavedFuncId = funcData.id;
 
     store.dispatch('SAVE_FUNCIONARIO', funcData);
     
@@ -449,7 +460,7 @@ function editFuncInForm(id) {
     btnSalvarFunc.textContent = "💾 Salvar Alterações";
     setFuncFormDirty(false);
     
-    formTabButtonFuncionarios.textContent = `Editando: ${func.nome}`;
+    formTabButtonFuncionarios.innerHTML = `📝 Editando: ${func.nome}`;
     switchFuncionariosTab('formulario');
 }
 
@@ -474,7 +485,7 @@ function cancelEditFunc() {
     updateFuncMetaExplicacao();
 
     btnSalvarFunc.textContent = "💾 Salvar Funcionário";
-    formTabButtonFuncionarios.textContent = "Novo Funcionário";
+    formTabButtonFuncionarios.innerHTML = "📝 Novo Funcionário";
     setFuncFormDirty(false);
 
     funcNomeInput.focus();
@@ -636,7 +647,7 @@ function initFuncionariosPage() {
 
     $('.btn-add-new', pageFuncionarios).addEventListener('click', () => {
         cancelEditFunc();
-        formTabButtonFuncionarios.textContent = "Novo Funcionário";
+        formTabButtonFuncionarios.innerHTML = "📝 Novo Funcionário";
         switchFuncionariosTab('formulario');
     });
 

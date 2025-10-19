@@ -17,7 +17,7 @@ function updateWelcomeMessage() {
     if (!welcomeEl) return;
     const { config } = store.getState();
     const nome = config.nome;
-    welcomeEl.textContent = (nome && nome.trim() !== '') ? `Olá, ${nome}!` : `Bem-vindo!`;
+    welcomeEl.textContent = (nome && nome.trim() !== '') ? `${nome}!` : `Bem-vindo!`;
 }
 
 function updateHomeScreenDashboard() {
@@ -82,7 +82,7 @@ function go(page, options = {}) {
 
             const pageTitleEl = $("#page-title");
             if (page === 'home') {
-                pageTitleEl.innerHTML = `Bem-vindo ao <span class="animated-brand-text" style="font-size: inherit;">Escala Fácil</span>!`;
+                pageTitleEl.textContent = `Início`;
             } else if (activeTab) {
                 pageTitleEl.textContent = activeTab.querySelector('.tab-text').textContent;
             }
@@ -170,29 +170,57 @@ function renderRouter(actionName) {
     }
 }
 
-function initMainApp() {
-    store.subscribe(renderRouter);
-
-    renderRouter('LOAD_STATE');
-    go("home"); 
-
+function setupAppListeners() {
     $$(".tab-btn").forEach(b => b.addEventListener('click', () => go(b.dataset.page)));
     $$(".home-card").forEach(c => c.addEventListener('click', (e) => {
         e.preventDefault();
-        go(c.dataset.goto)
+        go(c.dataset.goto);
     }));
     $("#header-settings-btn").addEventListener('click', () => go('configuracoes'));
+}
 
+function initMainApp() {
+    const splashScreen = $("#splash-screen");
+    const splashUserName = $("#splash-user-name");
+    const { config } = store.getState();
+    const body = document.body;
+
+    body.classList.add('app-loading');
+    
+    const nome = config.nome;
+    splashUserName.textContent = (nome && nome.trim() !== '') ? nome : 'Usuário';
+
+    splashScreen.classList.add('animate');
     parseEmojisInElement(document.body);
+
+    store.subscribe(renderRouter);
+    renderRouter('LOAD_STATE');
+
+    // [CORREÇÃO] A duração total da animação agora é controlada pelo CSS.
+    // O JavaScript apenas inicia a saída e espera ela terminar.
+    setTimeout(() => {
+        splashScreen.classList.add('closing');
+        
+        // Espera a transição de fade-out da splash screen terminar
+        splashScreen.addEventListener('transitionend', () => {
+            splashScreen.style.display = 'none';
+            body.classList.remove('app-loading'); 
+            
+            // Agora, com a splash screen totalmente fora do caminho, navega para a home.
+            // Isso garante que a animação dos cards será acionada corretamente.
+            go("home", { force: true }); 
+            $("#page-title").textContent = "Início";
+
+        }, { once: true });
+
+    }, 4000); // Inicia a saída 1s antes do tempo total para uma transição suave
 }
 
 function init() {
-
-window.addEventListener('mousemove', e => {
+    window.addEventListener('mousemove', e => {
         document.body.style.setProperty('--mouse-x', `${e.clientX}px`);
         document.body.style.setProperty('--mouse-y', `${e.clientY}px`);
     });
-
 
     store.dispatch('LOAD_STATE');
     const onboardingComplete = localStorage.getItem('ge_onboarding_complete') === 'true';
@@ -201,6 +229,8 @@ window.addEventListener('mousemove', e => {
     } else {
         const welcomeOverlay = $("#welcome-overlay");
         if(welcomeOverlay) welcomeOverlay.style.display = 'none';
+        
+        setupAppListeners();
         initMainApp();
     }
 }

@@ -594,6 +594,16 @@ function handleKeyboardNav(event) {
             case 'ArrowLeft': col = Math.max(0, col - 1); break;
             case 'ArrowRight': col = Math.min(maxCols, col + 1); break;
         }
+        
+        if (key === 'ArrowUp' || key === 'ArrowDown') {
+            const newEmployeeId = allRows[row].dataset.employeeRowId;
+            const newIndex = editorState.scheduleOrderedFuncs.findIndex(f => f.id === newEmployeeId);
+            if (newIndex !== -1 && newIndex !== editorState.focusedEmployeeIndex) {
+                editorState.focusedEmployeeIndex = newIndex;
+                updateFocusedEmployee(false);
+            }
+        }
+        
         focusCell(row, col);
     }
 }

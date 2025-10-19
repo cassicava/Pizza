@@ -25,7 +25,20 @@ function calcCarga(inicio, fim, almocoMin, diasDeDiferenca = 0) {
   return Math.max(0, duracaoMin - (almocoMin || 0));
 }
 
-function addDays(dateISO,n){ const d=new Date(dateISO); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+/**
+ * Adiciona um número de dias a uma data no formato ISO (YYYY-MM-DD), de forma segura em relação a fusos horários.
+ * @param {string} dateISO - A data inicial.
+ * @param {number} n - O número de dias a adicionar.
+ * @returns {string} A nova data no formato ISO.
+ */
+function addDays(dateISO, n) {
+    const [year, month, day] = dateISO.split('-').map(Number);
+    // Cria a data em UTC para evitar problemas de fuso horário
+    const d = new Date(Date.UTC(year, month - 1, day));
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+}
+
 function dateRangeInclusive(startISO,endISO){ const days=[]; let d=startISO; while(d<=endISO){ days.push(d); d=addDays(d,1); } return days; }
 
 function generateEscalaNome(cargoName, inicio, fim) {
@@ -185,52 +198,78 @@ function mergeTimeIntervals(turnos) {
 function calculateFullConsecutiveWorkDays(employeeId, allSlots, targetDate, turnosMap) {
     const employeeShifts = allSlots
         .filter(s => s.assigned === employeeId && turnosMap[s.turnoId] && !turnosMap[s.turnoId].isSystem)
-        .map(s => ({
-            ...s,
-            startDate: new Date(`${s.date}T${turnosMap[s.turnoId].inicio}`).getTime(),
-            endDate: new Date(`${s.date}T${turnosMap[s.turnoId].inicio}`).getTime() + (turnosMap[s.turnoId].cargaMin * 60 * 1000)
-        }))
-        .sort((a, b) => a.startDate - b.startDate);
+        .sort((a, b) => a.date.localeCompare(b.date));
 
     if (employeeShifts.length === 0) return 0;
+
+    let targetIndex = employeeShifts.findIndex(s => s.date === targetDate);
+
+    // Se a data alvo não tem um turno, mas estamos simulando um (ex: mouseover com pincel),
+    // inserimos um turno temporário para encontrar sua posição na sequência.
+    if (targetIndex === -1) {
+        const tempShift = { date: targetDate, id: 'temp' };
+        // Adiciona e re-ordena para encontrar o índice correto
+        employeeShifts.push(tempShift);
+        employeeShifts.sort((a, b) => a.date.localeCompare(b.date));
+        targetIndex = employeeShifts.findIndex(s => s.id === 'temp');
+    }
     
-    const targetShift = employeeShifts.find(s => s.date === targetDate);
-    if (!targetShift) return 0;
+    if (targetIndex === -1) return 0;
 
-    let currentSequence = [];
-    let bestSequence = [];
+    let consecutiveCount = 1;
 
-    for (let i = 0; i < employeeShifts.length; i++) {
+    // Conta para trás a partir do dia alvo
+    for (let i = targetIndex - 1; i >= 0; i--) {
         const currentShift = employeeShifts[i];
+        const nextShift = employeeShifts[i + 1];
         
-        if (currentSequence.length === 0) {
-            currentSequence.push(currentShift);
+        const currentTurno = turnosMap[currentShift.turnoId];
+        if (!currentTurno) continue; // Pula se for um turno inválido (não deve acontecer)
+        
+        const currentShiftEndDate = addDays(currentShift.date, currentTurno.diasDeDiferenca || 0);
+        
+        // Uma sequência é consecutiva se o turno seguinte começar no mesmo dia ou no dia seguinte ao término do turno anterior.
+        if (nextShift.date <= addDays(currentShiftEndDate, 1)) {
+            consecutiveCount++;
         } else {
-            const lastShiftInSequence = currentSequence[currentSequence.length - 1];
-            const lastShiftEndDate = new Date(lastShiftInSequence.date + 'T00:00:00Z');
-            lastShiftEndDate.setUTCDate(lastShiftEndDate.getUTCDate() + (turnosMap[lastShiftInSequence.turnoId].diasDeDiferenca || 0));
-            
-            const nextDayAfterLastShift = new Date(lastShiftEndDate);
-            nextDayAfterLastShift.setUTCDate(nextDayAfterLastShift.getUTCDate() + 1);
-
-            const currentShiftDate = new Date(currentShift.date + 'T00:00:00Z');
-
-            if (currentShiftDate > nextDayAfterLastShift) {
-                // Quebrou a sequência, começa uma nova
-                currentSequence = [currentShift];
-            } else {
-                // Continua a sequência
-                currentSequence.push(currentShift);
-            }
+            break; // Encontrou um buraco na sequência
         }
+    }
+
+    // Conta para a frente a partir do dia alvo
+    for (let i = targetIndex + 1; i < employeeShifts.length; i++) {
+        const currentShift = employeeShifts[i];
+        const prevShift = employeeShifts[i - 1];
+
+        const prevTurno = turnosMap[prevShift.turnoId];
+        // Pula o turno temporário se ele foi o anterior
+        if (!prevTurno) {
+            // Se o turno anterior era temporário, precisamos olhar o que veio antes dele
+            const prevPrevShift = employeeShifts[i - 2];
+            if (!prevPrevShift) continue;
+            
+            const prevPrevTurno = turnosMap[prevPrevShift.turnoId];
+            if (!prevPrevTurno) continue;
+
+            const prevPrevShiftEndDate = addDays(prevPrevShift.date, prevPrevTurno.diasDeDiferenca || 0);
+             if (currentShift.date <= addDays(prevPrevShiftEndDate, 1)) {
+                consecutiveCount++;
+             } else {
+                break;
+             }
+             continue;
+        }
+
+        const prevShiftEndDate = addDays(prevShift.date, prevTurno.diasDeDiferenca || 0);
         
-        // Se a sequência atual contém o turno alvo, ela é a candidata a ser a "melhor"
-        if (currentSequence.some(s => s.id === targetShift.id)) {
-            bestSequence = [...currentSequence];
+        if (currentShift.date <= addDays(prevShiftEndDate, 1)) {
+            consecutiveCount++;
+        } else {
+            break; // Encontrou um buraco na sequência
         }
     }
     
-    return bestSequence.length;
+    return consecutiveCount;
 }
 
 

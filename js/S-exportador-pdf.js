@@ -20,7 +20,25 @@ function hideExportModal() {
  * @returns {jsPDF} - A instância do documento jsPDF.
  */
 function generateVisaoGeralPDF(escala) {
-    // Validação de dados: Garante que a escala tenha um snapshot válido.
+    // CORREÇÃO: Cria um snapshot temporário se a escala for recém-gerada e ainda não tiver um.
+    if (!escala.snapshot) {
+        const { funcionarios, turnos } = store.getState();
+        const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
+        const funcsInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.assigned));
+        const turnosInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId));
+        
+        escala.snapshot = { funcionarios: {}, turnos: {} };
+
+        funcsInvolvedIds.forEach(id => {
+            const func = funcionarios.find(f => f.id === id);
+            if (func) escala.snapshot.funcionarios[id] = { nome: func.nome, documento: func.documento };
+        });
+        turnosInvolvedIds.forEach(id => {
+            const turno = allTurnos.find(t => t.id === id);
+            if (turno) escala.snapshot.turnos[id] = { nome: turno.nome, sigla: turno.sigla, cor: turno.cor, inicio: turno.inicio, fim: turno.fim };
+        });
+    }
+
     if (!escala || !escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
         throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
     }
@@ -323,6 +341,25 @@ function generateVisaoGeralPDF(escala) {
  * @returns {jsPDF} - A instância do documento jsPDF.
  */
 function generateRelatorioDiarioPDF(escala) {
+    // CORREÇÃO: Cria um snapshot temporário se a escala for recém-gerada e ainda não tiver um.
+    if (!escala.snapshot) {
+        const { funcionarios, turnos } = store.getState();
+        const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
+        const funcsInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.assigned));
+        const turnosInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId));
+        
+        escala.snapshot = { funcionarios: {}, turnos: {} };
+
+        funcsInvolvedIds.forEach(id => {
+            const func = funcionarios.find(f => f.id === id);
+            if (func) escala.snapshot.funcionarios[id] = { nome: func.nome, documento: func.documento };
+        });
+        turnosInvolvedIds.forEach(id => {
+            const turno = allTurnos.find(t => t.id === id);
+            if (turno) escala.snapshot.turnos[id] = { nome: turno.nome, sigla: turno.sigla, cor: turno.cor, inicio: turno.inicio, fim: turno.fim };
+        });
+    }
+
     if (!escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
         throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
     }

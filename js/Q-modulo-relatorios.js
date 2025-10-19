@@ -1,74 +1,94 @@
 /**************************************
- * 📊 Relatórios e Métricas (v3 - Por Cargo/Escala)
+ * 📊 Relatórios e Métricas (v4 - Dashboard de Análise de Escala)
  **************************************/
 
-// Variáveis para armazenar as instâncias dos gráficos e evitar duplicação
-let horasChartInstance = null;
-let metaTurnosChartInstance = null;
-let folgasSabadoChartInstance = null;
-let folgasDomingoChartInstance = null;
-let turnosChartInstance = null;
+// Estado da página de relatórios
+const relatoriosState = {
+    cargoId: null,
+    ano: null, 
+    escalaId: null,
+    funcionarioId: null,
+    rankingSort: {
+        key: 'nome',
+        direction: 'asc'
+    },
+    currentMetrics: null, 
+};
 
-/**
- * Destrói todas as instâncias de gráficos existentes para evitar memory leaks.
- */
+// Instâncias dos gráficos
+let geralTurnosChartInstance = null;
+let folgasChartInstance = null;
+let individualComparisonChartInstance = null;
+
 function destroyCharts() {
-    if(horasChartInstance) horasChartInstance.destroy();
-    if(metaTurnosChartInstance) metaTurnosChartInstance.destroy();
-    if(folgasSabadoChartInstance) folgasSabadoChartInstance.destroy();
-    if(folgasDomingoChartInstance) folgasDomingoChartInstance.destroy();
-    if(turnosChartInstance) turnosChartInstance.destroy();
-    horasChartInstance = null;
-    metaTurnosChartInstance = null;
-    folgasSabadoChartInstance = null;
-    folgasDomingoChartInstance = null;
-    turnosChartInstance = null;
+    if (geralTurnosChartInstance) geralTurnosChartInstance.destroy();
+    if (folgasChartInstance) folgasChartInstance.destroy();
+    if (individualComparisonChartInstance) individualComparisonChartInstance.destroy();
+    geralTurnosChartInstance = null;
+    folgasChartInstance = null;
+    individualComparisonChartInstance = null;
 }
 
-/**
- * Lida com a mudança no seletor de CARGO, disparando a renderização da lista de escalas.
- */
 function handleRelatorioCargoChange() {
-    const cargoId = $("#relatorioCargoSelect").value;
-    renderRelatoriosEscalaList(cargoId);
+    relatoriosState.cargoId = $("#relatorioCargoSelect").value;
+    relatoriosState.escalaId = null;
+    relatoriosState.ano = null; 
+    $('#relatorios-dashboard-container').classList.add('hidden');
+    
+    renderRelatoriosAnoSelect(); 
+    renderRelatoriosEscalaList();
 }
 
-/**
- * Renderiza a lista de escalas disponíveis para o cargo selecionado.
- * @param {string} cargoId - O ID do cargo selecionado.
- */
-function renderRelatoriosEscalaList(cargoId) {
+function renderRelatoriosAnoSelect() {
+    const { escalas } = store.getState();
+    const anoSelect = $("#relatorioAnoSelect");
+    if (!anoSelect) return;
+
+    const cargoId = relatoriosState.cargoId;
+    const escalasParaFiltrar = cargoId ? escalas.filter(e => e.cargoId === cargoId) : [];
+    
+    const anosDisponiveis = [...new Set(escalasParaFiltrar.map(e => e.inicio.substring(0, 4)))].sort((a, b) => b.localeCompare(a));
+    
+    anoSelect.innerHTML = `<option value="">Selecione um ano...</option>`;
+    anosDisponiveis.forEach(ano => {
+        const option = document.createElement('option');
+        option.value = ano;
+        option.textContent = ano;
+        anoSelect.appendChild(option);
+    });
+    anoSelect.disabled = !cargoId || anosDisponiveis.length === 0;
+}
+
+function renderRelatoriosEscalaList() {
     const { escalas } = store.getState();
     const container = $("#relatoriosEscalaListContainer");
-    const reportsContainer = $("#relatorios-container");
     
-    // Esconde os relatórios e limpa a lista anterior
-    reportsContainer.classList.add('hidden');
-    destroyCharts();
     container.innerHTML = "";
 
-    if (!cargoId) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Selecione um cargo para listar as escalas disponíveis.</p>`;
+    const { cargoId, ano } = relatoriosState;
+
+    if (!cargoId || !ano) {
+        let message = "Selecione um cargo e um ano para listar as escalas.";
+        if(cargoId && !ano) message = "Agora, selecione um ano para continuar.";
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">${message}</p>`;
         return;
     }
 
-    const escalasFiltradas = escalas.filter(e => e.cargoId === cargoId);
+    const escalasFiltradas = escalas.filter(e => {
+        const matchCargo = e.cargoId === cargoId;
+        const matchAno = e.inicio.startsWith(ano);
+        return matchCargo && matchAno;
+    });
 
     if (escalasFiltradas.length === 0) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma escala salva encontrada para este cargo.</p>`;
+        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma escala salva encontrada para os filtros selecionados.</p>`;
         return;
     }
 
-    // Usa a função utilitária para agrupar as escalas
     const escalasAgrupadas = groupEscalasByMonth(escalasFiltradas);
     const anosOrdenados = Object.keys(escalasAgrupadas).sort((a, b) => b.localeCompare(a));
 
     anosOrdenados.forEach(ano => {
-        const fieldsetAno = document.createElement('fieldset');
-        fieldsetAno.className = 'year-group-fieldset';
-        fieldsetAno.innerHTML = `<legend>${ano}</legend>`;
-        container.appendChild(fieldsetAno);
-
         const mesesDoAno = escalasAgrupadas[ano];
         const mesesOrdenados = Object.keys(mesesDoAno).sort((a, b) => b.localeCompare(a));
 
@@ -76,43 +96,44 @@ function renderRelatoriosEscalaList(cargoId) {
             const nomeMes = new Date(ano, parseInt(mesNumero) - 1, 1).toLocaleString('pt-BR', { month: 'long' });
             const tituloMes = document.createElement('h3');
             tituloMes.className = 'home-section-title';
-            tituloMes.style.marginTop = '0';
             tituloMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-            fieldsetAno.appendChild(tituloMes);
+            container.appendChild(tituloMes);
 
             const gridContainer = document.createElement('div');
             gridContainer.className = 'card-grid';
-            fieldsetAno.appendChild(gridContainer);
+            container.appendChild(gridContainer);
             
             const escalasDoMes = mesesDoAno[mesNumero].sort((a,b) => b.inicio.localeCompare(a.inicio));
 
             escalasDoMes.forEach(esc => {
+                const temVagas = esc.slots.some(s => !s.assigned);
+                const statusIcon = temVagas ? '⚠️' : '✅';
+                const statusClass = temVagas ? 'status-warning' : 'status-ok';
+                const statusTitle = temVagas ? 'Escala com turnos vagos' : 'Escala completa';
+
                 const card = document.createElement("div");
                 card.className = "escala-card";
                 card.dataset.escalaId = esc.id;
-                const periodo = `${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
-                card.innerHTML = `<h3>${esc.nome}</h3><p class="muted">${periodo}</p>`;
+                const periodo = `<strong>Período:</strong> ${new Date(esc.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(esc.fim+'T12:00:00').toLocaleDateString()}`;
+                const modificadoEm = esc.lastModified ? `<p class="muted" style="font-size: 0.8rem; margin-top: 8px;">Atualizado em: ${formatISODate(esc.lastModified)}</p>` : '';
+
+                card.innerHTML = `
+                    <div class="escala-card-status ${statusClass}" title="${statusTitle}">${statusIcon}</div>
+                    <div class="escala-card-content">
+                        <h3>${esc.nome}</h3>
+                        <p class="muted">${periodo}</p>
+                        ${modificadoEm}
+                    </div>
+                `;
                 gridContainer.appendChild(card);
             });
         });
     });
+    parseEmojisInElement(container);
 }
 
-
-/**
- * Exibe o relatório para uma escala específica após o clique no card.
- * @param {string} escalaId - O ID da escala a ser analisada.
- */
 async function displayReportForEscala(escalaId) {
-    const container = $("#relatorios-container");
-    destroyCharts();
-
-    if (!escalaId) {
-        container.classList.add('hidden');
-        return;
-    }
-    
-    // Adiciona a classe 'active' ao card clicado
+    relatoriosState.escalaId = escalaId;
     $$('#relatoriosEscalaListContainer .escala-card').forEach(card => {
         card.classList.toggle('active', card.dataset.escalaId === escalaId);
     });
@@ -125,49 +146,74 @@ async function displayReportForEscala(escalaId) {
         const escalaSelecionada = escalas.find(e => e.id === escalaId);
 
         if (escalaSelecionada) {
-            const metrics = calculateMetricsForScale(escalaSelecionada);
-            renderMetrics(metrics);
-            container.classList.remove('hidden');
+            relatoriosState.currentMetrics = calculateMetricsForScale(escalaSelecionada);
+            renderDashboard(relatoriosState.currentMetrics, `Análise da Escala: ${escalaSelecionada.nome}`);
         }
     } catch (error) {
         console.error("Erro ao gerar relatório:", error);
         showToast("Ocorreu um erro ao gerar este relatório.");
-        container.classList.add('hidden');
+        $('#relatorios-dashboard-container').classList.add('hidden');
     } finally {
         hideLoader();
     }
 }
 
+function renderDashboard(metrics, title) {
+    destroyCharts();
+    $('#relatorios-dashboard-container').classList.remove('hidden');
+    
+    const headerContainer = $('#dashboard-header-container');
+    headerContainer.innerHTML = `
+        <div class="card relatorios-header-card">
+            <h2 id="dashboard-title" class="config-card-title" style="border: none; margin: 0; padding: 0;"></h2>
+            <div class="painel-tabs" id="dashboard-tabs">
+                <button class="painel-tab-btn active" data-tab="visao-geral">Visão Geral</button>
+                <button class="painel-tab-btn" data-tab="analise-individual" disabled>Análise Individual</button>
+            </div>
+        </div>
+    `;
+    $('#dashboard-title').textContent = title;
+    
+    relatoriosState.funcionarioId = null;
+    
+    const tabIndividual = $('#dashboard-tabs [data-tab="analise-individual"]');
+    tabIndividual.disabled = true;
+    
+    renderDashboardKPIs(metrics);
+    renderRankingTable(metrics);
+    renderAggregateCharts(metrics);
+    
+    const individualPane = $('#analise-individual-content');
+    individualPane.innerHTML = '';
+    
+    $$('#dashboard-tabs .painel-tab-btn').forEach(t => t.classList.toggle('active', t.dataset.tab === 'visao-geral'));
+    $$('#dashboard-content .dashboard-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === 'visao-geral'));
+}
 
-/**
- * É chamada quando o usuário navega para a página de relatórios.
- */
+
 function renderRelatoriosPage() {
     const { cargos, escalas } = store.getState();
     const cargoSelect = $("#relatorioCargoSelect");
-    const container = $("#relatorios-container");
-    const emptyState = $("#relatorios-empty-state");
-    const listContainer = $("#relatoriosEscalaListContainer");
 
-    // Limpa e reseta a página
     destroyCharts();
-    container.classList.add('hidden');
-    listContainer.innerHTML = "";
+    $('#relatorios-dashboard-container').classList.add('hidden');
+    $('#relatoriosEscalaListContainer').innerHTML = "";
     cargoSelect.innerHTML = '<option value="">Selecione um cargo...</option>';
 
     const cargosComEscalasIds = [...new Set(escalas.map(e => e.cargoId))];
     
     if (cargosComEscalasIds.length === 0) {
-        emptyState.innerHTML = `<div class="empty-state">
+        $("#relatorios-empty-state").innerHTML = `<div class="empty-state">
             <div class="empty-state-icon">📊</div>
             <h3>Nenhuma Escala para Analisar</h3>
             <p>Você precisa ter pelo menos uma escala salva para poder visualizar os relatórios.</p>
         </div>`;
-        emptyState.classList.remove('hidden');
+        $("#relatorios-empty-state").classList.remove('hidden');
         cargoSelect.disabled = true;
     } else {
-        emptyState.classList.add('hidden');
+        $("#relatorios-empty-state").classList.add('hidden');
         cargoSelect.disabled = false;
+        
         const cargosFiltrados = cargos.filter(c => cargosComEscalasIds.includes(c.id))
                                       .sort((a,b) => a.nome.localeCompare(b.nome));
         
@@ -178,306 +224,377 @@ function renderRelatoriosPage() {
             cargoSelect.appendChild(option);
         });
         
-        // Inicia a tela com a mensagem para selecionar um cargo
+        relatoriosState.cargoId = null;
         handleRelatorioCargoChange();
     }
 }
 
-/**
- * Inicializa a página de relatórios, adicionando os listeners de eventos.
- */
 function initRelatoriosPage() {
-    const cargoSelect = $("#relatorioCargoSelect");
-    if (cargoSelect) cargoSelect.addEventListener("change", handleRelatorioCargoChange);
+    $("#relatorioCargoSelect").addEventListener("change", handleRelatorioCargoChange);
 
-    const listContainer = $("#relatoriosEscalaListContainer");
-    if (listContainer) {
-        listContainer.addEventListener('click', (event) => {
-            const card = event.target.closest('.escala-card');
-            if(card && card.dataset.escalaId) {
-                displayReportForEscala(card.dataset.escalaId);
-            }
-        });
-    }
+    $("#relatorioAnoSelect").addEventListener('change', () => {
+        relatoriosState.ano = $("#relatorioAnoSelect").value;
+        renderRelatoriosEscalaList();
+    });
+
+    $("#relatoriosEscalaListContainer").addEventListener('click', (event) => {
+        const card = event.target.closest('.escala-card');
+        if(card && card.dataset.escalaId) {
+            displayReportForEscala(card.dataset.escalaId);
+        }
+    });
+
+    $('#relatorios-dashboard-container').addEventListener('click', (e) => {
+        const btn = e.target.closest('#dashboard-tabs .painel-tab-btn');
+        if (!btn || btn.disabled) return;
+        $$('#dashboard-tabs .painel-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        $$('#dashboard-content .dashboard-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === btn.dataset.tab));
+    });
 }
 
-
-// O restante do arquivo (calculateMetricsForScale, renderMetrics, etc.) permanece o mesmo
+document.addEventListener("DOMContentLoaded", initRelatoriosPage);
 
 function calculateMetricsForScale(escala) {
     const { funcionarios, turnos } = store.getState();
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
-    const funcionariosMap = Object.fromEntries(funcionarios.map(f => [f.id, f]));
-    const turnosMap = Object.fromEntries(allTurnos.map(t => [t.id, t]));
+    const funcionariosMap = new Map(funcionarios.map(f => [f.id, f]));
+    const turnosMap = new Map(allTurnos.map(t => [t.id, t]));
 
     const employeeMetrics = {};
     let totalHorasExtras = 0;
     const totalTurnosCount = {};
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
-    const totalSabados = dateRange.filter(d => new Date(d + 'T12:00:00').getUTCDay() === 6).length;
-    const totalDomingos = dateRange.filter(d => new Date(d + 'T12:00:00').getUTCDay() === 0).length;
+    
+    const funcsDaEscala = Object.keys(escala.historico || {});
 
-    for (const funcId in escala.historico) {
-        if (!funcionariosMap[funcId]) continue; 
+    funcsDaEscala.forEach(funcId => {
+        const funcionario = funcionariosMap.get(funcId);
+        if (!funcionario) return;
 
-        const funcionario = funcionariosMap[funcId];
         const medicao = funcionario.medicaoCarga || 'horas';
-
         const horasTrabalhadas = (escala.historico[funcId]?.horasTrabalhadas / 60) || 0;
-        const turnosTrabalhados = escala.historico[funcId].turnosTrabalhados || 0;
+        const turnosTrabalhados = escala.historico[funcId]?.turnosTrabalhados || 0;
+        
+        const { cargos } = store.getState();
+        const cargo = cargos.find(c => c.id === escala.cargoId);
+        const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
         
         const metaHoras = calcularMetaHoras(funcionario, escala.inicio, escala.fim);
-        const metaTurnos = calcularMetaTurnos(funcionario, escala.inicio, escala.fim);
+        const metaTurnos = calcularMetaTurnos(funcionario, escala.inicio, escala.fim, cargoDiasOperacionais);
         
         const horasExtras = medicao === 'horas' ? Math.max(0, horasTrabalhadas - metaHoras) : 0;
+        const turnosExtras = medicao === 'turnos' ? Math.max(0, turnosTrabalhados - metaTurnos) : 0;
         
         const turnosDoFunc = escala.slots.filter(s => s.assigned === funcId);
         const turnosCount = {};
         turnosDoFunc.forEach(slot => {
-            const turnoNome = turnosMap[slot.turnoId]?.nome || 'Desconhecido';
-            turnosCount[turnoNome] = (turnosCount[turnoNome] || 0) + 1;
-            totalTurnosCount[turnoNome] = (totalTurnosCount[turnoNome] || 0) + 1;
+            const turno = turnosMap.get(slot.turnoId);
+            if (turno) {
+                turnosCount[turno.nome] = (turnosCount[turno.nome] || 0) + 1;
+                if (!turno.isSystem) {
+                    totalTurnosCount[turno.nome] = (totalTurnosCount[turno.nome] || 0) + 1;
+                }
+            }
         });
 
-        const diasTrabalhados = new Set(turnosDoFunc.map(s => s.date));
+        const diasTrabalhados = new Set(turnosDoFunc.filter(s => !turnosMap.get(s.turnoId)?.isSystem).map(s => s.date));
         let sabadosTrabalhados = 0;
         let domingosTrabalhados = 0;
-        diasTrabalhados.forEach(date => {
+        dateRange.forEach(date => {
             const diaSemana = new Date(date + 'T12:00:00').getUTCDay();
-            if (diaSemana === 6) sabadosTrabalhados++;
-            if (diaSemana === 0) domingosTrabalhados++;
+            if (diaSemana === 6 && diasTrabalhados.has(date)) sabadosTrabalhados++;
+            if (diaSemana === 0 && diasTrabalhados.has(date)) domingosTrabalhados++;
         });
+        
+        const totalSabados = dateRange.filter(d => new Date(d + 'T12:00:00').getUTCDay() === 6).length;
+        const totalDomingos = dateRange.filter(d => new Date(d + 'T12:00:00').getUTCDay() === 0).length;
 
         employeeMetrics[funcId] = {
+            id: funcId,
             nome: funcionario.nome,
             medicaoCarga: medicao,
             horasTrabalhadas,
             metaHoras,
+            saldoHoras: horasTrabalhadas - metaHoras,
             horasExtras,
             turnosTrabalhados,
             metaTurnos,
+            saldoTurnos: turnosTrabalhados - metaTurnos,
+            turnosExtras,
             turnosCount,
             sabadosDeFolga: totalSabados - sabadosTrabalhados,
             domingosDeFolga: totalDomingos - domingosTrabalhados,
         };
 
         totalHorasExtras += horasExtras;
-    }
+    });
 
     return {
         employeeMetrics: Object.values(employeeMetrics).sort((a,b) => a.nome.localeCompare(b.nome)),
         totalHorasExtras,
         totalTurnosCount,
+        escala
     };
 }
 
-function renderMetrics(metrics) {
-    const { employeeMetrics, totalHorasExtras, totalTurnosCount } = metrics;
+function renderDashboardKPIs(metrics) {
+    const { employeeMetrics, totalTurnosCount, totalHorasExtras } = metrics;
+    let totalHoras = 0, totalAusencias = 0;
+
+    employeeMetrics.forEach(emp => {
+        totalHoras += emp.horasTrabalhadas;
+        if(emp.turnosCount) {
+            Object.keys(emp.turnosCount).forEach(turnoNome => {
+                if (Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === turnoNome)) {
+                    totalAusencias += emp.turnosCount[turnoNome];
+                }
+            });
+        }
+    });
     
-    $("#summary-horas-extras").textContent = `${totalHorasExtras.toFixed(1)}h`;
-    $("#summary-total-funcs").textContent = employeeMetrics.length;
+    const turnoFrequente = Object.entries(totalTurnosCount)
+        .sort((a, b) => b[1] - a[1])[0];
+
+    $('#kpi-total-horas').textContent = `${totalHoras.toFixed(1)}h`;
     
-    destroyCharts();
+    const kpiHorasExtras = $('#kpi-horas-extras');
+    kpiHorasExtras.textContent = `${totalHorasExtras.toFixed(1)}h`;
+    kpiHorasExtras.parentElement.parentElement.classList.toggle('has-value', totalHorasExtras > 0);
 
-    const employeesByHoras = employeeMetrics.filter(e => e.medicaoCarga === 'horas');
-    const employeesByTurnos = employeeMetrics.filter(e => e.medicaoCarga === 'turnos');
 
-    const horasChartContainer = $('#horasChartContainerWrapper');
-    if (employeesByHoras.length > 0) {
-        horasChartContainer.style.display = 'block';
-        const horasCtx = $('#horasChart').getContext('2d');
-        horasChartInstance = new Chart(horasCtx, {
-            type: 'bar',
-            data: {
-                labels: employeesByHoras.map(e => e.nome),
-                datasets: [{
-                    label: 'Horas Trabalhadas',
-                    data: employeesByHoras.map(e => e.horasTrabalhadas),
-                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                }, {
-                    label: 'Meta de Horas',
-                    data: employeesByHoras.map(e => e.metaHoras),
-                    backgroundColor: 'rgba(203, 213, 225, 0.7)',
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        });
-    } else {
-        horasChartContainer.style.display = 'none';
-    }
-
-    const turnosChartContainer = $('#turnosChartContainerWrapper');
-    if (employeesByTurnos.length > 0) {
-        turnosChartContainer.style.display = 'block';
-        const metaTurnosCtx = $('#metaTurnosChart').getContext('2d');
-        metaTurnosChartInstance = new Chart(metaTurnosCtx, {
-            type: 'bar',
-            data: {
-                labels: employeesByTurnos.map(e => e.nome),
-                datasets: [{
-                    label: 'Turnos Realizados',
-                    data: employeesByTurnos.map(e => e.turnosTrabalhados),
-                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                }, {
-                    label: 'Meta de Turnos',
-                    data: employeesByTurnos.map(e => e.metaTurnos),
-                    backgroundColor: 'rgba(203, 213, 225, 0.7)',
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-        });
-    } else {
-        turnosChartContainer.style.display = 'none';
-    }
-
-    renderFolgasCharts(employeeMetrics);
-    renderTurnosChart(totalTurnosCount);
-    renderAusenciasTable(employeeMetrics);
-    renderEmployeeShiftDistributionTable(employeeMetrics);
+    $('#kpi-ausencias').textContent = totalAusencias;
+    $('#kpi-turno-frequente').textContent = turnoFrequente ? turnoFrequente[0] : '-';
 }
 
-function renderTurnosChart(totalTurnosCount) {
+function renderRankingTable(metrics) {
+    const container = $('#relatorio-ranking-table-container');
+    const { key, direction } = relatoriosState.rankingSort;
+
+    const sortedEmployees = [...metrics.employeeMetrics].sort((a, b) => {
+        let valA = a[key], valB = b[key];
+        
+        if (key === 'saldo') {
+            valA = a.medicaoCarga === 'horas' ? a.saldoHoras : a.saldoTurnos;
+            valB = b.medicaoCarga === 'horas' ? b.saldoHoras : b.saldoTurnos;
+        } else if (key === 'extras') {
+            valA = a.horasExtras;
+            valB = b.horasExtras;
+        } else if (key === 'ausencias') {
+            valA = Object.entries(a.turnosCount).filter(([n, _]) => Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === n)).reduce((sum, [_, c]) => sum + c, 0);
+            valB = Object.entries(b.turnosCount).filter(([n, _]) => Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === n)).reduce((sum, [_, c]) => sum + c, 0);
+        } else if (key === 'fds') {
+            valA = a.sabadosDeFolga + a.domingosDeFolga;
+            valB = b.sabadosDeFolga + b.domingosDeFolga;
+        }
+
+        if (typeof valA === 'string') {
+            return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return direction === 'asc' ? valA - valB : valB - valA;
+    });
+
+    const getArrow = (sortKey) => (key !== sortKey) ? '' : (direction === 'asc' ? ' ▲' : ' ▼');
+
+    let tableHTML = `<table class="table"><thead><tr>
+        <th data-sort-by="nome">Funcionário${getArrow('nome')}</th>
+        <th data-sort-by="horasTrabalhadas">Realizado / Meta${getArrow('horasTrabalhadas')}</th>
+        <th data-sort-by="saldo">Saldo${getArrow('saldo')}</th>
+        <th data-sort-by="extras">Horas Extras${getArrow('extras')}</th>
+        <th data-sort-by="ausencias">Ausências${getArrow('ausencias')}</th>
+        <th data-sort-by="fds">Folgas FDS (S/D)${getArrow('fds')}</th>
+    </tr></thead><tbody>`;
+
+    sortedEmployees.forEach(emp => {
+        const isHoras = emp.medicaoCarga === 'horas';
+        const realizado = isHoras ? emp.horasTrabalhadas.toFixed(1) + 'h' : emp.turnosTrabalhados;
+        const meta = isHoras ? emp.metaHoras.toFixed(1) + 'h' : emp.metaTurnos;
+        const saldo = isHoras ? (emp.saldoHoras > 0 ? '+' : '') + emp.saldoHoras.toFixed(1) + 'h' : (emp.saldoTurnos > 0 ? '+' : '') + emp.saldoTurnos;
+        const extras = emp.horasExtras.toFixed(1) + 'h';
+        const ausencias = Object.entries(emp.turnosCount).filter(([n, _]) => Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === n)).reduce((sum, [_, c]) => sum + c, 0);
+
+        tableHTML += `<tr data-employee-id="${emp.id}" style="cursor: pointer;">
+            <td>${emp.nome}</td>
+            <td>${realizado} / ${meta}</td>
+            <td>${saldo}</td>
+            <td>${extras}</td>
+            <td>${ausencias}</td>
+            <td>${emp.sabadosDeFolga}/${emp.domingosDeFolga}</td>
+        </tr>`;
+    });
+
+    tableHTML += '</tbody></table>';
+    container.innerHTML = tableHTML;
+
+    $('thead', container).onclick = e => {
+        const th = e.target.closest('th');
+        if (!th || !th.dataset.sortBy) return;
+        const newKey = th.dataset.sortBy;
+        relatoriosState.rankingSort.direction = (relatoriosState.rankingSort.key === newKey && relatoriosState.rankingSort.direction === 'desc') ? 'asc' : 'desc';
+        relatoriosState.rankingSort.key = newKey;
+        renderRankingTable(metrics);
+    };
+    
+    $('tbody', container).onclick = e => {
+        const tr = e.target.closest('tr');
+        if (!tr || !tr.dataset.employeeId) return;
+        relatoriosState.funcionarioId = tr.dataset.employeeId;
+        renderIndividualAnalysis(metrics, relatoriosState.funcionarioId);
+    };
+}
+
+function renderAggregateCharts(metrics) {
+    const { totalTurnosCount, employeeMetrics } = metrics;
     const { turnos } = store.getState();
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const turnosMap = Object.fromEntries(allTurnos.map(t => [t.nome, t]));
 
-    const turnosCtx = $('#turnosChart').getContext('2d');
-    const labels = Object.keys(totalTurnosCount);
-    const data = Object.values(totalTurnosCount);
-    
-    const backgroundColors = labels.map(label => turnosMap[label]?.cor || '#cbd5e1');
+    const turnosData = Object.entries(totalTurnosCount).sort((a,b) => b[1] - a[1]);
 
-    turnosChartInstance = new Chart(turnosCtx, {
+    const turnosCtx = $('#geralTurnosChart').getContext('2d');
+    geralTurnosChartInstance = new Chart(turnosCtx, {
+        type: 'doughnut',
+        data: { labels: turnosData.map(d => d[0]), datasets: [{ data: turnosData.map(d => d[1]), backgroundColor: turnosData.map(d => turnosMap[d[0]]?.cor || '#cbd5e1') }] },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    const folgasCtx = $('#folgasChart').getContext('2d');
+    folgasChartInstance = new Chart(folgasCtx, {
         type: 'bar',
         data: {
-            labels: labels,
-            datasets: [{
-                label: 'Nº de Turnos',
-                data: data,
-                backgroundColor: backgroundColors,
-            }]
+            labels: employeeMetrics.map(e => e.nome),
+            datasets: [
+                { label: 'Sábados de Folga', data: employeeMetrics.map(e => e.sabadosDeFolga), backgroundColor: 'rgba(168, 85, 247, 0.7)' },
+                { label: 'Domingos de Folga', data: employeeMetrics.map(e => e.domingosDeFolga), backgroundColor: 'rgba(249, 115, 22, 0.7)' }
+            ]
         },
-        options: { 
-            indexAxis: 'y',
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
     });
 }
 
-function renderFolgasCharts(employeeMetrics) {
-    const labels = employeeMetrics.map(e => e.nome);
-    const sabadosData = employeeMetrics.map(e => e.sabadosDeFolga);
-    const domingosData = employeeMetrics.map(e => e.domingosDeFolga);
+function renderIndividualAnalysis(metrics, employeeId) {
+    const employeeData = metrics.employeeMetrics.find(emp => emp.id === employeeId);
+    if (!employeeData) return;
 
-    const options = {
-        type: 'bar',
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { x: { ticks: { stepSize: 1 } } }
-        }
-    };
-    
-    const sabadoCtx = $('#folgasSabadoChart').getContext('2d');
-    folgasSabadoChartInstance = new Chart(sabadoCtx, {
-        ...options,
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Sábados de Folga',
-                data: sabadosData,
-                backgroundColor: 'rgba(168, 85, 247, 0.7)',
-            }]
-        }
-    });
-    
-    const domingoCtx = $('#folgasDomingoChart').getContext('2d');
-    folgasDomingoChartInstance = new Chart(domingoCtx, {
-        ...options,
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Domingos de Folga',
-                data: domingosData,
-                backgroundColor: 'rgba(249, 115, 22, 0.7)',
-            }]
-        }
-    });
+    const tabBtn = $('#dashboard-tabs [data-tab="analise-individual"]');
+    tabBtn.disabled = false;
+    tabBtn.click();
+
+    const container = $('#analise-individual-content');
+    const ausenciasCount = Object.entries(employeeData.turnosCount)
+        .filter(([n, _]) => Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === n))
+        .reduce((sum, [_, c]) => sum + c, 0);
+
+    container.innerHTML = `
+        <div class="analise-individual-grid">
+            <div class="analise-individual-col-left">
+                <div class="card">
+                    <h3 class="config-card-title">${employeeData.nome}</h3>
+                    <div class="kpi-grid">
+                        <div class="card kpi-card"><h4>Realizado</h4><p>${employeeData.medicaoCarga === 'horas' ? employeeData.horasTrabalhadas.toFixed(1) + 'h' : employeeData.turnosTrabalhados}</p></div>
+                        <div class="card kpi-card"><h4>Meta</h4><p>${employeeData.medicaoCarga === 'horas' ? employeeData.metaHoras.toFixed(1) + 'h' : employeeData.metaTurnos}</p></div>
+                        <div class="card kpi-card"><h4>Saldo</h4><p class="${(employeeData.medicaoCarga === 'horas' ? employeeData.saldoHoras : employeeData.saldoTurnos) > 0 ? 'positive' : 'negative'}">${employeeData.medicaoCarga === 'horas' ? (employeeData.saldoHoras > 0 ? '+' : '') + employeeData.saldoHoras.toFixed(1) + 'h' : (employeeData.saldoTurnos > 0 ? '+' : '') + employeeData.saldoTurnos}</p></div>
+                        <div class="card kpi-card"><h4>Ausências</h4><p>${ausenciasCount}</p></div>
+                    </div>
+                </div>
+                <div class="card" id="individual-turnos-table-container">
+                </div>
+            </div>
+            <div class="analise-individual-col-right">
+                <div class="card">
+                    <div class="analise-individual-calendar" id="individual-calendar-container"></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    renderIndividualTurnosTable($('#individual-turnos-table-container'), employeeData);
+    renderIndividualActivityCalendar(metrics.escala, employeeData);
 }
 
+function renderIndividualTurnosTable(container, employeeData) {
+    if (!container) return;
 
-function renderAusenciasTable(employeeMetrics) {
-    const container = $("#ausenciasContainer");
-    
-    const allAusenciaTypes = new Set();
-    employeeMetrics.forEach(emp => {
-        Object.keys(emp.turnosCount).forEach(turnoName => {
-            const turno = Object.values(TURNOS_SISTEMA_AUSENCIA).find(t => t.nome === turnoName);
-            if (turno) allAusenciaTypes.add(turno.nome);
-        });
-    });
+    const turnosDeTrabalho = Object.entries(employeeData.turnosCount)
+        .filter(([nome, _]) => !Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === nome))
+        .sort((a,b) => b[1] - a[1]);
 
-    if (allAusenciaTypes.size === 0) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhuma ausência registrada nesta escala.</p>`;
-        return;
-    }
-    
-    const sortedTypes = Array.from(allAusenciaTypes).sort();
-
-    let tableHTML = `<table class="table table-sm"><thead><tr><th>Funcionário</th>`;
-    sortedTypes.forEach(type => tableHTML += `<th>${type}</th>`);
-    tableHTML += `<th>Total</th></tr></thead><tbody>`;
-
-    employeeMetrics.forEach(emp => {
-        let totalAusencias = 0;
-        tableHTML += `<tr><td>${emp.nome}</td>`;
-        sortedTypes.forEach(type => {
-            const count = emp.turnosCount[type] || 0;
-            totalAusencias += count;
-            tableHTML += `<td>${count}</td>`;
-        });
-        tableHTML += `<td><strong>${totalAusencias}</strong></td>`;
-        tableHTML += `</tr>`;
-    });
-    
-    tableHTML += `</tbody></table>`;
-    container.innerHTML = tableHTML;
-}
-
-function renderEmployeeShiftDistributionTable(employeeMetrics) {
-    const container = $("#distribuicaoTurnosContainer");
-    
-    const allTurnoNames = new Set();
-    employeeMetrics.forEach(emp => {
-        Object.keys(emp.turnosCount).forEach(turnoName => allTurnoNames.add(turnoName));
-    });
-
-    if(allTurnoNames.size === 0) {
-        container.innerHTML = `<p class="muted" style="text-align: center; padding: 16px;">Nenhum turno alocado nesta escala para exibir a distribuição.</p>`;
+    if (turnosDeTrabalho.length === 0) {
+        container.innerHTML = `
+            <h3 class="config-card-title">Resumo de Turnos</h3>
+            <p class="muted" style="text-align:center;">Nenhum turno de trabalho alocado para este funcionário na escala.</p>`;
         return;
     }
 
-    const sortedTurnoNames = Array.from(allTurnoNames).sort();
+    const tableRows = turnosDeTrabalho.map(([nome, quantidade]) => `
+        <tr>
+            <td>${nome}</td>
+            <td>${quantidade}</td>
+        </tr>
+    `).join('');
 
-    let tableHTML = `<table class="table table-sm"><thead><tr><th>Funcionário</th>`;
-    sortedTurnoNames.forEach(name => tableHTML += `<th>${name}</th>`);
-    tableHTML += `</tr></thead><tbody>`;
-
-    employeeMetrics.forEach(emp => {
-        tableHTML += `<tr><td>${emp.nome}</td>`;
-        sortedTurnoNames.forEach(turnoName => {
-            tableHTML += `<td>${emp.turnosCount[turnoName] || 0}</td>`;
-        });
-        tableHTML += `</tr>`;
-    });
-
-    tableHTML += `</tbody></table>`;
-    container.innerHTML = tableHTML;
+    container.innerHTML = `
+        <h3 class="config-card-title">Resumo de Turnos Realizados</h3>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Tipo de Turno</th>
+                    <th>Quantidade</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRows}
+            </tbody>
+        </table>
+    `;
 }
 
-document.addEventListener("DOMContentLoaded", initRelatoriosPage);
+function renderIndividualActivityCalendar(escala, employeeData) {
+    const container = $('#individual-calendar-container');
+    const { turnos } = store.getState();
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
+    const turnosMap = new Map(allTurnos.map(t => [t.id, t]));
+    
+    const slotsDoFunc = escala.slots.filter(s => s.assigned === employeeData.id);
+    const slotsByDate = Object.fromEntries(slotsDoFunc.map(s => [s.date, s]));
+    
+    const rangeSet = new Set(dateRangeInclusive(escala.inicio, escala.fim));
+    
+    let html = '';
+    const months = {};
+    rangeSet.forEach(date => { const monthKey = date.substring(0, 7); if (!months[monthKey]) months[monthKey] = true; });
+    
+    Object.keys(months).sort().forEach(monthKey => {
+        const [year, month] = monthKey.split('-').map(Number);
+        const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+        const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
+
+        html += `<h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4><div class="calendar-grid">${DIAS_SEMANA.map(d => `<div class="calendar-header">${d.abrev}</div>`).join('')}${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
+
+        for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
+            const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+            if (!rangeSet.has(date)) {
+                html += '<div class="calendar-day empty"></div>';
+                continue;
+            }
+            
+            const slot = slotsByDate[date];
+            const turno = slot ? turnosMap.get(slot.turnoId) : null;
+            let cellContent = `<span class="day-number">${dayNumber}</span>`;
+            let cellStyle = '';
+            
+            if (turno) {
+                const textColor = getContrastingTextColor(turno.cor);
+                cellStyle = `background-color: ${turno.cor}; color: ${textColor};`;
+                cellContent += `<span class="day-shift-sigla">${turno.sigla}</span>`;
+            }
+            
+            html += `<div class="calendar-day" style="${cellStyle}">${cellContent}</div>`;
+        }
+        html += '</div>';
+    });
+    
+    container.innerHTML = html;
+}

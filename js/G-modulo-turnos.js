@@ -3,7 +3,7 @@
  **************************************/
 
 let editingTurnoId = null;
-let lastAddedTurnoId = null;
+let lastSavedTurnoId = null; // ALTERADO: de lastAdded... para lastSaved...
 
 // Referência à função de troca de abas, será definida na inicialização
 let switchTurnosTab = () => {};
@@ -227,9 +227,13 @@ function renderTurnos() {
         tblTurnosBody.appendChild(tr);
     });
     parseEmojisInElement(tblTurnosBody);
-    if (lastAddedTurnoId) {
-        tblTurnosBody.querySelector(`tr[data-turno-id="${lastAddedTurnoId}"]`)?.classList.add('new-item');
-        lastAddedTurnoId = null;
+    if (lastSavedTurnoId) {
+        const row = tblTurnosBody.querySelector(`tr[data-turno-id="${lastSavedTurnoId}"]`);
+        if(row) {
+            row.classList.add('flash-update');
+            setTimeout(() => row.classList.remove('flash-update'), 1500);
+        }
+        lastSavedTurnoId = null;
     }
 }
 
@@ -283,9 +287,7 @@ async function saveTurnoFromForm() {
         cargaMin: cargaMin
     };
 
-    if (!editingTurnoId) {
-        lastAddedTurnoId = dadosTurno.id;
-    }
+    lastSavedTurnoId = dadosTurno.id;
     
     store.dispatch('SAVE_TURNO', dadosTurno);
     
@@ -319,7 +321,7 @@ function editTurnoInForm(id) {
     parseEmojisInElement(btnSalvarTurno);
     setTurnoFormDirty(false);
     
-    formTabButton.textContent = `Editando: ${turno.nome}`;
+    formTabButton.innerHTML = `📝 Editando: ${turno.nome}`;
     switchTurnosTab('formulario');
 }
 
@@ -339,49 +341,57 @@ function cancelEditTurno() {
     updateTurnoCargaPreview();
     
     btnSalvarTurno.textContent = "💾 Salvar Turno";
-    formTabButton.textContent = "Novo Turno"; // Redefine o título da aba
+    formTabButton.innerHTML = "📝 Novo Turno"; // Redefine o título da aba com emoji
     parseEmojisInElement(btnSalvarTurno);
     setTurnoFormDirty(false);
 
     turnoNomeInput.focus();
 }
 
-function deleteTurno(id) {
+async function deleteTurno(id) {
     const { escalas, cargos, equipes } = store.getState();
+    const blockingIssues = [];
 
+    // 1. Verificar em escalas salvas
     const isTurnoInUseEscala = escalas.some(escala =>
         escala.slots.some(slot => slot.turnoId === id)
     );
     if (isTurnoInUseEscala) {
-        showInfoModal({
-            title: "Exclusão Bloqueada",
-            contentHTML: `<p>Este turno não pode ser excluído porque está sendo utilizado em uma ou mais <strong>escalas salvas</strong>.</p>
-                          <p>Para preservar o histórico, a exclusão não é permitida. Se este turno não é mais necessário, você pode renomeá-lo para algo como "Inativo" ou "Arquivado".</p>`
-        });
-        return;
+        blockingIssues.push("Está sendo utilizado em uma ou mais <strong>escalas salvas</strong>.");
     }
     
+    // 2. Verificar em cargos
     const cargosUsando = cargos.filter(c => (c.turnosIds || []).includes(id));
     if (cargosUsando.length > 0) {
         const nomesCargos = cargosUsando.map(c => `<strong>${c.nome}</strong>`).join(', ');
-        showInfoModal({
-            title: "Exclusão Bloqueada",
-            contentHTML: `<p>Este turno não pode ser excluído porque está associado ao(s) seguinte(s) cargo(s):</p><p>${nomesCargos}</p><p>Por favor, edite o(s) cargo(s) e remova a associação com este turno antes de excluí-lo.</p>`
-        });
-        return;
+        blockingIssues.push(`Está associado ao(s) cargo(s): ${nomesCargos}.`);
     }
 
+    // 3. Verificar em equipes
     const equipesUsando = equipes.filter(e => e.turnoId === id);
     if (equipesUsando.length > 0) {
         const nomesEquipes = equipesUsando.map(e => `<strong>${e.nome}</strong>`).join(', ');
+        blockingIssues.push(`Está sendo utilizado pela(s) equipe(s): ${nomesEquipes}.`);
+    }
+
+    // 4. Mostrar modal unificado se houver problemas
+    if (blockingIssues.length > 0) {
+        const messageHTML = `
+            <p>Este turno não pode ser excluído pelos seguintes motivos:</p>
+            <ul>
+                ${blockingIssues.map(issue => `<li>${issue}</li>`).join('')}
+            </ul>
+            <p>Por favor, resolva estas dependências antes de tentar excluir o turno.</p>
+        `;
         showInfoModal({
             title: "Exclusão Bloqueada",
-            contentHTML: `<p>Este turno não pode ser excluído porque está sendo utilizado pela(s) seguinte(s) equipe(s):</p><p>${nomesEquipes}</p><p>Por favor, edite ou remova a(s) equipe(s) antes de excluir o turno.</p>`
+            contentHTML: messageHTML
         });
         return;
     }
 
-    handleDeleteItem({ id, itemName: 'Turno', dispatchAction: 'DELETE_TURNO' });
+    // 5. Se não houver problemas, prosseguir com a confirmação de exclusão
+    await handleDeleteItem({ id, itemName: 'Turno', dispatchAction: 'DELETE_TURNO' });
 }
 
 
@@ -402,7 +412,7 @@ function initTurnosPage() {
 
     $('.btn-add-new', pageTurnos).addEventListener('click', () => {
         cancelEditTurno();
-        formTabButton.textContent = "Novo Turno";
+        formTabButton.innerHTML = "📝 Novo Turno";
         switchTurnosTab('formulario');
     });
 

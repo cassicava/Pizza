@@ -3,7 +3,7 @@
  **************************************/
 
 let editingEquipeId = null;
-let lastAddedEquipeId = null;
+let lastSavedEquipeId = null;
 
 // Referência à função de troca de abas
 let switchEquipesTab = () => {};
@@ -159,9 +159,13 @@ function renderEquipes() {
         tblEquipesBody.appendChild(tr);
     });
 
-    if (lastAddedEquipeId) {
-        tblEquipesBody.querySelector(`tr[data-equipe-id="${lastAddedEquipeId}"]`)?.classList.add('new-item');
-        lastAddedEquipeId = null;
+    if (lastSavedEquipeId) {
+        const row = tblEquipesBody.querySelector(`tr[data-equipe-id="${lastSavedEquipeId}"]`);
+        if(row) {
+            row.classList.add('flash-update');
+            setTimeout(() => row.classList.remove('flash-update'), 1500);
+        }
+        lastSavedEquipeId = null;
     }
 }
 
@@ -206,9 +210,7 @@ function saveEquipeFromForm() {
         funcionarioIds: $$('input[name="equipeFuncionario"]:checked').map(chk => chk.value)
     };
 
-    if (!editingEquipeId) {
-        lastAddedEquipeId = equipeData.id;
-    }
+    lastSavedEquipeId = equipeData.id;
 
     store.dispatch('SAVE_EQUIPE', equipeData);
     
@@ -241,7 +243,7 @@ function editEquipeInForm(id) {
     btnSalvarEquipe.textContent = "💾 Salvar Alterações";
     setEquipeFormDirty(false);
     
-    formTabButtonEquipes.textContent = `Editando: ${equipe.nome}`;
+    formTabButtonEquipes.innerHTML = `📝 Editando: ${equipe.nome}`;
     switchEquipesTab('formulario');
 }
 
@@ -254,7 +256,7 @@ function cancelEditEquipe() {
     handleEquipeCargoChange();
     
     btnSalvarEquipe.textContent = "💾 Salvar Equipe";
-    formTabButtonEquipes.textContent = "Nova Equipe";
+    formTabButtonEquipes.innerHTML = "📝 Nova Equipe";
     setEquipeFormDirty(false);
     
     $$('.invalid, .invalid-fieldset', pageEquipes).forEach(el => el.classList.remove('invalid-fieldset', 'invalid'));
@@ -289,7 +291,7 @@ function initEquipesPageListeners() {
 
     $('.btn-add-new', pageEquipes).addEventListener('click', () => {
         cancelEditEquipe();
-        formTabButtonEquipes.textContent = "Nova Equipe";
+        formTabButtonEquipes.innerHTML = "📝 Nova Equipe";
         switchEquipesTab('formulario');
     });
 
