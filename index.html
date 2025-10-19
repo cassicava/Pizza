@@ -205,7 +205,7 @@
                     <a class="card home-card" data-goto="turnos">
                         <h3>🕒 Turnos</h3>
                         <p id="home-turnos-count" class="home-card-count"></p>
-                        <p class="home-card-desc">Crie os horários de trabalho da sua operação.</p>
+                        <p class="home-card-desc">Crie os horários de trabalho, com almoço e descansos obrigatórios.</p>
                     </a>
                     <span class="card-step">Passo 1</span>
                 </div>
@@ -237,18 +237,24 @@
 
             <h2 class="home-section-title">Crie e Gerencie suas Escalas</h2>
             <div class="grid-3-col">
-                <a class="card home-card" data-goto="gerar-escala">
-                    <h3>✨ Geração Automática</h3>
-                    <p class="home-card-desc">O sistema distribui os funcionários de forma otimizada e inteligente.</p>
-                </a>
-                 <a class="card home-card" data-goto="escalas-salvas">
-                    <h3>🗂️ Escalas Salvas</h3>
-                    <p class="home-card-desc">Acesse e gerencie as escalas que você já salvou.</p>
-                </a>
-                <a class="card home-card" data-goto="relatorios">
-                    <h3>📊 Relatórios</h3>
-                    <p class="home-card-desc">Analise métricas e a distribuição de horas das suas escalas.</p>
-                </a>
+                <div class="home-card-wrapper">
+                    <a class="card home-card" data-goto="gerar-escala">
+                        <h3>✨ Geração Automática</h3>
+                        <p class="home-card-desc">O sistema distribui os funcionários de forma otimizada e inteligente.</p>
+                    </a>
+                </div>
+                <div class="home-card-wrapper">
+                    <a class="card home-card" data-goto="escalas-salvas">
+                        <h3>🗂️ Escalas Salvas</h3>
+                        <p class="home-card-desc">Acesse e gerencie as escalas que você já salvou.</p>
+                    </a>
+                </div>
+                <div class="home-card-wrapper">
+                    <a class="card home-card" data-goto="relatorios">
+                        <h3>📊 Relatórios</h3>
+                        <p class="home-card-desc">Analise métricas e a distribuição de horas das suas escalas.</p>
+                    </a>
+                </div>
             </div>
 
         </section>
@@ -721,9 +727,10 @@
             
             <div id="gerador-escalaView" class="hidden">
                 <div class="card">
-                     <div class="form-row" style="margin: 0; justify-content: space-between; align-items: center;">
-                        <button id="btnExcluirEscalaGerador" class="danger" style="margin: 0;">🔥 Descartar</button>
-                        
+                    <div class="escala-view-header">
+                        <div class="header-actions-group">
+                            <button id="btnExcluirEscalaGerador" class="danger">🔥 Descartar</button>
+                        </div>
                         <div class="escala-view-header-center">
                             <div id="gerador-escala-title-container" class="escala-title-container">
                                 <h2 class="escala-title-text" id="gerador-escalaViewTitle"></h2>
@@ -735,8 +742,7 @@
                                 <button class="painel-tab-btn" data-tab="individual">Edição Individual</button>
                             </div>
                         </div>
-                        
-                        <div class="bottom-actions-container" style="margin: 0;">
+                        <div class="header-actions-group">
                             <button id="btnSalvarEscalaGerador" class="success">💾 Salvar Alterações</button>
                         </div>
                     </div>
@@ -792,17 +798,17 @@
 
             <div id="escalaSalvaView" class="hidden">
                  <div class="card">
-                    <div class="form-row" style="margin: 0; justify-content: space-between; align-items: center;">
-                        <button id="btnVoltarParaLista" class="secondary button-voltar" style="margin: 0;"><b>&lt;</b> Voltar para a Lista</button>
-                        
+                    <div class="escala-view-header">
+                        <div class="header-actions-group">
+                            <button id="btnVoltarParaLista" class="secondary button-voltar" style="margin: 0;">&lt; Voltar para a Lista</button>
+                        </div>
                         <div class="escala-view-header-center">
                             <h2 id="escalaSalvaViewTitle" style="margin: 0; font-size: 1.5rem;"></h2>
                             <div class="painel-tabs" id="salva-view-tabs">
                                 <button class="painel-tab-btn active" data-tab="geral">Edição Geral</button>
-                                </div>
+                            </div>
                         </div>
-
-                        <div style="display: flex; gap: 8px;">
+                        <div class="header-actions-group">
                             <button id="btnEditarEscalaSalva" class="secondary">✏️ Editar Escala</button>
                             <button id="btnExcluirEscalaSalva" class="danger">🔥 Excluir</button>
                             <button id="btnExportarPDF" class="primary">🖨️ Exportar para PDF</button>
@@ -838,9 +844,8 @@
                         <select id="relatorioAnoSelect"></select>
                     </div>
                 </div>
+                <div id="relatoriosEscalaListContainer" style="margin-top: 24px;"></div>
             </div>
-        
-            <div id="relatoriosEscalaListContainer" style="margin-top: 24px;"></div>
         
             <div id="relatorios-dashboard-container" class="hidden">
                 <div id="dashboard-header-container"></div>

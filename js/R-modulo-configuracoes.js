@@ -2,6 +2,16 @@
  * ⚙️ Configurações (v2 - Layout com Abas)
  **************************************/
 
+async function performHardReset() {
+    Object.values(KEYS).forEach(key => localStorage.removeItem(key));
+    localStorage.removeItem('ge_onboarding_complete');
+    localStorage.removeItem('ge_onboarding_progress');
+    localStorage.removeItem('ge_data_version');
+    showToast("Todos os dados foram apagados. A aplicação será reiniciada.");
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    location.reload();
+}
+
 function loadConfigForm() {
     const { config } = store.getState();
     const configNomeInput = $("#configNome");
@@ -357,11 +367,7 @@ function initConfiguracoesPage() {
             });
     
             if (confirmed) {
-                Object.values(KEYS).forEach(key => localStorage.removeItem(key));
-                localStorage.removeItem('ge_onboarding_complete');
-                localStorage.removeItem('ge_onboarding_progress');
-                showToast("Todos os dados foram apagados. A aplicação será reiniciada.");
-                setTimeout(() => location.reload(), 1500);
+                performHardReset();
             }
         };
     }

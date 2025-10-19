@@ -12,6 +12,38 @@ const dirtyForms = {
 
 let isNavigating = false;
 
+async function handleDataCorruptionError() {
+    // Esconde a splash screen para mostrar o modal de erro
+    const splashScreen = $("#splash-screen");
+    if (splashScreen) {
+        splashScreen.style.display = 'none';
+    }
+
+    const action = await showActionModal({
+        title: "🚨 Erro ao Carregar Dados",
+        message: "Não foi possível carregar suas informações. O arquivo de dados pode estar corrompido, possivelmente devido a um desligamento inesperado ou limpeza de cache. O que você gostaria de fazer?",
+        columnLayout: true,
+        actions: [
+            { id: 'import', text: '📥 Importar um Backup', class: 'primary' },
+            { id: 'reset', text: '🔥 Apagar Dados e Recomeçar', class: 'danger' },
+        ]
+    });
+
+    if (action === 'import') {
+        importAllData(); // Função agora é chamada diretamente
+    } else if (action === 'reset') {
+        const { confirmed } = await showConfirm({
+            title: "Tem Certeza?",
+            message: "Isso apagará todos os dados corrompidos e iniciará o aplicativo do zero. Esta ação não pode ser desfeita.",
+            confirmText: "Sim, Apagar Tudo"
+        });
+        if (confirmed) {
+            await performHardReset(); // Chama a função de reset
+        }
+    }
+}
+
+
 function updateWelcomeMessage() {
     const welcomeEl = $("#welcomeTitle");
     if (!welcomeEl) return;
@@ -222,13 +254,31 @@ function init() {
         document.body.style.setProperty('--mouse-y', `${e.clientY}px`);
     });
 
+    // Pega a referência da splash screen
+    const splashScreen = $("#splash-screen");
+
     store.dispatch('LOAD_STATE');
+
+    // Verifica se houve erro de corrupção durante o LOAD_STATE
+    if (store.getState().dataCorrupted) {
+        handleDataCorruptionError();
+        return; // Interrompe a inicialização normal
+    }
+
     const onboardingComplete = localStorage.getItem('ge_onboarding_complete') === 'true';
+
     if (!onboardingComplete) {
+        // Primeira vez abrindo: esconde a splash screen e mostra o onboarding
+        if (splashScreen) {
+            splashScreen.style.display = 'none';
+        }
         initWelcomeScreen();
     } else {
+        // Já usou antes: esconde a tela de boas-vindas (caso exista) e inicia o app com a splash screen
         const welcomeOverlay = $("#welcome-overlay");
-        if(welcomeOverlay) welcomeOverlay.style.display = 'none';
+        if(welcomeOverlay) {
+            welcomeOverlay.style.display = 'none';
+        }
         
         setupAppListeners();
         initMainApp();

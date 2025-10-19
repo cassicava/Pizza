@@ -147,8 +147,23 @@ function finishOnboarding() {
     localStorage.setItem('ge_onboarding_complete', 'true');
     localStorage.removeItem('ge_onboarding_progress');
     
+    // Anima a saída da tela de boas-vindas
     welcomeOverlay.classList.remove('visible');
-    initMainApp();
+
+    // Após a animação de saída, inicializa a interface principal sem a splash screen
+    welcomeOverlay.addEventListener('transitionend', () => {
+        welcomeOverlay.style.display = 'none'; // Garante que será removido do fluxo
+        
+        // Inicializa os listeners principais da aplicação
+        setupAppListeners();
+        
+        // Dispara o renderizador inicial para carregar os dados na UI
+        renderRouter('LOAD_STATE');
+
+        // Navega diretamente para a página inicial, forçando a animação dos cards
+        go("home", { force: true });
+        
+    }, { once: true });
 }
 
 function initWelcomeScreen() {

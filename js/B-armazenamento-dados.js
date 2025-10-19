@@ -23,6 +23,7 @@ const store = {
         equipes: [],
         escalas: [],
         config: { nome: '' },
+        dataCorrupted: false, // Nova flag para indicar dados corrompidos
     },
 
     // 2. LISTENERS: Funções que serão chamadas quando o estado mudar.
@@ -52,48 +53,57 @@ const store = {
 
     // 5. MUTATIONS: Funções puras que efetivamente alteram o estado.
     mutations: {
+        SET_DATA_CORRUPTION_FLAG(state, isCorrupted) {
+            state.dataCorrupted = isCorrupted;
+        },
+
         LOAD_STATE(state) {
-            const DATA_VERSION = "1.2"; // Versão incrementada para incluir observacoes nas escalas
-            const currentVersion = localStorage.getItem('ge_data_version');
-            
-            // Carregamento e Migração
-            const loadedEscalas = loadJSON(KEYS.escalas, []);
-            state.escalas = loadedEscalas.map(e => ({
-                ...e,
-                observacoes: e.observacoes || '' // Migra escalas antigas
-            }));
-
-            if (currentVersion !== DATA_VERSION) {
-                // Migração v1.0 -> v1.1: Garante que todos os funcionários tenham um status.
-                const loadedFuncs = loadJSON(KEYS.funcs, []);
-                state.funcionarios = loadedFuncs.map(f => ({ ...f, status: f.status || 'ativo' }));
-                saveJSON(KEYS.funcs, state.funcionarios);
+            try {
+                const DATA_VERSION = "1.2"; // Versão incrementada para incluir observacoes nas escalas
+                const currentVersion = localStorage.getItem('ge_data_version');
                 
-                // Migração v1.1 -> v1.2: Adiciona o campo observacoes em todas as escalas existentes.
-                // Já tratado acima, mas o versionamento garante que o código não rode novamente.
-                
-                localStorage.setItem('ge_data_version', DATA_VERSION);
-            } else {
-                state.funcionarios = loadJSON(KEYS.funcs, []);
-            }
+                // Carregamento e Migração
+                const loadedEscalas = loadJSON(KEYS.escalas, []);
+                state.escalas = loadedEscalas.map(e => ({
+                    ...e,
+                    observacoes: e.observacoes || '' // Migra escalas antigas
+                }));
 
-
-            state.turnos = loadJSON(KEYS.turnos, []);
-            state.cargos = loadJSON(KEYS.cargos, []);
-            state.equipes = loadJSON(KEYS.equipes, []);
-            state.config = loadJSON(KEYS.config, { nome: '' });
-
-            
-            // Garante que os turnos de sistema (folga, férias) estejam sempre presentes e atualizados no estado
-            const systemTurnos = Object.values(TURNOS_SISTEMA_AUSENCIA);
-            systemTurnos.forEach(systemTurno => {
-                const index = state.turnos.findIndex(t => t.id === systemTurno.id);
-                if (index === -1) {
-                    state.turnos.push(systemTurno);
+                if (currentVersion !== DATA_VERSION) {
+                    // Migração v1.0 -> v1.1: Garante que todos os funcionários tenham um status.
+                    const loadedFuncs = loadJSON(KEYS.funcs, []);
+                    state.funcionarios = loadedFuncs.map(f => ({ ...f, status: f.status || 'ativo' }));
+                    saveJSON(KEYS.funcs, state.funcionarios);
+                    
+                    // Migração v1.1 -> v1.2: Adiciona o campo observacoes em todas as escalas existentes.
+                    // Já tratado acima, mas o versionamento garante que o código não rode novamente.
+                    
+                    localStorage.setItem('ge_data_version', DATA_VERSION);
                 } else {
-                    state.turnos[index] = systemTurno;
+                    state.funcionarios = loadJSON(KEYS.funcs, []);
                 }
-            });
+
+
+                state.turnos = loadJSON(KEYS.turnos, []);
+                state.cargos = loadJSON(KEYS.cargos, []);
+                state.equipes = loadJSON(KEYS.equipes, []);
+                state.config = loadJSON(KEYS.config, { nome: '' });
+                
+                // Garante que os turnos de sistema (folga, férias) estejam sempre presentes e atualizados no estado
+                const systemTurnos = Object.values(TURNOS_SISTEMA_AUSENCIA);
+                systemTurnos.forEach(systemTurno => {
+                    const index = state.turnos.findIndex(t => t.id === systemTurno.id);
+                    if (index === -1) {
+                        state.turnos.push(systemTurno);
+                    } else {
+                        state.turnos[index] = systemTurno;
+                    }
+                });
+
+            } catch (error) {
+                console.error("ERRO CRÍTICO AO CARREGAR DADOS:", error);
+                this.SET_DATA_CORRUPTION_FLAG(state, true);
+            }
         },
 
         SAVE_TURNO(state, turno) {
@@ -215,4 +225,4 @@ const store = {
     notify(actionName) {
         this.listeners.forEach(listener => listener(actionName));
     }
-};
+};  
