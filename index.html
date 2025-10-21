@@ -4,7 +4,6 @@
 <head>
     <meta charset="UTF-8" />
     <title>Escala Facil</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -198,7 +197,7 @@
         </header>
 
         <section id="page-home" class="page">
-            
+
             <h2 class="home-section-title">Cadastros Essenciais</h2>
             <div class="grid-4-col">
                 <div class="home-card-wrapper">
@@ -246,7 +245,7 @@
                 <div class="home-card-wrapper">
                     <a class="card home-card" data-goto="escalas-salvas">
                         <h3>🗂️ Escalas Salvas</h3>
-                        <p class="home-card-desc">Acesse e gerencie as escalas que você já salvou.</p>
+                        <p class="home-card-desc">Acesse, gerencie, edite e exporte todas as escalas salvas por você.</p>
                     </a>
                 </div>
                 <div class="home-card-wrapper">
@@ -387,6 +386,7 @@
                                     <th>Nome</th>
                                     <th>Turnos</th>
                                     <th>Funcionamento</th>
+                                    <th>Regras Indiv.</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -435,6 +435,26 @@
                                 <div>Defina os dias e a faixa de horário em que este cargo precisa de cobertura. Isso ajudará o gerador de escala a entender a demanda.</div>
                             </div>
                         </fieldset>
+                        <fieldset>
+                            <legend>Regras de Alocação Individual</legend>
+                            <div class="grid-3-col">
+                                <div class="animated-field">
+                                    <input type="number" id="cargoMaxDiasConsecutivos" value="6" min="1" max="7" placeholder=" " />
+                                    <label for="cargoMaxDiasConsecutivos">Máx. dias de trabalho consecutivos</label>
+                                </div>
+                                <div class="animated-field">
+                                    <input type="number" id="cargoMinFolgasSabados" value="1" min="0" max="4" placeholder=" " />
+                                    <label for="cargoMinFolgasSabados">Mín. Sábados de folga por mês</label>
+                                </div>
+                                <div class="animated-field">
+                                    <input type="number" id="cargoMinFolgasDomingos" value="1" min="0" max="4" placeholder=" " />
+                                    <label for="cargoMinFolgasDomingos">Mín. Domingos de folga por mês</label>
+                                </div>
+                            </div>
+                            <div class="explanation-box" style="margin-top: 16px;">
+                                <div>Estas regras se aplicam a todos os funcionários alocados individualmente pelo gerador (não se aplicam a equipes).</div>
+                            </div>
+                        </fieldset>
                         <div class="form-row form-row-center">
                             <button id="btnSalvarCargo" class="success">💾 Salvar Cargo</button>
                             <button id="btnCancelarCargo" class="purple">🗑️ Cancelar</button>
@@ -459,6 +479,9 @@
                     <div class="painel-tab-content active" data-tab-content="gerenciar">
                         <div class="form-row">
                             <input type="search" id="filtroFuncionarios" placeholder="🔎 Buscar funcionário..." style="width: 100%;" />
+                            <label class="check-inline" style="flex-grow: 0;">
+                                <input type="checkbox" id="mostrarArquivadosCheck"> Mostrar arquivados
+                            </label>
                         </div>
                         <table class="table" id="tblFuncionarios">
                             <thead>
@@ -647,7 +670,7 @@
                         <button class="painel-tab-btn" data-step="1" disabled>1. Período da Escala</button>
                         <button class="painel-tab-btn" data-step="2" disabled>2. Feriados</button>
                         <button class="painel-tab-btn" data-step="3" disabled>3. Ausências</button>
-                        <button class="painel-tab-btn" data-step="4" disabled>4. Cobertura e Regras</button>
+                        <button class="painel-tab-btn" data-step="4" disabled>4. Cobertura</button>
                     </div>
                     <div class="painel-actions">
                         <button id="btn-gerador-next" class="primary" disabled>Próximo Passo &gt;</button>
@@ -669,7 +692,7 @@
                                 <span id="gerar-escResumoDias" class="dias-resumo-box">Selecione o período para ver a duração da escala.</span>
                             </fieldset>
                             <fieldset class="regras-fieldset">
-                                <legend>Guia Rápido</legend>
+                                <legend>Como Funciona?</legend>
                                 <p class="muted" style="margin-top: 0; margin-bottom: 16px;">Siga os passos nas abas acima para criar sua escala de forma inteligente.</p>
                                 <div class="form-section-column" style="gap: 16px;">
                                     <div class="explanation-box" style="margin: 0;"><strong>1. Período da Escala:</strong> Defina o cargo e as datas. Este é o único passo obrigatório.</div>
@@ -691,40 +714,11 @@
                         <div id="gerador-excecoes-funcionarios-container"></div>
                     </div>
                     <div class="painel-tab-content" data-tab-content="4">
-                        <div class="passo2-grid">
-                            <fieldset class="regras-fieldset">
-                                <legend>Cobertura de Turnos</legend>
-                                <div id="gerador-cobertura-turnos-container"></div>
-                            </fieldset>
-                            <fieldset class="regras-fieldset">
-                                <legend>Regras para Funcionários</legend>
-                                <div class="explanation-box" style="margin-bottom: 16px;">
-                                   <div>Estas regras se aplicam a todos os funcionários alocados individualmente pelo gerador.</div>
-                                </div>
-                                <div class="regra-item">
-                                    <div class="animated-field">
-                                        <input type="number" id="gerar-maxDiasConsecutivos" value="6" min="1" placeholder=" " />
-                                        <label for="gerar-maxDiasConsecutivos">Máx. dias de trabalho consecutivos</label>
-                                    </div>
-                                </div>
-                                <div class="regra-item">
-                                    <div class="animated-field">
-                                        <input type="number" id="gerar-minFolgasSabados" value="1" min="0" placeholder=" " />
-                                        <label for="gerar-minFolgasSabados">Mín. Sábados de folga por mês</label>
-                                    </div>
-                                </div>
-                                <div class="regra-item">
-                                    <div class="animated-field">
-                                        <input type="number" id="gerar-minFolgasDomingos" value="1" min="0" placeholder=" " />
-                                        <label for="gerar-minFolgasDomingos">Mín. Domingos de folga por mês</label>
-                                    </div>
-                                </div>
-                            </fieldset>
-                        </div>
+                        <div id="gerador-cobertura-turnos-container"></div>
                     </div>
                 </div>
             </div>
-            
+
             <div id="gerador-escalaView" class="hidden">
                 <div class="card">
                     <div class="escala-view-header">
@@ -779,7 +773,7 @@
                 </div>
             </div>
         </section>
-        
+
         <section id="page-escalas-salvas" class="page">
             <div id="listaEscalasContainer" class="card card-lista">
                 <h2>Lista de Escalas Salvas</h2>
@@ -815,7 +809,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="painel-tab-content active" data-tab-content="geral">
                     <div class="card">
                         <div id="escalaSalvaTabelaWrap"></div>
@@ -846,10 +840,10 @@
                 </div>
                 <div id="relatoriosEscalaListContainer" style="margin-top: 24px;"></div>
             </div>
-        
+
             <div id="relatorios-dashboard-container" class="hidden">
                 <div id="dashboard-header-container"></div>
-        
+
                 <div id="dashboard-content">
                     <div class="dashboard-pane active" data-pane="visao-geral">
                         <div class="kpi-grid">
@@ -858,12 +852,12 @@
                             <div class="card kpi-card"><h4>Total de Ausências</h4><p id="kpi-ausencias">0</p></div>
                             <div class="card kpi-card"><h4>Turno Mais Frequente</h4><p id="kpi-turno-frequente">-</p></div>
                         </div>
-        
+
                         <div class="card" style="margin-top: 24px;">
                             <h3 class="config-card-title">Resumo por Funcionário</h3>
                             <div id="relatorio-ranking-table-container"></div>
                         </div>
-        
+
                         <div class="grid-2-col" style="margin-top: 24px; align-items: start;">
                             <div class="card">
                                 <h3 class="config-card-title">Distribuição Geral de Turnos</h3>
@@ -875,13 +869,13 @@
                             </div>
                         </div>
                     </div>
-        
+
                     <div class="dashboard-pane" data-pane="analise-individual">
                         <div id="analise-individual-content"></div>
                     </div>
                 </div>
             </div>
-        
+
             <div id="relatorios-empty-state"></div>
         </section>
 
@@ -892,7 +886,7 @@
                         <button class="painel-tab-btn active" data-tab="geral"><span>⚙️</span> Geral</button>
                         <button class="painel-tab-btn" data-tab="dados"><span>💾</span> Dados</button>
                         <button class="painel-tab-btn" data-tab="sobre"><span>ℹ️</span> Sobre</button>
-                        <button class="painel-tab-btn" data-tab="avancado"><span>⚠️</span> Avançado</button>
+                        <button class="painel-tab-btn" data-tab="zona-risco"><span>⚠️</span> Zona de Risco</button>
                     </div>
                 </div>
                 <div class="painel-content" id="config-content">
@@ -931,12 +925,12 @@
                          <div class="card">
                             <h2 class="config-card-title">Backup e Restauração</h2>
                             <p class="config-card-subtitle">
-                                Seus dados são salvos apenas neste navegador. Use as opções abaixo para criar um arquivo de segurança (backup) e restaurá-lo em outro computador ou navegador.
+                                Seus dados são salvos apenas neste programa. Use as opções abaixo para criar um arquivo de segurança (backup) e restaurá-lo em outro computador ou instalação do programa.
                             </p>
                             <div class="config-item-group">
                                 <div class="config-item">
                                     <div class="config-item-label">
-                                        <h3>Criar um Backup</h3>
+                                        <h3>Criar um Backup Manual</h3>
                                         <p>Isso irá exportar todos os seus dados (turnos, funcionários, escalas, etc.) para um único arquivo <code>.json</code>.</p>
                                     </div>
                                     <div class="config-item-control">
@@ -952,6 +946,20 @@
                                         <button id="btn-import-data" class="secondary">📥 Importar de um Arquivo</button>
                                     </div>
                                 </div>
+                                <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Backup Automático (Download)</h3>
+                                        <p>Opcionalmente, o sistema pode gerar e baixar um arquivo de backup automaticamente em intervalos regulares.</p>
+                                        <p class="muted" style="font-size: 0.8rem;">* O download automático pode não funcionar corretamente em todas as configurações do sistema.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <select id="configAutobackup" style="min-width: 180px;">
+                                            <option value="disabled">Desativado</option>
+                                            <option value="daily">Diariamente</option>
+                                            <option value="weekly">Semanalmente</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -964,18 +972,15 @@
                                     <p class="muted" style="text-align: left;">
                                         Este é um projeto independente, feito com muito carinho e sob a supervisão de três assistentes felinos exigentes 😼.<br> Se o app te ajudou, que tal pagar um sachê pra eles? Eles vão ficar muito felizes!
                                     </p>
+                                    <div class="pix-key-container" style="margin-top: 16px;">
+                                        <span id="pix-key-text">escalafacil.contato@gmail.com</span>
+                                        <button id="btn-copy-pix" title="Copiar Chave">📋</button>
+                                    </div>
                                 </div>
                                 <div class="support-card-col-right">
                                      <div id="pix-details">
-                                        <div class="pix-qr-code-placeholder">
-                                            <span>QR Code PIX</span>
+                                        <img src="img/pix.png" alt="QR Code PIX para doação" class="pix-qr-code-image">
                                         </div>
-                                        <p style="font-weight: 500; margin: 12px 0 4px 0;">Ou copie a chave:</p>
-                                        <div class="pix-key-container">
-                                            <span id="pix-key-text">escalafacil.contato@gmail.com</span>
-                                            <button id="btn-copy-pix" title="Copiar Chave">📋</button>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -990,28 +995,19 @@
                         </div>
                     </div>
 
-                    <div class="config-pane" data-pane="avancado">
+                    <div class="config-pane" data-pane="zona-risco">
                         <div class="card card--danger-zone">
-                            <h2 class="config-card-title">⚠️ Zona de Perigo</h2>
-                            <p class="config-card-subtitle">As ações abaixo são destrutivas e não podem ser desfeitas. Use com extrema cautela.</p>
+                            <h2 class="config-card-title">⚠️ Zona de Risco</h2>
+                            <p class="config-card-subtitle">A ação abaixo é destrutiva e não pode ser desfeita. Use com extrema cautela.</p>
 
                              <div class="config-item-group">
-                                <div class="config-item">
-                                    <div class="config-item-label">
-                                        <h3>Reiniciar Tutorial</h3>
-                                        <p>Isso fará com que a tela de boas-vindas seja exibida novamente na próxima vez que você abrir o aplicativo.</p>
-                                    </div>
-                                    <div class="config-item-control">
-                                        <button id="btnReiniciarOnboarding" class="secondary">🔁 Reiniciar Tutorial</button>
-                                    </div>
-                                </div>
-                                <div class="config-item">
+                                 <div class="config-item">
                                     <div class="config-item-label">
                                         <h3>Apagar Todos os Dados</h3>
-                                        <p class="warning-text"><strong>Ação irreversível.</strong> Remove permanentemente todos os turnos, cargos, funcionários, equipes e escalas salvas deste navegador.</p>
+                                        <p class="warning-text"><strong>Ação irreversível.</strong> Remove permanentemente todos os turnos, cargos, funcionários, equipes e escalas salvas deste programa.</p>
                                     </div>
                                     <div class="config-item-control">
-                                        <button id="btnHardReset" class="danger">🔥 Hard Reset</button>
+                                        <button id="btnHardReset" class="danger">🔥 Apagar Todos os Dados</button>
                                     </div>
                                 </div>
                             </div>
@@ -1107,7 +1103,7 @@
             <p class="feedback-toast-subtitle"></p>
         </div>
     </div>
-    
+
     <div id="help-panel-backdrop"></div>
     <aside id="help-panel">
         <div id="help-panel-header">
@@ -1122,7 +1118,7 @@
    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
+
     <script src="js/D-utilitarios-compartilhados.js"></script>
     <script src="js/E-constantes.js"></script>
     <script src="js/C-utilitarios.js"></script>

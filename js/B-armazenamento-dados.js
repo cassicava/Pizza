@@ -59,36 +59,37 @@ const store = {
 
         LOAD_STATE(state) {
             try {
-                const DATA_VERSION = "1.2"; // Versão incrementada para incluir observacoes nas escalas
+                const DATA_VERSION = "1.3"; // Versão incrementada para incluir regras de alocação no cargo
                 const currentVersion = localStorage.getItem('ge_data_version');
-                
+
                 // Carregamento e Migração
-                const loadedEscalas = loadJSON(KEYS.escalas, []);
-                state.escalas = loadedEscalas.map(e => ({
-                    ...e,
-                    observacoes: e.observacoes || '' // Migra escalas antigas
-                }));
+                state.escalas = loadJSON(KEYS.escalas, []).map(e => ({ ...e, observacoes: e.observacoes || '' }));
+                state.funcionarios = loadJSON(KEYS.funcs, []);
+                state.cargos = loadJSON(KEYS.cargos, []);
 
                 if (currentVersion !== DATA_VERSION) {
                     // Migração v1.0 -> v1.1: Garante que todos os funcionários tenham um status.
-                    const loadedFuncs = loadJSON(KEYS.funcs, []);
-                    state.funcionarios = loadedFuncs.map(f => ({ ...f, status: f.status || 'ativo' }));
+                    state.funcionarios = state.funcionarios.map(f => ({ ...f, status: f.status || 'ativo' }));
+
+                    // Migração v1.2 -> v1.3: Adiciona regras de alocação padrão aos cargos existentes.
+                    state.cargos = state.cargos.map(c => {
+                        if (!c.regras) c.regras = {};
+                        if (!c.regras.hasOwnProperty('maxDiasConsecutivos')) c.regras.maxDiasConsecutivos = 6;
+                        if (!c.regras.hasOwnProperty('minFolgasSabados')) c.regras.minFolgasSabados = 1;
+                        if (!c.regras.hasOwnProperty('minFolgasDomingos')) c.regras.minFolgasDomingos = 1;
+                        return c;
+                    });
+
                     saveJSON(KEYS.funcs, state.funcionarios);
-                    
-                    // Migração v1.1 -> v1.2: Adiciona o campo observacoes em todas as escalas existentes.
-                    // Já tratado acima, mas o versionamento garante que o código não rode novamente.
-                    
+                    saveJSON(KEYS.cargos, state.cargos);
                     localStorage.setItem('ge_data_version', DATA_VERSION);
-                } else {
-                    state.funcionarios = loadJSON(KEYS.funcs, []);
                 }
 
 
                 state.turnos = loadJSON(KEYS.turnos, []);
-                state.cargos = loadJSON(KEYS.cargos, []);
                 state.equipes = loadJSON(KEYS.equipes, []);
                 state.config = loadJSON(KEYS.config, { nome: '' });
-                
+
                 // Garante que os turnos de sistema (folga, férias) estejam sempre presentes e atualizados no estado
                 const systemTurnos = Object.values(TURNOS_SISTEMA_AUSENCIA);
                 systemTurnos.forEach(systemTurno => {
@@ -102,9 +103,10 @@ const store = {
 
             } catch (error) {
                 console.error("ERRO CRÍTICO AO CARREGAR DADOS:", error);
-                this.SET_DATA_CORRUPTION_FLAG(state, true);
+                this.SET_DATA_CORRUPTION_FLAG(state, true); // Chama a mutação correta
             }
         },
+
 
         SAVE_TURNO(state, turno) {
             const index = state.turnos.findIndex(t => t.id === turno.id);
@@ -164,7 +166,7 @@ const store = {
             });
             // Remove equipes que ficaram vazias
             state.equipes = state.equipes.filter(e => e.funcionarioIds.length > 0);
-            
+
             saveJSON(KEYS.funcs, state.funcionarios);
             saveJSON(KEYS.equipes, state.equipes);
         },
@@ -183,7 +185,7 @@ const store = {
             }
             saveJSON(KEYS.funcs, state.funcionarios);
         },
-        
+
         SAVE_EQUIPE(state, equipe) {
             const index = state.equipes.findIndex(e => e.id === equipe.id);
             if (index > -1) {
@@ -225,4 +227,4 @@ const store = {
     notify(actionName) {
         this.listeners.forEach(listener => listener(actionName));
     }
-};  
+};

@@ -4,16 +4,6 @@
 
 let geradorWorker = null; // Variável para manter a referência do worker
 
-function handleCancelGeneration() {
-    if (geradorWorker) {
-        geradorWorker.postMessage({ type: 'cancel' }); // Envia mensagem de cancelamento
-        geradorWorker.terminate(); // Força o encerramento como fallback
-        geradorWorker = null;
-        hideLoader();
-        showToast("Geração de escala cancelada.");
-    }
-}
-
 async function gerarEscala() {
     if (geradorWorker) {
         geradorWorker.terminate();
@@ -21,10 +11,19 @@ async function gerarEscala() {
 
     geradorWorker = new Worker('js/M-motor-geracao-escala.js');
     
-    // Adiciona o listener para o botão de cancelar
+    // O listener para o botão de cancelar foi movido para K-assistente-geracao.js
     const cancelBtn = $("#loader-cancel-btn");
-    if(cancelBtn) cancelBtn.onclick = handleCancelGeneration;
-
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+            if (geradorWorker) {
+                geradorWorker.postMessage({ type: 'cancel' });
+                geradorWorker.terminate();
+                geradorWorker = null;
+                hideLoader();
+                showToast("Geração de escala cancelada.");
+            }
+        };
+    }
 
     showLoader("Iniciando geração...");
 
@@ -60,7 +59,7 @@ async function gerarEscala() {
 
         } else if (type === 'error') {
             console.error("Erro recebido do gerador worker:", message);
-            showToast(`Ocorreu um erro ao gerar a escala: ${message}`);
+            showToast(`Ocorreu um erro ao gerar a escala: ${message}`, 'error');
             hideLoader();
             geradorWorker.terminate();
             geradorWorker = null;
@@ -69,7 +68,7 @@ async function gerarEscala() {
 
     geradorWorker.onerror = function(error) {
         console.error("Erro fatal no Web Worker:", error);
-        showToast("Ocorreu um erro inesperado no processo de geração.");
+        showToast("Ocorreu um erro inesperado no processo de geração.", 'error');
         hideLoader();
         if(geradorWorker) {
             geradorWorker.terminate();

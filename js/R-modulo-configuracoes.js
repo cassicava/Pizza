@@ -1,5 +1,5 @@
 /**************************************
- * ⚙️ Configurações (v2 - Layout com Abas)
+ * ⚙️ Configurações (v2.1 - Validação de Importação e Backup Automático)
  **************************************/
 
 async function performHardReset() {
@@ -7,8 +7,13 @@ async function performHardReset() {
     localStorage.removeItem('ge_onboarding_complete');
     localStorage.removeItem('ge_onboarding_progress');
     localStorage.removeItem('ge_data_version');
-    showToast("Todos os dados foram apagados. A aplicação será reiniciada.");
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // --- MELHORIA: Limpa timestamps de backup automático ---
+    localStorage.removeItem('ge_last_auto_backup_timestamp');
+    // ---------------------------------------------------
+    // Adiciona uma pequena espera antes do toast para garantir limpeza
+    await new Promise(resolve => setTimeout(resolve, 100));
+    showToast("Todos os dados foram apagados. O programa será reiniciado.", "success"); // Mudado para success e "programa"
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Aumenta espera para o toast ser lido
     location.reload();
 }
 
@@ -16,23 +21,36 @@ function loadConfigForm() {
     const { config } = store.getState();
     const configNomeInput = $("#configNome");
     if(configNomeInput) configNomeInput.value = config.nome || '';
+
+    // --- MELHORIA: Carrega configuração de backup automático ---
+    const configAutobackupSelect = $("#configAutobackup");
+    if (configAutobackupSelect) configAutobackupSelect.value = config.autobackup || 'disabled';
+    // --------------------------------------------------------
 }
 
 function saveConfig() {
     const { config } = store.getState();
     const configNomeInput = $("#configNome");
+    // --- MELHORIA: Salva configuração de backup automático ---
+    const configAutobackupSelect = $("#configAutobackup");
+    // --------------------------------------------------------
     const newConfig = {
         ...config,
-        nome: configNomeInput ? configNomeInput.value.trim() : ''
+        nome: configNomeInput ? configNomeInput.value.trim() : '',
+        // --- MELHORIA: Inclui configuração de backup no save ---
+        autobackup: configAutobackupSelect ? configAutobackupSelect.value : 'disabled'
+        // -----------------------------------------------------
     };
 
     store.dispatch('SAVE_CONFIG', newConfig);
     showToast("Preferências salvas com sucesso!");
 }
 
-async function exportAllData() {
-    showLoader("Preparando arquivo de backup...");
-    await new Promise(resolve => setTimeout(resolve, 50));
+async function exportAllData(isAutoBackup = false) {
+    if (!isAutoBackup) {
+        showLoader("Preparando arquivo de backup...");
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
 
     try {
         const allData = {};
@@ -40,17 +58,31 @@ async function exportAllData() {
             allData[key] = loadJSON(KEYS[key], null);
         }
 
-        const dataStr = JSON.stringify(allData, null, 2);
+        // --- MELHORIA: Não exporta a flag de corrupção ---
+        delete allData.dataCorrupted; // Evita salvar a flag no backup
+        // -----------------------------------------------
+
+        const dataStr = JSON.stringify(allData); // Não precisa de indentação para autobackup
         const dataBlob = new Blob([dataStr], { type: "application/json" });
 
         const date = new Date();
         const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        triggerDownload(dataBlob, `backup_escala_facil_${dateString}.json`);
+        const timeString = `${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}`;
+        const prefix = isAutoBackup ? 'autobackup' : 'backup';
+        triggerDownload(dataBlob, `${prefix}_escala_facil_${dateString}_${timeString}.json`);
+
+        // --- MELHORIA: Atualiza timestamp do último autobackup ---
+        if (isAutoBackup) {
+            localStorage.setItem('ge_last_auto_backup_timestamp', Date.now().toString());
+            console.log("Backup automático realizado com sucesso.");
+        }
+        // ---------------------------------------------------------
+
     } catch (error) {
         console.error("Erro ao exportar dados:", error);
-        showToast("Ocorreu um erro ao gerar o arquivo de backup.");
+        if (!isAutoBackup) showToast("Ocorreu um erro ao gerar o arquivo de backup.", "error");
     } finally {
-        hideLoader();
+        if (!isAutoBackup) hideLoader();
     }
 }
 
@@ -68,10 +100,21 @@ async function importAllData() {
         reader.onload = async (event) => {
             try {
                 const importedData = JSON.parse(event.target.result);
-                
-                if (!importedData || typeof importedData.turnos === 'undefined' || typeof importedData.cargos === 'undefined') {
-                    throw new Error("Arquivo de backup inválido ou corrompido.");
+
+                // --- MELHORIA: Validação básica da estrutura do arquivo ---
+                if (!importedData || typeof importedData !== 'object') {
+                    throw new Error("Arquivo inválido. O conteúdo não é um objeto JSON válido.");
                 }
+                const requiredKeys = ['turnos', 'cargos', 'funcionarios', 'equipes', 'escalas', 'config'];
+                const missingKeys = requiredKeys.filter(key => !Array.isArray(importedData[key]) && key !== 'config'); // Config é objeto
+                if (missingKeys.length > 0) {
+                    throw new Error(`Arquivo de backup inválido. Faltam dados essenciais: ${missingKeys.join(', ')}.`);
+                }
+                if (typeof importedData.config !== 'object' || importedData.config === null) {
+                     throw new Error(`Arquivo de backup inválido. A seção 'config' está ausente ou mal formatada.`);
+                }
+                // Validação mais profunda pode ser adicionada aqui (verificar IDs, etc.)
+                // ---------------------------------------------------------
 
                 const { confirmed } = await showPromptConfirm({
                     title: "Confirmar Importação?",
@@ -85,16 +128,23 @@ async function importAllData() {
                     showLoader("Importando dados...");
                     for (const key in KEYS) {
                         if (importedData.hasOwnProperty(key)) {
-                            saveJSON(KEYS[key], importedData[key]);
+                            // Garante que salve um array vazio se a chave existir mas for null/undefined no JSON
+                            saveJSON(KEYS[key], importedData[key] || (key === 'config' ? {} : []));
                         }
                     }
+                    // Adiciona a versão após a importação para evitar migrações desnecessárias
+                    localStorage.setItem('ge_data_version', "1.3"); // Ou a versão atual do seu B-armazenamento-dados.js
+                    // --- MELHORIA: Limpa timestamp de backup automático após importar ---
+                    localStorage.removeItem('ge_last_auto_backup_timestamp');
+                    // -----------------------------------------------------------------
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    showToast("Dados importados com sucesso! A aplicação será reiniciada.");
-                    setTimeout(() => location.reload(), 1500);
+                    hideLoader(); // Esconde loader antes do toast
+                    showToast("Dados importados com sucesso! O programa será reiniciado.", "success"); // Alterado "aplicação" para "programa"
+                    setTimeout(() => location.reload(), 2000); // Aumenta espera
                 }
             } catch (error) {
                 console.error("Erro ao importar dados:", error);
-                showToast(error.message || "Ocorreu um erro ao ler o arquivo de backup.");
+                showToast(error.message || "Ocorreu um erro ao ler o arquivo de backup.", "error");
                 hideLoader();
             }
         };
@@ -104,8 +154,32 @@ async function importAllData() {
     fileInput.click();
 }
 
+// --- MELHORIA: Função para verificar e disparar backup automático ---
+function triggerAutoBackupIfNeeded() {
+    const { config } = store.getState();
+    const mode = config.autobackup || 'disabled';
+    if (mode === 'disabled') return;
+
+    const lastBackupTimestamp = parseInt(localStorage.getItem('ge_last_auto_backup_timestamp') || '0', 10);
+    const now = Date.now();
+    let interval = 0;
+
+    if (mode === 'daily') {
+        interval = 24 * 60 * 60 * 1000; // 1 dia em ms
+    } else if (mode === 'weekly') {
+        interval = 7 * 24 * 60 * 60 * 1000; // 1 semana em ms
+    }
+
+    if (interval > 0 && (now - lastBackupTimestamp >= interval)) {
+        console.log(`Disparando backup automático (${mode})...`);
+        exportAllData(true); // Chama exportAllData no modo automático (sem loader/toast)
+    }
+}
+// -----------------------------------------------------------------
+
 
 function exibirTermosDeUso(requireScrollableConfirm = false) {
+    // ... (conteúdo HTML dos termos permanece o mesmo, mas a lógica de exibição é chamada a partir daqui) ...
     const termosDeUsoHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
             <h3>🔒 ESCALA FÁCIL — TERMOS DE USO E LICENÇA DE SOFTWARE (VENDA ÚNICA)</h3>
@@ -119,8 +193,8 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
             <hr>
 
             <h4>2. Natureza do Software e Armazenamento de Dados</h4>
-            <p><strong>2.1.</strong> O Escala Fácil é uma aplicação que opera <strong>exclusivamente no navegador de internet</strong>.</p>
-            <p><strong>2.2.</strong> <strong>Todos os dados inseridos</strong> (como informações de funcionários, turnos, cargos e escalas) são <strong>armazenados localmente</strong> no dispositivo do Usuário, por meio do <strong>localStorage do navegador</strong>.</p>
+            <p><strong>2.1.</strong> O Escala Fácil é uma aplicação que opera <strong>exclusivamente neste programa, instalado no seu computador</strong>.</p>
+            <p><strong>2.2.</strong> <strong>Todos os dados inseridos</strong> (como informações de funcionários, turnos, cargos e escalas) são <strong>armazenados localmente</strong> no dispositivo do Usuário, por meio do <strong>armazenamento local do programa</strong>.</p>
             <p><strong>2.3.</strong> Nenhum dado é enviado, coletado ou armazenado em servidores externos. O desenvolvedor <strong>não tem acesso a nenhuma informação</strong> inserida pelo Usuário.</p>
             <hr>
 
@@ -138,10 +212,10 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
             <hr>
 
             <h4>4. Responsabilidade do Usuário</h4>
-            <p><strong>4.1. Segurança e Backup:</strong> O Usuário é <strong>único responsável pela segurança e manutenção dos seus dados</strong>. O Software disponibiliza ferramenta de exportação (“backup”) que deve ser usada <strong>regularmente</strong>. A perda de dados causada por limpeza de cache, falha no dispositivo ou troca de computador é de responsabilidade exclusiva do Usuário.</p>
+            <p><strong>4.1. Segurança e Backup:</strong> O Usuário é <strong>único responsável pela segurança e manutenção dos seus dados</strong>. O Software disponibiliza ferramenta de exportação (“backup”) que deve ser usada <strong>regularmente</strong>. A perda de dados causada por limpeza de dados do programa, falha no dispositivo ou reinstalação do programa é de responsabilidade exclusiva do Usuário.</p>
             <p><strong>4.2. Conformidade Legal e Resultados:</strong> As escalas e informações geradas são baseadas nas regras inseridas pelo Usuário. É de sua exclusiva responsabilidade garantir que as escalas estejam <strong>em conformidade com leis trabalhistas, acordos coletivos e regulamentações aplicáveis</strong>. O Licenciante não se responsabiliza por decisões de gestão ou interpretações incorretas da legislação trabalhista. O Software é uma ferramenta de auxílio e, embora projetado para ser preciso, está sujeito a erros. É de responsabilidade do Usuário revisar e validar todas as escalas geradas para garantir sua exatidão e conformidade.</p>
             <hr>
-            
+
             <h4>5. Suporte e Atualizações</h4>
             <p><strong>5.1.</strong> O Licenciante <strong>não é obrigado a fornecer suporte técnico</strong>, correções, manutenções ou atualizações futuras.</p>
             <p><strong>5.2.</strong> Qualquer atualização ou versão aprimorada será considerada produto separado, sujeito a novo licenciamento.</p>
@@ -186,13 +260,14 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
 }
 
 function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
-    const politicaHTML = `
+    // ... (conteúdo HTML da política permanece o mesmo, mas a lógica de exibição é chamada a partir daqui) ...
+     const politicaHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
             <h3>🛡️ POLÍTICA DE PRIVACIDADE — ESCALA FÁCIL</h3>
             <p><strong>Última atualização:</strong> 15/10/2025<br>
             <strong>Contato:</strong> escalafacil.contato@gmail.com</p>
             <hr>
-            
+
             <h4>1. Princípio Fundamental: Seus Dados São Apenas Seus</h4>
             <p>O <strong>Escala Fácil</strong> foi desenvolvido com o princípio de <strong>privacidade total</strong>:</p>
             <ul>
@@ -202,21 +277,21 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
             <hr>
 
             <h4>2. Como e Onde Seus Dados São Armazenados</h4>
-            <p><strong>2.1.</strong> Todos os dados inseridos são salvos <strong>no armazenamento local (localStorage)</strong> do seu navegador, dentro do seu próprio computador ou dispositivo.</p>
+            <p><strong>2.1.</strong> Todos os dados inseridos são salvos <strong>no armazenamento local do programa</strong>, dentro do seu próprio computador ou dispositivo.</p>
             <p><strong>2.2.</strong> Isso significa que <strong>nenhum dado sai do seu controle</strong> — o Software não envia informações a nenhum servidor externo.</p>
             <hr>
-            
+
             <h4>3. Segurança dos Dados</h4>
-            <p><strong>3.1.</strong> Como os dados ficam armazenados localmente, a segurança depende <strong>diretamente da proteção do seu dispositivo e navegador</strong>.</p>
+            <p><strong>3.1.</strong> Como os dados ficam armazenados localmente, a segurança depende <strong>diretamente da proteção do seu dispositivo</strong>.</p>
             <p><strong>3.2.</strong> O Usuário é responsável por manter seu computador livre de vírus, realizar backups periódicos e evitar exclusão acidental dos dados.</p>
             <hr>
 
             <h4>4. Cookies e Serviços de Terceiros</h4>
             <p>O Escala Fácil <strong>não utiliza cookies de rastreamento, pixels, nem serviços de terceiros</strong> (como Google Analytics ou APIs externas).</p>
             <hr>
-            
+
             <h4>5. Alterações desta Política</h4>
-            <p>Podemos atualizar esta Política de Privacidade ocasionalmente. As alterações serão publicadas nesta mesma página, e a data da última modificação será atualizada.</p>
+            <p>Podemos atualizar esta Política de Privacidade ocasionalmente. As alterações serão publicadas nesta mesma tela, e a data da última modificação será atualizada.</p>
             <hr>
 
             <h4>6. Contato</h4>
@@ -235,6 +310,7 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
         </div>
     `;
 
+
     if (requireScrollableConfirm) {
         return showScrollableConfirmModal({
             title: "Política de Privacidade do Escala Fácil",
@@ -251,6 +327,7 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
 }
 
 function exibirAtalhosDeTeclado() {
+    // ... (conteúdo HTML dos atalhos permanece o mesmo, mas a lógica de exibição é chamada a partir daqui) ...
     const shortcuts = [
         { keys: ['↑', '↓', '←', '→'], desc: 'Navegam pela grade da escala.' },
         { keys: ['Q', 'E'], desc: 'Trocam o funcionário focado na Barra de Ferramentas.' },
@@ -261,9 +338,20 @@ function exibirAtalhosDeTeclado() {
 
     const shortcutsHTML = `
         <div class="shortcuts-modal-content">
+            <style>
+                .shortcuts-list { list-style: none; padding: 0; margin: 0; }
+                .shortcut-item { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); opacity: 0; animation: fadeInSlideUp 0.5s ease-out forwards; }
+                .shortcut-item:last-child { border-bottom: none; }
+                .keys { display: flex; gap: 6px; flex-shrink: 0; }
+                .key { background-color: var(--bg); border: 1px solid var(--border); border-bottom-width: 3px; border-radius: 6px; padding: 4px 8px; font-family: monospace; font-size: 0.9rem; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.1s ease-out; }
+                .description { font-size: 0.9rem; color: var(--muted); }
+                .shortcut-item.animate-keys .key { animation: keypress 0.5s ease-out forwards; }
+                .shortcut-item.animate-keys .key:nth-child(2) { animation-delay: 0.1s; }
+                .shortcut-item.animate-keys .key:nth-child(3) { animation-delay: 0.2s; }
+            </style>
             <ul class="shortcuts-list">
                 ${shortcuts.map((sc, index) => `
-                    <li class="shortcut-item" style="animation-delay: ${index * 0.15}s;">
+                    <li class="shortcut-item" style="animation-delay: ${index * 0.1}s;">
                         <div class="keys">
                             ${sc.keys.map(key => `<span class="key">${key}</span>`).join('')}
                         </div>
@@ -279,14 +367,16 @@ function exibirAtalhosDeTeclado() {
         contentHTML: shortcutsHTML
     });
 
+    // Adiciona animação de keypress em cascata
     setTimeout(() => {
         const items = $$('.shortcut-item');
         items.forEach((item, index) => {
+            // Aplica a classe que dispara a animação CSS com um pequeno delay
             setTimeout(() => {
                 item.classList.add('animate-keys');
-            }, (index * 200) + 300);
+            }, (index * 100) + 150); // Delay inicial + delay por item
         });
-    }, 200);
+    }, 300); // Delay inicial geral
 }
 
 
@@ -314,19 +404,19 @@ function initConfiguracoesPage() {
     // --- Lógica dos Botões e Controles ---
     const btnSalvar = $("#btnSalvarConfig");
     if(btnSalvar) btnSalvar.onclick = saveConfig;
-    
+
     const termsCard = $("#config-terms-card");
     if(termsCard) termsCard.onclick = () => exibirTermosDeUso();
-    
+
     const privacyCard = $("#config-privacy-card");
     if(privacyCard) privacyCard.onclick = () => exibirPoliticaDePrivacidade();
-    
+
     const shortcutsCard = $("#config-shortcuts-card");
     if(shortcutsCard) shortcutsCard.onclick = () => exibirAtalhosDeTeclado();
-    
+
     const btnExport = $("#btn-export-data");
-    if(btnExport) btnExport.onclick = exportAllData;
-    
+    if(btnExport) btnExport.onclick = () => exportAllData(false); // Chama export manual
+
     const btnImport = $("#btn-import-data");
     if(btnImport) btnImport.onclick = importAllData;
 
@@ -336,42 +426,42 @@ function initConfiguracoesPage() {
             const pixKeyText = $("#pix-key-text");
             if(pixKeyText){
                 navigator.clipboard.writeText(pixKeyText.textContent).then(() => {
-                    showToast('Chave PIX copiada! 📋');
+                    showToast('Chave PIX copiada! 📋', 'success'); // Usa tipo success
                 }).catch(err => {
                     console.error('Erro ao copiar a chave PIX: ', err);
-                    showToast('Erro ao copiar. Tente manualmente.');
+                    showToast('Erro ao copiar. Tente manualmente.', 'error'); // Usa tipo error
                 });
             }
         };
     }
 
-    const btnReiniciar = $("#btnReiniciarOnboarding");
-    if(btnReiniciar){
-        btnReiniciar.onclick = () => {
-            localStorage.removeItem('ge_onboarding_complete');
-            localStorage.removeItem('ge_onboarding_progress');
-            showToast("Onboarding reiniciado. A página será recarregada.");
-            setTimeout(() => location.reload(), 1500);
-        };
-    }
-
+    // Listener para o botão de Hard Reset
     const btnReset = $("#btnHardReset");
     if(btnReset){
         btnReset.onclick = async () => {
             const { confirmed } = await showPromptConfirm({
                 title: "APAGAR TODOS OS DADOS?",
-                message: "Esta ação é IRREVERSÍVEL. Todos os turnos, cargos, funcionários e escalas salvas serão permanentemente excluídos.",
+                // Alterado "navegador" para "programa"
+                message: "Esta ação é IRREVERSÍVEL. Todos os turnos, cargos, funcionários, equipes e escalas salvas serão permanentemente excluídos deste programa.",
                 promptLabel: `Para confirmar, digite a palavra "APAGAR" no campo abaixo:`,
                 requiredWord: "APAGAR",
-                confirmText: "Confirmar Exclusão"
+                confirmText: "Confirmar Exclusão Definitiva" // Texto mais enfático
             });
-    
+
             if (confirmed) {
+                // Chama a função que agora está validada e correta
                 performHardReset();
             }
         };
     }
-    
+
+    // --- MELHORIA: Listener para o seletor de backup automático ---
+    const configAutobackupSelect = $("#configAutobackup");
+    if (configAutobackupSelect) {
+        configAutobackupSelect.addEventListener('change', saveConfig); // Salva a preferência ao mudar
+    }
+    // -------------------------------------------------------------
+
     // Carrega os dados iniciais no formulário ao abrir a página
     loadConfigForm();
 

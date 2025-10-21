@@ -5,8 +5,6 @@
 
 const uid = () => Math.random().toString(36).slice(2,10);
 
-const MAX_DIAS_CONSECUTIVOS = 7; // Valor máximo razoável para dias consecutivos
-
 function parseTimeToMinutes(t) {
     if (!t || typeof t !== 'string') return 0;
     const parts = t.split(":");

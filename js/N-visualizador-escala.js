@@ -113,7 +113,7 @@ function renderEscalaLegend(escala, container) {
 
 function renderGenericEscalaTable(escala, container, options = {}) {
     const { isInteractive = false } = options;
-    const { funcionarios, turnos, cargos } = store.getState();
+    const { funcionarios, turnos, cargos, equipes } = store.getState(); // Adiciona equipes
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
 
     if (!container) {
@@ -135,22 +135,25 @@ function renderGenericEscalaTable(escala, container, options = {}) {
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
 
+    // Adiciona informação de equipe aos funcionários para ordenação
+    const equipesMap = new Map();
+    equipes.filter(e => e.cargoId === escala.cargoId).forEach(e => {
+        e.funcionarioIds.forEach(funcId => equipesMap.set(funcId, e.id));
+    });
+
     const funcsDaEscala = [...allFuncsInvolved]
-        .map(funcId => ({ id: funcId, ...getFuncInfo(funcId) }))
+        .map(funcId => ({ id: funcId, ...getFuncInfo(funcId), equipeId: equipesMap.get(funcId) }))
         .filter(f => f.nome)
+        // Ordena por ID da equipe (nulls/sem equipe por último), depois pelo nome
         .sort((a, b) => {
-            const primeiroDia = dateRange[0];
-            const slotA = escala.slots.find(s => s.assigned === a.id && s.date === primeiroDia);
-            const slotB = escala.slots.find(s => s.assigned === b.id && s.date === primeiroDia);
-            const turnoA = slotA ? getTurnoInfo(slotA.turnoId) : null;
-            const turnoB = slotB ? getTurnoInfo(slotB.turnoId) : null;
-            if (turnoA?.isSystem && !turnoB?.isSystem) return -1;
-            if (!turnoA?.isSystem && turnoB?.isSystem) return 1;
-            if (turnoA && turnoB && turnoA.inicio && turnoB.inicio) {
-                const inicioComparison = turnoA.inicio.localeCompare(turnoB.inicio);
-                if (inicioComparison !== 0) return inicioComparison;
+            if (a.equipeId && !b.equipeId) return -1;
+            if (!a.equipeId && b.equipeId) return 1;
+            if (a.equipeId && b.equipeId && a.equipeId !== b.equipeId) {
+                const equipeA = equipes.find(e => e.id === a.equipeId)?.nome || '';
+                const equipeB = equipes.find(e => e.id === b.equipeId)?.nome || '';
+                return equipeA.localeCompare(equipeB);
             }
-            return a.nome.localeCompare(b.nome);
+            return a.nome.localeCompare(b.nome); // Desempate por nome
         });
     
     const turnosDoCargo = cargo 
@@ -178,7 +181,9 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 <small class="muted">${func.documento || '---'}</small>
             </td>
         `;
-        tableHTML += `<tr data-employee-row-id="${func.id}">${nomeHtml}`;
+        // Adiciona classe de equipe se o funcionário pertencer a uma
+        const equipeClass = func.equipeId ? `equipe-${func.equipeId}` : '';
+        tableHTML += `<tr data-employee-row-id="${func.id}" class="${equipeClass}">${nomeHtml}`;
 
         dateRange.forEach(date => {
             const d = new Date(date + 'T12:00:00');
@@ -202,7 +207,9 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             } else if (isCargoDiaNaoUtil) {
                 tableHTML += `<td class="celula-fechada" title="O cargo não opera neste dia"></td>`;
             } else {
-                tableHTML += `<td class="${cellClass}" ${dataAttrs}></td>`;
+                 // Adiciona fundo cinza claro para células vazias de membros de equipe
+                const emptyBgStyle = (func.equipeId && isInteractive) ? 'style="background-color: #f0f0f0;"' : '';
+                tableHTML += `<td class="${cellClass}" ${dataAttrs} ${emptyBgStyle}></td>`;
             }
         });
         tableHTML += `</tr>`;
@@ -219,27 +226,36 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             });
             tableHTML += `</tr>`;
         });
+        
+        // CORREÇÃO NO CÁLCULO DE VAGAS
         turnosDoCargo.forEach(turno => {
             let hasVagas = false;
             let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
+            
+            const coberturaTurno = cobertura[turno.id] || {}; // Cobertura pode ser objeto ou número
+            
             dateRange.forEach(date => {
                 const d = new Date(date + 'T12:00:00');
                 const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
                 const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
                 const isDiaUtil = cargoDiasOperacionais.has(diaSemanaId) && !feriadoFolga;
+                
+                let vagas = 0;
                 if (isDiaUtil) {
-                    const coberturaNecessaria = cobertura[turno.id] || 0;
+                    // Determina a cobertura necessária para ESTE dia da semana
+                    const coberturaNecessaria = typeof coberturaTurno === 'object' 
+                        ? (coberturaTurno[diaSemanaId] || 0) 
+                        : (coberturaTurno || 0); // Fallback se for número (versão antiga)
+
                     const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
-                    const vagas = coberturaNecessaria - coberturaAtual;
+                    vagas = coberturaNecessaria - coberturaAtual;
+                    
                     if (vagas > 0) {
                         hasVagas = true;
-                        rowVagasHTML += `<td style="color: var(--danger); font-weight: bold;">${vagas}</td>`;
-                    } else {
-                        rowVagasHTML += `<td></td>`;
                     }
-                } else {
-                    rowVagasHTML += `<td></td>`;
                 }
+                
+                rowVagasHTML += `<td ${vagas > 0 ? 'style="color: var(--danger); font-weight: bold;"' : ''}>${vagas > 0 ? vagas : ''}</td>`;
             });
             rowVagasHTML += `</tr>`;
             if (hasVagas) tableHTML += rowVagasHTML;
@@ -248,6 +264,7 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     }
     container.innerHTML = tableHTML;
 }
+
 
 function updateTableFooter(escala) {
     const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
@@ -280,29 +297,35 @@ function updateTableFooter(escala) {
         footerHTML += `</tr>`;
     });
 
+    // CORREÇÃO NO CÁLCULO DE VAGAS
     turnosDoCargo.forEach(turno => {
         let hasVagas = false;
         let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
+        
+        const coberturaTurno = cobertura[turno.id] || {}; // Cobertura pode ser objeto ou número
+
         dateRange.forEach(date => {
             const d = new Date(date + 'T12:00:00');
             const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
             const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
             const isDiaUtil = cargoDiasOperacionais.has(diaSemanaId) && !feriadoFolga;
             
+            let vagas = 0;
             if (isDiaUtil) {
-                const coberturaNecessaria = cobertura[turno.id] || 0;
+                // Determina a cobertura necessária para ESTE dia da semana
+                const coberturaNecessaria = typeof coberturaTurno === 'object' 
+                    ? (coberturaTurno[diaSemanaId] || 0) 
+                    : (coberturaTurno || 0); // Fallback se for número (versão antiga)
+                
                 const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
-                const vagas = coberturaNecessaria - coberturaAtual;
+                vagas = coberturaNecessaria - coberturaAtual;
                 
                 if (vagas > 0) {
                     hasVagas = true;
-                    rowVagasHTML += `<td style="color: var(--danger); font-weight: bold;">${vagas}</td>`;
-                } else {
-                    rowVagasHTML += `<td></td>`;
                 }
-            } else {
-                rowVagasHTML += `<td></td>`;
             }
+            
+            rowVagasHTML += `<td ${vagas > 0 ? 'style="color: var(--danger); font-weight: bold;"' : ''}>${vagas > 0 ? vagas : ''}</td>`;
         });
         rowVagasHTML += `</tr>`;
         if (hasVagas) {
@@ -319,14 +342,39 @@ function renderPainelDaEscala(escala) {
     const painelContainer = isGerador ? $('#gerador-painel-escala') : $('#salva-painel-escala');
     if (!painelContainer) return;
 
-    const {
-        funcionarios
-    } = store.getState();
+    const { funcionarios, cargos, turnos } = store.getState(); // Adiciona cargos e turnos
+    const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const funcsDaEscala = funcionarios.filter(f => escala.historico && escala.historico[f.id]).sort((a, b) => a.nome.localeCompare(b.nome));
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const totalDias = dateRange.length;
     const totalFDS = dateRange.filter(d => [0, 6].includes(new Date(d + 'T12:00:00').getUTCDay())).length;
-    const vagas = escala.slots.filter(s => !s.assigned).length;
+
+    // CORREÇÃO NO CÁLCULO DE VAGAS TOTAIS
+    let vagas = 0;
+    const cargo = cargos.find(c => c.id === escala.cargoId);
+    const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
+    const coberturaGeral = escala.cobertura || {};
+    const turnosDoCargoIds = cargo ? cargo.turnosIds : [];
+
+    dateRange.forEach(date => {
+        const d = new Date(date + 'T12:00:00');
+        const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
+        const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
+        const isDiaUtil = cargoDiasOperacionais.has(diaSemanaId) && !feriadoFolga;
+
+        if (isDiaUtil) {
+            turnosDoCargoIds.forEach(turnoId => {
+                 const coberturaTurno = coberturaGeral[turnoId] || {};
+                 const coberturaNecessaria = typeof coberturaTurno === 'object'
+                    ? (coberturaTurno[diaSemanaId] || 0)
+                    : (coberturaTurno || 0);
+                
+                const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turnoId && s.assigned).length;
+                vagas += Math.max(0, coberturaNecessaria - coberturaAtual);
+            });
+        }
+    });
+
     const totalHorasExtras = funcsDaEscala.reduce((acc, func) => {
         if (func.medicaoCarga === 'horas' || !func.medicaoCarga) {
             const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60);
@@ -347,7 +395,7 @@ function renderPainelDaEscala(escala) {
     } else if (vagas > 0) {
         saudeStatus = 'warning';
         saudeIcon = '⚠️';
-        saudeTitle = `${vagas} turno(s) vago(s)`;
+        saudeTitle = `${vagas} turno(s) vago(s)`; // Atualiza o título com o número correto de vagas
     }
 
     $('.painel-header .painel-title', painelContainer).innerHTML = `
@@ -574,6 +622,22 @@ function renderPainelDaEscala(escala) {
             } 
             else if (event.target.closest('.btn-cancel-edit')) {
                 funcItem.classList.remove('is-editing');
+                // Restaura o valor original do input ao cancelar
+                const func = funcsDaEscala.find(f => f.id === funcId);
+                if (func) {
+                    const medicao = func.medicaoCarga || 'horas';
+                    let metaOriginal;
+                     if (medicao === 'turnos') {
+                        const { cargos } = store.getState();
+                        const cargo = cargos.find(c => c.id === escala.cargoId);
+                        const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
+                        metaOriginal = calcularMetaTurnos(func, escala.inicio, escala.fim, cargoDiasOperacionais);
+                    } else {
+                        metaOriginal = calcularMetaHoras(func, escala.inicio, escala.fim);
+                    }
+                     const metaInput = $('.meta-input', funcItem);
+                     metaInput.value = metaOriginal; // Restaura valor visual
+                }
             }
             else if (event.target.closest('.btn-confirm-edit')) {
                 const input = $('.meta-input', funcItem);
@@ -866,40 +930,76 @@ function updateTableCells(escala) {
     const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
     if (!table) return;
 
-    const { turnos, cargos } = store.getState();
+    const { turnos, cargos, equipes } = store.getState(); // Adiciona equipes
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const getTurnoInfo = (turnoId) => allTurnos.find(t => t.id === turnoId) || {};
     
     const cargo = cargos.find(c => c.id === escala.cargoId);
     const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
 
-    $$('tbody tr[data-employee-row-id]', table).forEach(row => {
-        const funcId = row.dataset.employeeRowId;
-        $$('td:not(:first-child)', row).forEach((cell, index) => {
-            const date = dateRangeInclusive(escala.inicio, escala.fim)[index];
-            if(!date) return;
+    // Busca o tbody para limpar apenas as linhas, preservando thead e tfoot
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    tbody.innerHTML = ''; // Limpa apenas o corpo
 
+    // Reordena os funcionários para o rendering
+    const allFuncsInvolved = new Set();
+    escala.slots.forEach(s => { if (s.assigned) allFuncsInvolved.add(s.assigned); });
+    Object.keys(escala.historico || {}).forEach(funcId => allFuncsInvolved.add(funcId));
+
+    const equipesMap = new Map();
+    equipes.filter(e => e.cargoId === escala.cargoId).forEach(e => {
+        e.funcionarioIds.forEach(funcId => equipesMap.set(funcId, e.id));
+    });
+
+    const funcsDaEscala = [...allFuncsInvolved]
+        .map(funcId => ({ id: funcId, ...store.getState().funcionarios.find(f => f.id === funcId), equipeId: equipesMap.get(funcId) }))
+        .filter(f => f.nome)
+        .sort((a, b) => {
+            if (a.equipeId && !b.equipeId) return -1;
+            if (!a.equipeId && b.equipeId) return 1;
+            if (a.equipeId && b.equipeId && a.equipeId !== b.equipeId) {
+                const equipeA = equipes.find(e => e.id === a.equipeId)?.nome || '';
+                const equipeB = equipes.find(e => e.id === b.equipeId)?.nome || '';
+                return equipeA.localeCompare(equipeB);
+            }
+            return a.nome.localeCompare(b.nome);
+        });
+    
+    const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
+    
+    // Remonta as linhas do tbody na nova ordem
+    funcsDaEscala.forEach(func => {
+        const row = document.createElement('tr');
+        row.dataset.employeeRowId = func.id;
+        const equipeClass = func.equipeId ? `equipe-${func.equipeId}` : '';
+        row.className = equipeClass;
+
+        const nomeHtml = `
+            <td>
+                ${func.nome}
+                <br>
+                <small class="muted">${func.documento || '---'}</small>
+            </td>
+        `;
+        row.innerHTML = nomeHtml;
+
+        dateRange.forEach(date => {
+            const cell = document.createElement('td');
             const d = new Date(date + 'T12:00:00');
             const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
             const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
             const isCargoDiaNaoUtil = !cargoDiasOperacionais.has(diaSemanaId);
-            
-            const slot = escala.slots.find(s => s.date === date && s.assigned === funcId);
 
-            cell.innerHTML = '';
-            cell.style.backgroundColor = '';
-            cell.style.color = '';
-            cell.className = '';
-            cell.title = '';
-            Object.keys(cell.dataset).forEach(key => delete cell.dataset[key]);
-            
             cell.dataset.date = date;
-            cell.dataset.employeeId = funcId;
+            cell.dataset.employeeId = func.id;
             cell.tabIndex = -1;
+            cell.classList.add('editable-cell');
+
+            const slot = escala.slots.find(s => s.date === date && s.assigned === func.id);
 
             if (slot) {
                 const turno = getTurnoInfo(slot.turnoId);
-                cell.classList.add('editable-cell');
                 if (slot.isExtra) cell.classList.add('celula-hora-extra');
                 cell.dataset.slotId = slot.id;
                 cell.dataset.turnoId = slot.turnoId;
@@ -909,16 +1009,21 @@ function updateTableCells(escala) {
                 cell.title = turno.nome;
                 cell.textContent = turno.sigla || '?';
             } else if (feriadoFolga) {
+                cell.classList.remove('editable-cell');
                 cell.classList.add('celula-feriado-folga');
                 cell.title = feriadoFolga.nome;
                 cell.textContent = 'FOLGA';
             } else if (isCargoDiaNaoUtil) {
+                 cell.classList.remove('editable-cell');
                 cell.classList.add('celula-fechada');
                 cell.title = 'O cargo não opera neste dia';
             } else {
-                cell.classList.add('editable-cell');
+                 // Adiciona fundo cinza claro para células vazias de membros de equipe
+                 if (func.equipeId) cell.style.backgroundColor = '#f0f0f0';
             }
+            row.appendChild(cell);
         });
+        tbody.appendChild(row); // Adiciona a linha ao tbody
     });
 }
 

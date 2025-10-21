@@ -25,18 +25,33 @@ const btnCancelarCargo = $("#btnCancelarCargo");
 const tblCargosBody = $("#tblCargos tbody");
 const formTabButtonCargos = $('.painel-tab-btn[data-tab="formulario"]', pageCargos);
 
+// NOVOS ELEMENTOS
+const cargoMaxDiasConsecutivosInput = $("#cargoMaxDiasConsecutivos");
+const cargoMinFolgasSabadosInput = $("#cargoMinFolgasSabados");
+const cargoMinFolgasDomingosInput = $("#cargoMinFolgasDomingos");
+const cargoMaxDiasLabel = $("label[for='cargoMaxDiasConsecutivos']"); // Referência à label para atualização
+
 function setCargoFormDirty(isDirty) { dirtyForms.cargos = isDirty; }
 
 // --- LÓGICA DO FORMULÁRIO ---
 
-cargoNomeInput.addEventListener("input", (e) => {
-    const input = e.target;
-    if (input.value.length > 0) {
-        input.value = input.value.charAt(0).toUpperCase() + input.value.slice(1);
-    }
-    validateInput(input, input.value.trim() !== '');
-    setCargoFormDirty(true);
+[cargoNomeInput, cargoMaxDiasConsecutivosInput, cargoMinFolgasSabadosInput, cargoMinFolgasDomingosInput].forEach(input => {
+    input.addEventListener("input", (e) => {
+        const inputEl = e.target;
+        if (inputEl === cargoNomeInput && inputEl.value.length > 0) {
+            inputEl.value = inputEl.value.charAt(0).toUpperCase() + inputEl.value.slice(1);
+        }
+        // Garante que o valor máximo não seja ultrapassado ao digitar
+        if (inputEl === cargoMaxDiasConsecutivosInput && inputEl.max) {
+             if (parseInt(inputEl.value) > parseInt(inputEl.max)) {
+                inputEl.value = inputEl.max;
+             }
+        }
+        validateInput(inputEl);
+        setCargoFormDirty(true);
+    });
 });
+
 
 filtroCargosInput.addEventListener("input", () => {
     renderCargos();
@@ -70,6 +85,38 @@ function renderTurnosSelects() {
     });
 }
 
+// --- NOVA FUNÇÃO PARA ATUALIZAR ESTADO DAS REGRAS DE ALOCAÇÃO ---
+function updateAllocationRulesState() {
+    const diasSelecionados = $$('input[name="cargoDias"]:checked').map(chk => chk.value);
+    const trabalhaSabado = diasSelecionados.includes('sab');
+    const trabalhaDomingo = diasSelecionados.includes('dom');
+
+    // Atualiza Max Dias Consecutivos
+    let maxDiasPossivel = 7;
+    if (!trabalhaSabado && !trabalhaDomingo) maxDiasPossivel = 5;
+    else if (!trabalhaSabado || !trabalhaDomingo) maxDiasPossivel = 6;
+    
+    cargoMaxDiasConsecutivosInput.max = maxDiasPossivel;
+    if (parseInt(cargoMaxDiasConsecutivosInput.value) > maxDiasPossivel) {
+        cargoMaxDiasConsecutivosInput.value = maxDiasPossivel; // Ajusta se o valor atual for maior que o novo máximo
+    }
+    cargoMaxDiasLabel.textContent = `Máx. dias de trabalho consecutivos (máx: ${maxDiasPossivel})`;
+
+    // Atualiza Folgas Sábado
+    cargoMinFolgasSabadosInput.disabled = !trabalhaSabado;
+    if (!trabalhaSabado) {
+        cargoMinFolgasSabadosInput.value = 0;
+        validateInput(cargoMinFolgasSabadosInput, true); // Marca como válido se desabilitado
+    }
+
+    // Atualiza Folgas Domingo
+    cargoMinFolgasDomingosInput.disabled = !trabalhaDomingo;
+    if (!trabalhaDomingo) {
+        cargoMinFolgasDomingosInput.value = 0;
+        validateInput(cargoMinFolgasDomingosInput, true); // Marca como válido se desabilitado
+    }
+}
+
 function renderDiasSemanaCargo() {
     cargoDiasContainer.innerHTML = '';
     DIAS_SEMANA.forEach(d => {
@@ -84,6 +131,7 @@ function renderDiasSemanaCargo() {
         container.appendChild(lbl);
         lbl.querySelector('input').addEventListener('change', () => {
             updateCargoRegrasExplicacao();
+            updateAllocationRulesState(); // Chama a nova função de atualização
             setCargoFormDirty(true);
         });
     });
@@ -202,7 +250,7 @@ function renderCargos() {
     if (cargosOrdenados.length === 0) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 4;
+        cell.colSpan = 5; // Atualizado para 5 colunas
         if (filtro.length === 0 && cargos.length === 0) {
             cell.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏥</div>
                 <h3>Nenhum Cargo Cadastrado</h3>
@@ -235,6 +283,13 @@ function renderCargos() {
             }
             funcionamento = `${dias} (${horario})`;
         }
+        
+        // Formata o resumo das regras individuais
+        let regrasResumo = 'N/D';
+        if (c.regras) {
+            regrasResumo = `Max: ${c.regras.maxDiasConsecutivos || '?'}d / Sáb: ${c.regras.minFolgasSabados || '0'} / Dom: ${c.regras.minFolgasDomingos || '0'}`;
+        }
+
 
         const tr = document.createElement("tr");
         tr.dataset.cargoId = c.id;
@@ -243,6 +298,7 @@ function renderCargos() {
             <td>${c.nome} <span class="muted">(${numFuncionarios})</span></td>
             <td>${nomesTurnos}</td>
             <td>${funcionamento}</td>
+            <td style="font-size: 0.8rem; white-space: nowrap;">${regrasResumo}</td> 
             <td>
                 <button class="secondary" data-action="edit" data-id="${c.id}" aria-label="Editar o cargo ${c.nome}">✏️ Editar</button>
                 <button class="danger" data-action="delete" data-id="${c.id}" aria-label="Excluir o cargo ${c.nome}">🔥 Excluir</button>
@@ -293,6 +349,12 @@ function validateCargoForm() {
         validateInput(cargoInicioInput, true);
         validateInput(cargoFimInput, true);
     }
+    
+    // Validação dos novos campos (verifica apenas se não estão desabilitados)
+    if (!cargoMaxDiasConsecutivosInput.disabled && !validateInput(cargoMaxDiasConsecutivosInput)) isValid = false;
+    if (!cargoMinFolgasSabadosInput.disabled && !validateInput(cargoMinFolgasSabadosInput)) isValid = false;
+    if (!cargoMinFolgasDomingosInput.disabled && !validateInput(cargoMinFolgasDomingosInput)) isValid = false;
+
 
     return isValid;
 }
@@ -351,6 +413,10 @@ async function saveCargoFromForm() {
             tipoHorario: cargoTipoHorarioHiddenInput.value,
             inicio: cargoInicioInput.value,
             fim: cargoFimInput.value,
+            // Salvando os novos valores
+            maxDiasConsecutivos: parseInt(cargoMaxDiasConsecutivosInput.value, 10) || 6,
+            minFolgasSabados: parseInt(cargoMinFolgasSabadosInput.value, 10) || 0, // Padrão 0 se desabilitado
+            minFolgasDomingos: parseInt(cargoMinFolgasDomingosInput.value, 10) || 0, // Padrão 0 se desabilitado
         }
     };
 
@@ -367,7 +433,7 @@ function editCargoInForm(id) {
     const cargo = cargos.find(c => c.id === id);
     if (!cargo) return;
 
-    cancelEditCargo();
+    cancelEditCargo(); // Limpa o formulário antes de preencher
     editingCargoId = id;
 
     cargoNomeInput.value = cargo.nome;
@@ -381,10 +447,16 @@ function editCargoInForm(id) {
         $(`.toggle-btn[data-value="${tipoHorario}"]`, cargoHorarioToggle).click();
         cargoInicioInput.value = cargo.regras.inicio || '';
         cargoFimInput.value = cargo.regras.fim || '';
+        
+        // Preenchendo os novos campos
+        cargoMaxDiasConsecutivosInput.value = cargo.regras.maxDiasConsecutivos ?? 6; // Usa ?? para fallback se for undefined
+        cargoMinFolgasSabadosInput.value = cargo.regras.minFolgasSabados ?? 1;
+        cargoMinFolgasDomingosInput.value = cargo.regras.minFolgasDomingos ?? 1;
     }
     
     updateAutomaticoHorario();
     updateCargoRegrasExplicacao();
+    updateAllocationRulesState(); // Atualiza o estado dos inputs de regras
 
     btnSalvarCargo.textContent = "💾 Salvar Alterações";
     parseEmojisInElement(btnSalvarCargo);
@@ -404,17 +476,25 @@ function cancelEditCargo() {
     cargoInicioInput.value = "";
     cargoFimInput.value = "";
     
+    // Limpando e resetando os novos campos
+    cargoMaxDiasConsecutivosInput.value = "6";
+    cargoMinFolgasSabadosInput.value = "1";
+    cargoMinFolgasDomingosInput.value = "1";
+    
     $$('.invalid-fieldset', pageCargos).forEach(el => el.classList.remove('invalid-fieldset'));
+    $$('.invalid', pageCargos).forEach(el => el.classList.remove('invalid'));
 
     $(`.toggle-btn[data-value="automatico"]`, cargoHorarioToggle).click();
     updateCargoRegrasExplicacao();
+    updateAllocationRulesState(); // Reset o estado dos inputs de regras
 
     btnSalvarCargo.textContent = "💾 Salvar Cargo";
     formTabButtonCargos.innerHTML = "📝 Novo Cargo";
     parseEmojisInElement(btnSalvarCargo);
     setCargoFormDirty(false);
     
-    cargoNomeInput.focus();
+    // Não foca automaticamente para evitar scroll inesperado
+    // cargoNomeInput.focus(); 
 }
 
 async function deleteCargo(id) {
@@ -514,7 +594,7 @@ function initCargosPage() {
             
             checkboxes.forEach(chk => {
                 if (chk.checked === allChecked) {
-                    chk.click();
+                    chk.click(); // Dispara o evento 'change'
                 }
             });
         });
@@ -528,7 +608,7 @@ function initCargosPage() {
             checkboxes.forEach(chk => {
                 const shouldBeChecked = diasDeSemanaIds.includes(chk.value);
                 if (chk.checked !== shouldBeChecked) {
-                    chk.click();
+                    chk.click(); // Dispara o evento 'change'
                 }
             });
         });
@@ -536,6 +616,7 @@ function initCargosPage() {
 
     renderDiasSemanaCargo();
     $(`.toggle-btn[data-value="automatico"]`, cargoHorarioToggle).click();
+    updateAllocationRulesState(); // Chama para definir o estado inicial
     setCargoFormDirty(false);
 }
 

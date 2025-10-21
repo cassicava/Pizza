@@ -65,7 +65,7 @@ function go(page, options = {}) {
 
     const currentPageEl = $('.page.active');
     const currentPageId = currentPageEl ? currentPageEl.id.replace('page-', '') : null;
-    
+
     if (currentPageId === page && !options.force) return;
 
     (async () => {
@@ -78,26 +78,26 @@ function go(page, options = {}) {
             if (!confirmed) return;
         }
 
-        isNavigating = true; 
+        isNavigating = true;
 
         const transitionLogic = () => {
             if (currentPageEl) {
                 currentPageEl.classList.remove('active');
                 currentPageEl.classList.remove('fading-out');
-                
+
                 switch (currentPageId) {
                     case 'turnos': cancelEditTurno(); break;
                     case 'cargos': cancelEditCargo(); break;
                     case 'funcionarios': cancelEditFunc(); break;
                     case 'equipes': cancelEditEquipe(); break;
-                    case 'gerar-escala': 
-                        resetGeradorWizard(); 
+                    case 'gerar-escala':
+                        resetGeradorWizard();
                         currentEscala = null;
                         if (typeof cleanupEditor === 'function') cleanupEditor(); // Limpa a toolbox e o padding
                         break;
                 }
             }
-            
+
             const nextPageEl = $(`#page-${page}`);
             if (nextPageEl) {
                 nextPageEl.classList.add('active');
@@ -107,7 +107,7 @@ function go(page, options = {}) {
             toggleHelpPanel(false); // Garante que o painel feche ao navegar
             loadHelpContent(page);  // Carrega o conteúdo de ajuda para a nova página
             // -----------------------------------------
-            
+
             $$(".tab-btn").forEach(b => b.classList.remove("active"));
             const activeTab = $(`.tab-btn[data-page="${page}"]`);
             if (activeTab) activeTab.classList.add('active');
@@ -116,13 +116,14 @@ function go(page, options = {}) {
             if (page === 'home') {
                 pageTitleEl.textContent = `Início`;
             } else if (activeTab) {
-                pageTitleEl.textContent = activeTab.querySelector('.tab-text').textContent;
+                const tabTextEl = activeTab.querySelector('.tab-text');
+                if (tabTextEl) pageTitleEl.textContent = tabTextEl.textContent; // Verifica se tabTextEl existe
             }
-            
+
             window.scrollTo(0, 0);
 
             switch (page) {
-                case 'home': 
+                case 'home':
                     updateWelcomeMessage();
                     updateHomeScreenDashboard();
                     break;
@@ -138,13 +139,16 @@ function go(page, options = {}) {
                     break;
                 case 'gerar-escala': initGeradorPage(options); break;
                 case 'relatorios': renderRelatoriosPage(); break;
-                case 'escalas-salvas': 
-                    renderFiltroEscalasCargo(); 
-                    renderEscalasList(); 
+                case 'escalas-salvas':
+                    renderFiltroEscalasCargo();
+                    renderEscalasList();
+                    break;
+                 case 'configuracoes': // Garante que o form de config seja carregado ao navegar
+                    loadConfigForm();
                     break;
             }
             parseEmojisInElement(document.body);
-            isNavigating = false; 
+            isNavigating = false;
         };
 
         if (currentPageEl) {
@@ -198,6 +202,9 @@ function renderRouter(actionName) {
         case 'SAVE_CONFIG':
             loadConfigForm();
             updateWelcomeMessage();
+             // --- MELHORIA: Chama a verificação de backup após salvar config ---
+            triggerAutoBackupIfNeeded();
+             // ----------------------------------------------------------------
             break;
     }
 }
@@ -218,7 +225,7 @@ function initMainApp() {
     const body = document.body;
 
     body.classList.add('app-loading');
-    
+
     const nome = config.nome;
     splashUserName.textContent = (nome && nome.trim() !== '') ? nome : 'Usuário';
 
@@ -228,20 +235,26 @@ function initMainApp() {
     store.subscribe(renderRouter);
     renderRouter('LOAD_STATE');
 
+    // --- MELHORIA: Chama verificação de backup após carregar estado ---
+    triggerAutoBackupIfNeeded();
+    // -------------------------------------------------------------
+
     // [CORREÇÃO] A duração total da animação agora é controlada pelo CSS.
     // O JavaScript apenas inicia a saída e espera ela terminar.
     setTimeout(() => {
         splashScreen.classList.add('closing');
-        
+
         // Espera a transição de fade-out da splash screen terminar
         splashScreen.addEventListener('transitionend', () => {
             splashScreen.style.display = 'none';
-            body.classList.remove('app-loading'); 
-            
+            body.classList.remove('app-loading');
+
             // Agora, com a splash screen totalmente fora do caminho, navega para a home.
             // Isso garante que a animação dos cards será acionada corretamente.
-            go("home", { force: true }); 
-            $("#page-title").textContent = "Início";
+            go("home", { force: true });
+            const pageTitleEl = $("#page-title"); // Garante que pageTitleEl é definido
+            if (pageTitleEl) pageTitleEl.textContent = "Início"; // Define o título após a navegação
+
 
         }, { once: true });
 
@@ -279,9 +292,9 @@ function init() {
         if(welcomeOverlay) {
             welcomeOverlay.style.display = 'none';
         }
-        
+
         setupAppListeners();
-        initMainApp();
+        initMainApp(); // initMainApp agora chama triggerAutoBackupIfNeeded internamente
     }
 }
 

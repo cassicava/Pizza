@@ -28,10 +28,8 @@ function resetGeradorWizard() {
         excecoes: {},
         feriados: [],
         selectedDate: null,
-        maxDiasConsecutivos: 6,
-        minFolgasSabados: 1,
-        minFolgasDomingos: 1,
-        cobertura: {},
+        // As regras foram movidas para o objeto do cargo
+        cobertura: {}, 
         coberturaPorEquipe: {},
     };
     currentEscala = null;
@@ -62,14 +60,6 @@ function resetGeradorWizard() {
     if ($("#holiday-list-wrapper")) $("#holiday-list-wrapper").innerHTML = '';
     if ($("#gerador-excecoes-funcionarios-container")) $("#gerador-excecoes-funcionarios-container").innerHTML = '';
     if ($("#gerador-cobertura-turnos-container")) $("#gerador-cobertura-turnos-container").innerHTML = '';
-    
-    // Limpeza dos inputs do passo 4 (para garantir estado inicial)
-    const maxDiasInput = $('#gerar-maxDiasConsecutivos');
-    if(maxDiasInput) maxDiasInput.value = 6;
-    const sabadosInput = $('#gerar-minFolgasSabados');
-    if(sabadosInput) sabadosInput.value = 1;
-    const domingosInput = $('#gerar-minFolgasDomingos');
-    if(domingosInput) domingosInput.value = 1;
 
     const toolbox = $("#editor-toolbox");
     if (toolbox) toolbox.classList.add("hidden");
@@ -201,18 +191,20 @@ function createWizardManager() {
 
     if (nextBtn) {
         nextBtn.onclick = (event) => {
+             // Adiciona efeito de estrela ao clicar
+            const rect = event.currentTarget.getBoundingClientRect();
+            const originX = rect.left + rect.width / 2;
+            const originY = rect.top + rect.height / 2;
+            playStarBurst(originX, originY);
+
             if (currentStep === 4) {
-                const rect = event.currentTarget.getBoundingClientRect();
-                const originX = rect.left + rect.width / 2;
-                const originY = rect.top + rect.height / 2;
-                playStarBurst(originX, originY);
                 handleStartGeneration();
             } else {
                 if (currentStep === 1) {
                     geradorState.cargoId = $("#gerar-escCargo").value;
                     geradorState.inicio = $("#gerar-escIni").value;
                     geradorState.fim = $("#gerar-escFim").value;
-                    playEmojiBurst(event);
+                    // playEmojiBurst(event); // Removido Emoji, mantido só StarBurst
                 }
                 goToStep(currentStep + 1);
             }
@@ -220,8 +212,14 @@ function createWizardManager() {
     }
     
     tabs.forEach(tab => {
-        tab.onclick = () => {
+        tab.onclick = (event) => { // Adiciona event ao handler
             if (!tab.disabled) {
+                 // Adiciona efeito de estrela ao clicar na aba
+                const rect = event.currentTarget.getBoundingClientRect();
+                const originX = rect.left + rect.width / 2;
+                const originY = rect.top + rect.height / 2;
+                playStarBurst(originX, originY);
+
                 goToStep(parseInt(tab.dataset.step, 10));
             }
         };
@@ -233,6 +231,7 @@ function createWizardManager() {
 }
 
 // --- PASSO 2: LÓGICA DE FERIADOS ---
+// ... (O código do Passo 2 permanece inalterado) ...
 function renderHolidayStep() {
     renderHolidayCalendar();
     renderHolidayEditor(geradorState.selectedDate);
@@ -410,7 +409,9 @@ function addHolidayEditorListeners(date) {
     };
 }
 
+
 // --- PASSO 3: LÓGICA DE AUSÊNCIAS ---
+// ... (O código do Passo 3 permanece inalterado) ...
 function renderAusenciasStep() {
     const { funcionarios } = store.getState();
     const funcs = funcionarios.filter(f => f.cargoId === geradorState.cargoId && f.status !== 'arquivado').sort((a,b) => a.nome.localeCompare(b.nome));
@@ -679,9 +680,6 @@ function resetAusenciaForm() {
     resetAusenciaDates();
 }
 
-/**
- * NOVA FUNÇÃO: Renderiza a lista de ausências adicionadas.
- */
 function renderAusenciaList() {
     const container = $('#ausencia-list-wrapper');
     if (!container) return;
@@ -758,7 +756,8 @@ function renderAusenciaList() {
 }
 
 
-// --- PASSO 4: LÓGICA DE COBERTURA ---
+
+// --- PASSO 4: LÓGICA DE COBERTURA (REFORMULADO) ---
 function renderPasso4_Cobertura() {
     const { cargos, turnos, equipes } = store.getState();
     const cargo = cargos.find(c => c.id === geradorState.cargoId);
@@ -771,99 +770,215 @@ function renderPasso4_Cobertura() {
         return;
     }
     
-    const cargoDias = cargo.regras.dias || [];
-    const trabalhaSabado = cargoDias.includes('sab');
-    const trabalhaDomingo = cargoDias.includes('dom');
-
-    const maxDiasInput = $('#gerar-maxDiasConsecutivos');
-    const sabadosInput = $('#gerar-minFolgasSabados');
-    const domingosInput = $('#gerar-minFolgasDomingos');
-
-    let maxDiasValue = MAX_DIAS_CONSECUTIVOS;
-    if (!trabalhaSabado && !trabalhaDomingo) {
-        maxDiasValue = 5;
-    }
-    
-    maxDiasInput.max = MAX_DIAS_CONSECUTIVOS;
-    maxDiasInput.value = Math.min(maxDiasInput.value, maxDiasValue);
-    maxDiasInput.closest('.regra-item').querySelector('.animated-field label').textContent = `Máx. dias de trabalho consecutivos (máx: ${maxDiasValue})`;
-
-    sabadosInput.disabled = !trabalhaSabado;
-    domingosInput.disabled = !trabalhaDomingo;
-
-    sabadosInput.value = trabalhaSabado ? sabadosInput.value : 0;
-    domingosInput.value = trabalhaDomingo ? domingosInput.value : 0;
-    
-    if (trabalhaSabado) sabadosInput.max = 4;
-    if (trabalhaDomingo) domingosInput.max = 4;
-
-
+    const cargoDiasOperacionais = cargo.regras.dias || [];
     const turnosDoCargo = turnos.filter(t => cargo.turnosIds.includes(t.id)).sort((a,b)=>a.inicio.localeCompare(b.inicio));
+    
     turnosDoCargo.forEach(turno => {
         const equipesCompativeis = equipes.filter(e => e.cargoId === cargo.id && e.turnoId === turno.id);
-        const div = document.createElement('div');
-        div.className = 'cobertura-modo-container cobertura-item';
-        div.dataset.turnoId = turno.id;
-        let equipesOptionsHTML = equipesCompativeis.length > 0 ? equipesCompativeis.map(equipe => `<div class="cobertura-equipe-row"><label class="check-inline"><input type="checkbox" name="equipe_check_${turno.id}" value="${equipe.id}">${equipe.nome} (${equipe.funcionarioIds.length} membros)</label><div class="cobertura-equipe-padrao" style="display: none;"><div class="animated-field"><input type="number" min="1" value="1" placeholder=" " data-pattern="work"><label>Trabalha</label></div><div class="animated-field"><input type="number" min="1" value="1" placeholder=" " data-pattern="off"><label>Folga</label></div><input type="date" data-pattern="start" min="${geradorState.inicio}" max="${geradorState.fim}" value="${geradorState.inicio}" title="Primeiro dia de trabalho da equipe"></div></div><div class="equipe-pattern-explanation" data-equipe-id="${equipe.id}" style="display: none;"></div>`).join('') : `<p class="muted" style="margin: 8px 0;">Nenhuma equipe cadastrada para este turno.</p>`;
-        div.innerHTML = `<div class="form-row-aligned" style="margin-bottom: 8px;"><strong style="flex-grow: 1;">${turno.nome} (${turno.inicio} - ${turno.fim})</strong><div class="toggle-group" data-turno-id="${turno.id}"><button type="button" class="toggle-btn active" data-value="individual">Individual</button><button type="button" class="toggle-btn" data-value="equipes">Por Equipes</button></div></div><div class="cobertura-individual-options"><div class="animated-field" style="max-width: 200px;"><input type="number" id="cobertura-${turno.id}" data-cobertura="individual" value="1" min="0" placeholder=" " /><label for="cobertura-${turno.id}">Nº de funcionários</label></div></div><div class="cobertura-equipes-options" style="display: none;">${equipesOptionsHTML}<hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;"><div class="cobertura-complementar-container"><label class="form-label">Cobertura Individual Complementar:</label><div class="animated-field" style="max-width: 200px;"><input type="number" id="cobertura-extra-${turno.id}" data-cobertura="complementar" value="0" min="0" placeholder=" " /><label for="cobertura-extra-${turno.id}">Nº de funcionários</label></div></div></div>`;
-        container.appendChild(div);
-    });
+        const hasEquipes = equipesCompativeis.length > 0;
 
-    $$('.toggle-group', container).forEach(toggle => {
-        $$('.toggle-btn', toggle).forEach(btn => {
-            btn.onclick = () => {
-                const turnoContainer = toggle.closest('.cobertura-modo-container');
-                const modo = btn.dataset.value;
-                $$('.toggle-btn', toggle).forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                $('.cobertura-individual-options', turnoContainer).style.display = modo === 'individual' ? 'block' : 'none';
-                $('.cobertura-equipes-options', turnoContainer).style.display = modo === 'equipes' ? 'block' : 'none';
-                setGeradorFormDirty(true);
-            };
+        const fieldset = document.createElement('fieldset');
+        fieldset.className = 'cobertura-turno-fieldset';
+        fieldset.dataset.turnoId = turno.id;
+        
+        const legend = document.createElement('legend');
+        legend.innerHTML = `${turno.nome} <span>(${turno.inicio} - ${turno.fim})</span>`;
+        fieldset.appendChild(legend);
+
+        // --- Toggle Individual/Equipes ---
+        const toggleContainer = document.createElement('div');
+        toggleContainer.className = 'toggle-group';
+        toggleContainer.style.marginBottom = '16px';
+        toggleContainer.innerHTML = `
+            <button type="button" class="toggle-btn active" data-value="individual">Individual</button>
+            <button type="button" class="toggle-btn" data-value="equipes" ${!hasEquipes ? 'disabled title="Nenhuma equipe cadastrada para este turno"' : ''}>Por Equipes</button>
+        `;
+        fieldset.appendChild(toggleContainer);
+        
+        // --- Opções Individuais ---
+        const individualOptions = document.createElement('div');
+        individualOptions.className = 'cobertura-individual-options';
+        let diasInputsHTML = '<div class="cobertura-individual-dias-container">';
+        DIAS_SEMANA.forEach(dia => {
+            const isEnabled = cargoDiasOperacionais.includes(dia.id);
+            diasInputsHTML += `
+                <div class="dia-input-group" ${!isEnabled ? 'style="opacity: 0.5;"' : ''}>
+                    <label for="cov-ind-${turno.id}-${dia.id}">${dia.abrev}</label>
+                    <input type="number" id="cov-ind-${turno.id}-${dia.id}" data-dia-id="${dia.id}" value="1" min="0" ${!isEnabled ? 'disabled' : ''}>
+                </div>
+            `;
         });
-    });
-    $$('input[type="checkbox"][name^="equipe_check_"]', container).forEach(chk => {
-        chk.onchange = () => {
-            const row = chk.closest('.cobertura-equipe-row');
-            const patternDiv = row.querySelector('.cobertura-equipe-padrao');
-            const explanationDiv = row.nextElementSibling;
-            patternDiv.style.display = chk.checked ? 'flex' : 'none';
-            explanationDiv.style.display = chk.checked ? 'block' : 'none';
-            if (chk.checked) updateTeamPatternExplanation(patternDiv);
-            setGeradorFormDirty(true);
-        };
-    });
-    $$('.cobertura-equipe-padrao input').forEach(input => {
-        if (input.type === 'date') {
-            input.addEventListener('click', function() { try { this.showPicker(); } catch (e) {} });
+        diasInputsHTML += `<button type="button" class="secondary btn-replicar-cobertura" style="font-size: 0.8rem; padding: 4px 12px;">Replicar 1º</button></div>`;
+        individualOptions.innerHTML = `<label class="form-label">Nº de funcionários necessários por dia:</label>${diasInputsHTML}`;
+        fieldset.appendChild(individualOptions);
+
+        // --- Opções de Equipes ---
+        const equipesOptions = document.createElement('div');
+        equipesOptions.className = 'cobertura-equipes-options';
+        equipesOptions.style.display = 'none';
+
+        let equipesHTML = '<div class="cobertura-equipes-container">';
+        if (hasEquipes) {
+            equipesCompativeis.forEach(equipe => {
+                equipesHTML += `
+                <div class="equipe-config-card" data-equipe-id="${equipe.id}">
+                    <h4>${equipe.nome} (${equipe.funcionarioIds.length} membros)</h4>
+                    <div class="equipe-config-details" style="display: none;">
+                        <div class="pattern-inputs">
+                             <label class="form-label">Padrão:</label>
+                             <input type="number" min="1" value="1" data-pattern="work"> <span>dias de trabalho</span>
+                             <span>&times;</span>
+                             <input type="number" min="1" value="1" data-pattern="off"> <span>dias de folga</span>
+                        </div>
+                        <div class="start-date-input">
+                            <label class="form-label">Primeiro dia de trabalho:</label>
+                            <input type="date" data-pattern="start" min="${geradorState.inicio}" max="${geradorState.fim}" value="${geradorState.inicio}">
+                        </div>
+                        <div class="equipe-pattern-explanation explanation-box"></div>
+                    </div>
+                </div>`;
+            });
+        } else {
+            equipesHTML += `<p class="muted" style="margin: 8px 0;">Nenhuma equipe cadastrada para este turno.</p>`;
         }
-        input.addEventListener('input', () => {
-            const patternDiv = input.closest('.cobertura-equipe-padrao');
-            updateTeamPatternExplanation(patternDiv);
-            setGeradorFormDirty(true);
+        equipesHTML += '</div>';
+        
+        // --- Cobertura Complementar ---
+        let complementarHTML = `
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 24px 0 16px 0;">
+            <div class="cobertura-complementar-container">
+                <label class="form-label">Cobertura Individual Complementar (para preencher vagas):</label>
+                <div class="cobertura-individual-dias-container">
+        `;
+        DIAS_SEMANA.forEach(dia => {
+            const isEnabled = cargoDiasOperacionais.includes(dia.id);
+            complementarHTML += `
+                <div class="dia-input-group" ${!isEnabled ? 'style="opacity: 0.5;"' : ''}>
+                    <label for="cov-comp-${turno.id}-${dia.id}">${dia.abrev}</label>
+                    <input type="number" id="cov-comp-${turno.id}-${dia.id}" data-dia-id="${dia.id}" value="0" min="0" ${!isEnabled ? 'disabled' : ''}>
+                </div>
+            `;
         });
+        complementarHTML += `<button type="button" class="secondary btn-replicar-cobertura" style="font-size: 0.8rem; padding: 4px 12px;">Replicar 1º</button></div></div>`;
+        
+        equipesOptions.innerHTML = equipesHTML + complementarHTML;
+        fieldset.appendChild(equipesOptions);
+
+        container.appendChild(fieldset);
     });
-    $$('input[data-cobertura]', container).forEach(input => input.addEventListener('input', () => setGeradorFormDirty(true)));
+    
+    // Adiciona os listeners para a nova UI
+    addPasso4Listeners();
 }
 
-function updateTeamPatternExplanation(patternDiv) {
-    if(!patternDiv) return;
-    const explanationDiv = patternDiv.closest('.cobertura-equipe-row').nextElementSibling;
-    const work = parseInt(patternDiv.querySelector('[data-pattern="work"]').value, 10) || 1;
-    const off = parseInt(patternDiv.querySelector('[data-pattern="off"]').value, 10) || 1;
-    const startDate = patternDiv.querySelector('[data-pattern="start"]').value;
-    if (!startDate) return explanationDiv.innerHTML = `Selecione uma data de início.`;
+function addPasso4Listeners() {
+    const container = $("#gerador-cobertura-turnos-container");
+    if (!container) return;
+
+    // Listener para os toggles Individual/Equipes
+    $$('.toggle-group', container).forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+            const btn = e.target.closest('.toggle-btn');
+            // Impede a troca se o botão estiver desabilitado
+            if (!btn || btn.disabled) return; 
+            
+            const fieldset = btn.closest('.cobertura-turno-fieldset');
+            const modo = btn.dataset.value;
+            
+            $$('.toggle-btn', toggle).forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            $('.cobertura-individual-options', fieldset).style.display = modo === 'individual' ? 'block' : 'none';
+            $('.cobertura-equipes-options', fieldset).style.display = modo === 'equipes' ? 'block' : 'none';
+            setGeradorFormDirty(true);
+        });
+    });
+
+    // Listener para os CARDS de equipe (substitui o checkbox)
+    $$('.equipe-config-card', container).forEach(card => {
+        card.addEventListener('click', (e) => {
+             // Só ativa o clique se o target for o próprio card (ignora cliques nos inputs internos)
+            if (e.target !== card && !e.target.closest('h4')) return;
+            
+            card.classList.toggle('selected');
+            const detailsDiv = card.querySelector('.equipe-config-details');
+            const isSelected = card.classList.contains('selected');
+            
+            detailsDiv.style.display = isSelected ? 'flex' : 'none';
+            if (isSelected) {
+                updateTeamPatternExplanation(detailsDiv);
+            }
+            setGeradorFormDirty(true);
+        });
+    });
+
+    // Listener para os inputs de padrão da equipe
+    $$('.equipe-config-details input', container).forEach(input => {
+        input.addEventListener('input', () => {
+            const detailsDiv = input.closest('.equipe-config-details');
+            updateTeamPatternExplanation(detailsDiv);
+            setGeradorFormDirty(true);
+        });
+        // Evita que o clique no input propague para o card e o desmarque
+        input.addEventListener('click', (e) => e.stopPropagation()); 
+    });
+    
+    // Listener para os botões de replicar
+    $$('.btn-replicar-cobertura').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const container = e.target.closest('.cobertura-individual-dias-container');
+            const allInputs = $$('input[type="number"]', container);
+            const firstInput = allInputs.find(input => !input.disabled); // Pega o primeiro habilitado
+            if(!firstInput) return; // Se todos estiverem desabilitados, não faz nada
+            
+            const firstValue = firstInput.value;
+            allInputs.forEach(input => {
+                if (!input.disabled) {
+                    input.value = firstValue;
+                }
+            });
+            setGeradorFormDirty(true);
+        });
+    });
+
+    // Listener para qualquer input numérico mudar o estado para "sujo"
+    $$('input[type="number"]', container).forEach(input => {
+        input.addEventListener('input', () => setGeradorFormDirty(true));
+    });
+}
+
+
+function updateTeamPatternExplanation(detailsDiv) {
+    if(!detailsDiv) return;
+    const explanationDiv = detailsDiv.querySelector('.equipe-pattern-explanation');
+    const work = parseInt(detailsDiv.querySelector('[data-pattern="work"]').value, 10) || 1;
+    const off = parseInt(detailsDiv.querySelector('[data-pattern="off"]').value, 10) || 1;
+    const startDate = detailsDiv.querySelector('[data-pattern="start"]').value;
+
+    if (!startDate) {
+        explanationDiv.innerHTML = `<div>Selecione uma data de início.</div>`;
+        return;
+    }
+
     const dateRange = dateRangeInclusive(geradorState.inicio, geradorState.fim);
     const startIndex = dateRange.indexOf(startDate);
-    if (startIndex === -1) return explanationDiv.innerHTML = `A data de início está fora do período da escala.`;
+
+    if (startIndex === -1) {
+        explanationDiv.innerHTML = `<div>A data de início está fora do período da escala.</div>`;
+        return;
+    }
+
     const ciclo = work + off;
     const diasDeTrabalho = [];
-    for (let i = 0; i < Math.min(dateRange.length, 10); i++) {
-        if ((i - startIndex) % ciclo >= 0 && (i - startIndex) % ciclo < work) {
+    // Calcula os 5 primeiros dias de trabalho DENTRO da escala
+    for (let i = startIndex; i < dateRange.length && diasDeTrabalho.length < 5; i++) {
+        const diaNoCiclo = (i - startIndex) % ciclo;
+        if (diaNoCiclo < work) {
             diasDeTrabalho.push(new Date(dateRange[i] + 'T12:00:00').getDate());
         }
     }
-    explanationDiv.innerHTML = `🗓️ Esta equipe trabalhará em um padrão de ${work}x${off}, começando em ${new Date(startDate+'T12:00:00').toLocaleDateString()}.<br>Ex: Dias ${diasDeTrabalho.join(', ')}...`;
+    
+    explanationDiv.innerHTML = `<div>🗓️ Padrão ${work}x${off} a partir de ${new Date(startDate+'T12:00:00').toLocaleDateString()}.<br>Ex: Dias ${diasDeTrabalho.join(', ')}...</div>`;
     parseEmojisInElement(explanationDiv);
 }
 
@@ -871,40 +986,51 @@ function updateTeamPatternExplanation(patternDiv) {
 function handleStartGeneration() {
     geradorState.cobertura = {};
     geradorState.coberturaPorEquipe = {};
-    $$('#gerador-cobertura-turnos-container .cobertura-modo-container').forEach(container => {
-        const turnoId = container.dataset.turnoId;
-        const modoAtivo = $('.toggle-btn.active', container);
+
+    $$('#gerador-cobertura-turnos-container .cobertura-turno-fieldset').forEach(fieldset => {
+        const turnoId = fieldset.dataset.turnoId;
+        const modoAtivo = $('.toggle-btn.active', fieldset);
         if(!modoAtivo) return;
+
         const modo = modoAtivo.dataset.value;
+
         if (modo === 'individual') {
-            const input = $('[data-cobertura="individual"]', container);
-            if(input) geradorState.cobertura[turnoId] = parseInt(input.value, 10) || 0;
-        } else {
-            const inputComp = $('[data-cobertura="complementar"]', container);
-            if(inputComp) geradorState.cobertura[turnoId] = parseInt(inputComp.value, 10) || 0;
+            const coberturaDiaria = {};
+            $$('.cobertura-individual-options .dia-input-group input', fieldset).forEach(input => {
+                if (!input.disabled) {
+                    coberturaDiaria[input.dataset.diaId] = parseInt(input.value, 10) || 0;
+                }
+            });
+            geradorState.cobertura[turnoId] = coberturaDiaria;
+        } else { // modo equipes
+            const coberturaComplementar = {};
+             $$('.cobertura-complementar-container .dia-input-group input', fieldset).forEach(input => {
+                if (!input.disabled) {
+                    coberturaComplementar[input.dataset.diaId] = parseInt(input.value, 10) || 0;
+                }
+            });
+            geradorState.cobertura[turnoId] = coberturaComplementar;
+
             geradorState.coberturaPorEquipe[turnoId] = [];
-            $$('input[type="checkbox"][name^="equipe_check_"]:checked', container).forEach(chk => {
-                const equipeId = chk.value;
-                const patternContainer = chk.closest('.cobertura-equipe-row').querySelector('.cobertura-equipe-padrao');
-                if(patternContainer){
+            // Lê a seleção pelo card ter a classe 'selected'
+            $$('.equipe-config-card.selected', fieldset).forEach(card => {
+                const equipeId = card.dataset.equipeId;
+                const configContainer = card.querySelector('.equipe-config-details');
+                if(configContainer){
                     geradorState.coberturaPorEquipe[turnoId].push({
                         equipeId: equipeId,
-                        work: parseInt($('[data-pattern="work"]', patternContainer).value, 10) || 1,
-                        off: parseInt($('[data-pattern="off"]', patternContainer).value, 10) || 1,
-                        start: $('[data-pattern="start"]', patternContainer).value,
+                        work: parseInt($('[data-pattern="work"]', configContainer).value, 10) || 1,
+                        off: parseInt($('[data-pattern="off"]', configContainer).value, 10) || 1,
+                        start: $('[data-pattern="start"]', configContainer).value,
                     });
                 }
             });
         }
     });
-    const maxDiasInput = $('#gerar-maxDiasConsecutivos');
-    if(maxDiasInput) geradorState.maxDiasConsecutivos = parseInt(maxDiasInput.value, 10) || 6;
-    const sabadosInput = $('#gerar-minFolgasSabados');
-    if(sabadosInput) geradorState.minFolgasSabados = parseInt(sabadosInput.value, 10) || 1;
-    const domingosInput = $('#gerar-minFolgasDomingos');
-    if(domingosInput) geradorState.minFolgasDomingos = parseInt(domingosInput.value, 10) || 1;
+
     gerarEscala();
 }
+
 
 function setupInlineTitleEditor() {
     const container = $('#gerador-escala-title-container');

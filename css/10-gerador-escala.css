@@ -1091,3 +1091,166 @@
 .header-actions-group:last-child {
     justify-content: flex-end;
 }
+
+/* --- NOVOS ESTILOS PARA O PASSO 4 REFORMULADO --- */
+#gerador-cobertura-turnos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.cobertura-turno-fieldset {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 0;
+    background-color: var(--card);
+}
+
+.cobertura-turno-fieldset > legend {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--fg);
+}
+.cobertura-turno-fieldset > legend span {
+    font-weight: normal;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.cobertura-individual-dias-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    padding: 12px;
+    background-color: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+.cobertura-individual-dias-container .dia-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.cobertura-individual-dias-container .dia-input-group label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+.cobertura-individual-dias-container .dia-input-group input {
+    width: 50px;
+    padding: 6px; /* Ajuste no padding */
+    text-align: center;
+    font-size: 1rem;
+    border-radius: 8px;
+}
+.cobertura-individual-dias-container .btn-replicar-cobertura {
+    margin-left: auto; /* Garante que o botão fique à direita */
+}
+
+.cobertura-equipes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.equipe-config-card {
+    background-color: var(--bg);
+    border: 2px solid var(--border); /* Borda inicial sutil */
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease-out;
+    position: relative; /* Para o indicador visual */
+}
+
+.equipe-config-card:hover {
+    border-color: #bfdbfe; /* Azul claro no hover */
+    background-color: #eff6ff;
+}
+
+.equipe-config-card.selected {
+    border-color: var(--brand);
+    background-color: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Indicador visual de seleção */
+.equipe-config-card.selected::before {
+    content: '✓';
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: var(--brand);
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+
+.equipe-config-card h4 {
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none; /* Evita que o título capture o clique */
+}
+/* Remove o checkbox antigo */
+.equipe-config-card h4 input[type="checkbox"] {
+    display: none; 
+} 
+
+.equipe-config-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Espaçamento entre as seções */
+    pointer-events: none; /* Evita que os detalhes capturem o clique */
+}
+.equipe-config-details input {
+    pointer-events: all; /* Permite interação com os inputs */
+}
+
+.equipe-config-card .pattern-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background-color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.equipe-config-card .pattern-inputs input {
+    width: 60px;
+    text-align: center;
+    padding: 6px;
+    border-radius: 6px;
+}
+.equipe-config-card .pattern-inputs span {
+    color: var(--muted);
+}
+
+.equipe-config-card .start-date-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background-color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+.equipe-config-card .start-date-input input {
+    padding: 6px;
+    border-radius: 6px;
+}
+
+
+.equipe-config-card .equipe-pattern-explanation {
+    margin-top: 4px; /* Pequeno ajuste na margem */
+    font-size: 0.9rem;
+    color: var(--muted);
+    padding: 8px 0; /* Adiciona padding vertical */
+}

@@ -2,13 +2,6 @@
  * ✨ Efeitos Especiais de Brilho e Cores
  **************************************/
 
-/* --- Animação do Brilho Sutil (Glow) --- */
-/* EFEITO REMOVIDO CONFORME SOLICITADO */
-
-
-/* --- Animação de Gradiente (Estilo Logo) --- */
-/* A definição @keyframes já está centralizada em 10-animations.css */
-
 
 /* Aplica o fundo animado ao ícone "Gerar Escala" quando ele estiver ativo. */
 .tab-btn[data-page="gerar-escala"].active .tab-icon {
@@ -38,7 +31,7 @@ body::before {
     height: 100vh;
     background: radial-gradient(
         800px circle at var(--mouse-x, 50vw) var(--mouse-y, 50vh),
-        rgba(37, 99, 235, 0.05),
+        rgba(37, 99, 235, 0.06),
         transparent 40%
     );
     z-index: -1;

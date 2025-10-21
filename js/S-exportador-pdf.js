@@ -42,7 +42,7 @@ function generateVisaoGeralPDF(escala) {
     if (!escala || !escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
         throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
     }
-    const { cargos } = store.getState();
+    const { cargos, equipes } = store.getState(); // Adiciona equipes
     const cargo = cargos.find(c => c.id === escala.cargoId);
     const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
 
@@ -60,10 +60,28 @@ function generateVisaoGeralPDF(escala) {
     const getFuncInfo = (funcId) => escala.snapshot.funcionarios?.[funcId] || {};
 
     const funcsDaEscalaIds = Object.keys(escala.historico || {});
+
+    // Adiciona informação de equipe aos funcionários para ordenação
+    const equipesMap = new Map();
+    equipes.filter(e => e.cargoId === escala.cargoId).forEach(e => {
+        e.funcionarioIds.forEach(funcId => equipesMap.set(funcId, e.id));
+    });
+
     const funcsDaEscala = funcsDaEscalaIds
-        .map(id => ({ id, ...getFuncInfo(id) }))
+        .map(id => ({ id, ...getFuncInfo(id), equipeId: equipesMap.get(id) }))
         .filter(f => f.nome)
-        .sort((a,b) => a.nome.localeCompare(b.nome));
+        // Ordena por ID da equipe (nulls/sem equipe por último), depois pelo nome
+        .sort((a,b) => {
+            if (a.equipeId && !b.equipeId) return -1;
+            if (!a.equipeId && b.equipeId) return 1;
+            if (a.equipeId && b.equipeId && a.equipeId !== b.equipeId) {
+                const equipeA = equipes.find(e => e.id === a.equipeId)?.nome || '';
+                const equipeB = equipes.find(e => e.id === b.equipeId)?.nome || '';
+                return equipeA.localeCompare(equipeB);
+            }
+            return a.nome.localeCompare(b.nome); // Desempate por nome
+        });
+
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     
@@ -126,6 +144,13 @@ function generateVisaoGeralPDF(escala) {
             if (data.section === 'head' && data.column.index === 0) {
                 data.cell.styles.fontSize = 8;
             }
+             // Adiciona fundo cinza claro para linhas de funcionários da mesma equipe
+             if (data.section === 'body' && data.column.index === 0) {
+                const func = funcsDaEscala[data.row.index];
+                if (func && func.equipeId) {
+                     data.cell.styles.fillColor = [240, 240, 240]; // Cinza claro
+                }
+            }
         },
         didDrawCell: (data) => {
             const func = funcsDaEscala[data.row.index];
@@ -159,7 +184,8 @@ function generateVisaoGeralPDF(escala) {
                     bgColor = '#f1f5f9';
                     text = '';
                 } else {
-                    bgColor = '#ffffff';
+                     // Mantém o fundo cinza claro para células vazias de membros de equipe
+                    bgColor = (func && func.equipeId) ? '#f0f0f0' : '#ffffff';
                 }
 
                 if (bgColor) {
@@ -298,28 +324,37 @@ function generateVisaoGeralPDF(escala) {
         let metaLabel = '';
         let realizadoLabel = '';
         let saldoLabel = '';
+        const funcionarioOriginal = store.getState().funcionarios.find(f => f.id === func.id); // Busca o funcionário original
 
-        if (func.medicaoCarga === 'turnos') {
-            const { cargos } = store.getState();
-            const cargo = cargos.find(c => c.id === escala.cargoId);
-            const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
-            
-            const metaTurnos = calcularMetaTurnos(func, escala.inicio, escala.fim, cargoDiasOperacionais);
-            const realizadoTurnos = escala.historico[func.id]?.turnosTrabalhados || 0;
-            const saldo = realizadoTurnos - metaTurnos;
-            
-            metaLabel = `${metaTurnos.toFixed(0)} turnos`;
-            realizadoLabel = `${realizadoTurnos} turnos`;
-            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(0)} turnos`;
+        if (funcionarioOriginal) { // Verifica se encontrou o funcionário
+             if (funcionarioOriginal.medicaoCarga === 'turnos') {
+                const { cargos } = store.getState();
+                const cargo = cargos.find(c => c.id === escala.cargoId);
+                const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
+                
+                const metaTurnos = calcularMetaTurnos(funcionarioOriginal, escala.inicio, escala.fim, cargoDiasOperacionais);
+                const realizadoTurnos = escala.historico[func.id]?.turnosTrabalhados || 0;
+                const saldo = realizadoTurnos - metaTurnos;
+                
+                metaLabel = `${metaTurnos.toFixed(0)} turnos`;
+                realizadoLabel = `${realizadoTurnos} turnos`;
+                saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(0)} turnos`;
+            } else { // Padrão 'horas'
+                const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
+                const metaHoras = calcularMetaHoras(funcionarioOriginal, escala.inicio, escala.fim);
+                const saldo = horasTrabalhadas - metaHoras;
+                
+                metaLabel = `${metaHoras.toFixed(1)}h`;
+                realizadoLabel = `${horasTrabalhadas.toFixed(1)}h`;
+                saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(1)}h`;
+            }
         } else {
-            const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
-            const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
-            const saldo = horasTrabalhadas - metaHoras;
-            
-            metaLabel = `${metaHoras.toFixed(1)}h`;
-            realizadoLabel = `${horasTrabalhadas.toFixed(1)}h`;
-            saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(1)}h`;
+             // Caso não encontre o funcionário original (pode ter sido excluído)
+             metaLabel = 'N/D';
+             realizadoLabel = 'N/D';
+             saldoLabel = 'N/D';
         }
+
 
         return [func.nome, metaLabel, realizadoLabel, saldoLabel];
     });
@@ -531,8 +566,7 @@ function generateRelatorioDiarioPDF(escala) {
 async function handleExport(exportFn) {
     if (!currentEscalaToExport) return;
 
-    // Usar uma variável local para garantir que o objeto não seja perdido
-    let escalaParaProcessar = currentEscalaToExport;
+    let escalaParaProcessar = JSON.parse(JSON.stringify(currentEscalaToExport)); // Clona para segurança
 
     const isDirty = (currentEscala && currentEscala.id === escalaParaProcessar.id) && dirtyForms['gerar-escala'];
 
@@ -549,15 +583,18 @@ async function handleExport(exportFn) {
             setGeradorFormDirty(false); 
             
             const { escalas } = store.getState();
-            // Atualiza a variável local com a versão mais recente do store
             escalaParaProcessar = escalas.find(e => e.id === escalaParaProcessar.id);
+             // Clona novamente após salvar para garantir a versão mais recente
+            if (escalaParaProcessar) escalaParaProcessar = JSON.parse(JSON.stringify(escalaParaProcessar));
+             else { // Se por algum motivo a escala sumiu após salvar (erro?), aborta
+                 showToast("Erro ao encontrar a escala após salvar. Exportação cancelada.", "error");
+                 return;
+             }
         }
     }
     
-    // Esconde o modal de opções ANTES de iniciar o loader e o processo
     hideExportModal();
     
-    // Passa a variável local para a função de exportação
     await exportFn(escalaParaProcessar);
 }
 
@@ -565,20 +602,17 @@ async function initPdfExport() {
     $('#btnExportCancelar').addEventListener('click', hideExportModal);
 
     const performExport = (loaderMessage, exportAction) => {
-        handleExport(async (escala) => {
+        handleExport(async (escala) => { // 'escala' aqui é a cópia segura
             showLoader(loaderMessage);
-            // CORREÇÃO: Aguarda um ciclo para garantir que o loader seja exibido antes do bloqueio
             await new Promise(resolve => setTimeout(resolve, 50));
             
             try {
-                await exportAction(escala);
+                await exportAction(escala); // Passa a cópia segura para a função
                 hideLoader();
-                // Aguarda o próximo quadro de animação para mostrar o feedback
                 requestAnimationFrame(() => showDownloadToast(true));
             } catch (e) {
                 console.error("Erro durante a exportação:", e);
                 hideLoader();
-                // Aguarda o próximo quadro de animação para mostrar o feedback de erro
                 requestAnimationFrame(() => showDownloadToast(false, e.message));
             }
         });

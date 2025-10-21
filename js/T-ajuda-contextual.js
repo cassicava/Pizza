@@ -1,5 +1,5 @@
 /**************************************
- * 🆘 Módulo de Ajuda Contextual (v2)
+ * 🆘 Módulo de Ajuda Contextual (v2.1 - Conteúdo Refinado)
  **************************************/
 
 // --- Armazenamento do Conteúdo de Ajuda Detalhado ---
@@ -20,8 +20,9 @@ const helpContentData = {
             </div>
             <div class="help-card">
                 <h4>🕒 Carga Horária</h4>
-                <p><strong>Início e Fim:</strong> Horários de entrada e saída. Se um turno "vira o dia" (ex: começa às 19:00 e termina às 07:00), selecione a opção apropriada em <strong>Dia de Término</strong>.</p>
+                <p><strong>Início e Fim:</strong> Horários de entrada e saída. Se um turno "vira o dia" (ex: começa às 19:00 e termina às 07:00), selecione a opção apropriada em <strong>Dia de Término</strong>. O indicador <strong>🌙</strong> aparecerá.</p>
                 <p><strong>Almoço:</strong> Informe o intervalo em minutos. Este tempo será descontado da carga horária total.</p>
+                <p><strong>Carga Calculada:</strong> O sistema mostra a duração real do turno após descontar o almoço. Se a duração for maior que 24h, o indicador <strong>🔁</strong> (Longa Duração) será exibido.</p>
             </div>
             <div class="help-card">
                 <h4>⏸️ Descanso Obrigatório</h4>
@@ -34,19 +35,24 @@ const helpContentData = {
         content: `
             <div class="help-card">
                 <h4>🏥 O que é um Cargo?</h4>
-                <p>Um "Cargo" representa uma função, um setor ou um posto de trabalho (ex: "Enfermeiro Chefe", "Recepção", "Segurança"). Ele funciona como um "agrupador" que conecta <strong>Turnos</strong> e <strong>Funcionários</strong>.</p>
+                <p>Um "Cargo" representa uma função, um setor ou um posto de trabalho (ex: "Enfermeiro Chefe", "Recepção", "Segurança"). Ele funciona como um "agrupador" que conecta <strong>Turnos</strong>, <strong>Funcionários</strong> e <strong>Regras</strong>.</p>
             </div>
             <div class="help-card">
                 <h4>📝 Novo Cargo</h4>
-                <p>Ao criar um cargo, você define duas coisas essenciais:</p>
+                <p>Ao criar ou editar um cargo, você define:</p>
                 <p><strong>1. Turnos Associados:</strong> Marque todos os turnos que um profissional deste cargo está habilitado a cumprir. Um "Enfermeiro", por exemplo, pode trabalhar em turnos de 6h, 8h ou 12h.</p>
                 <p><strong>2. Regras de Funcionamento:</strong> Indique em quais dias da semana e em qual faixa de horário o cargo precisa de cobertura. Se a "Recepção" só funciona de segunda a sexta, das 08:00 às 18:00, o gerador de escala saberá que não precisa alocar ninguém fora desses períodos.</p>
+                <p><strong>3. Regras de Alocação Individual:</strong> Defina limites como o número máximo de dias de trabalho consecutivos e o mínimo de Sábados/Domingos de folga por mês. Estas regras se aplicam apenas aos funcionários que <strong>não</strong> fazem parte de equipes fixas.</p>
             </div>
         `
     },
     funcionarios: {
         title: "Ajuda: Cadastro de Funcionários",
         content: `
+            <div class="help-card">
+                <h4>🗂️ Gerenciar Cadastrados</h4>
+                <p>Visualize e filtre seus funcionários. Use os botões de ação para <strong>Editar</strong>, <strong>Arquivar</strong> (remove o funcionário das listas de seleção, mas mantém o histórico) ou <strong>Reativar</strong> um funcionário arquivado.</p>
+            </div>
             <div class="help-card">
                 <h4>👤 Informações Básicas</h4>
                 <p>Cadastre o nome completo do funcionário e, se desejar, um documento de identificação (matrícula, CPF, etc.) para referência.</p>
@@ -55,15 +61,16 @@ const helpContentData = {
                 <h4>🎯 Cargo e Meta de Trabalho</h4>
                 <p><strong>Cargo:</strong> Associe o funcionário a um dos cargos já cadastrados.</p>
                 <p><strong>Meta:</strong> Defina como a carga de trabalho contratada é medida. Pode ser por <strong>Horas</strong> (ex: 44h semanais) ou por <strong>Turnos</strong> (ex: 15 plantões mensais). Esta meta é a principal referência que o gerador de escala usará para distribuir o trabalho de forma justa.</p>
+                <p><strong>Exceder Meta (Hora Extra):</strong> Indique se o funcionário pode ser escalado além da meta definida. Útil para quem pode fazer horas extras.</p>
             </div>
              <div class="help-card">
                 <h4>🗓️ Disponibilidade e Preferências</h4>
                 <p>Esta é a seção mais importante para a montagem automática da escala. Para cada turno que o funcionário pode fazer (herdado do cargo dele):</p>
-                <p><strong>Ative o Turno:</strong> Clique no nome do turno para habilitá-lo. Ele começará com todos os dias disponíveis.</p>
+                <p><strong>Ative o Turno:</strong> Clique no nome do turno para habilitá-lo. Ele começará com todos os dias disponíveis (considerando os dias de operação do cargo).</p>
                 <p><strong>Defina os Dias:</strong> Clique repetidamente em cada dia da semana para alternar entre os estados:</p>
-                <p>• <strong>Indisponível (cinza):</strong> O funcionário NUNCA será escalado naquele dia.</p>
-                <p>• <strong>Disponível (azul):</strong> O funcionário PODE ser escalado naquele dia.</p>
-                <p>• <strong>Preferencial (listrado):</strong> O funcionário GOSTARIA de ser escalado naquele dia. O gerador dará prioridade a estes dias.</p>
+                <p>• <strong>Indisponível (cinza):</strong> O funcionário NUNCA será escalado naquele dia/turno.</p>
+                <p>• <strong>Disponível (azul):</strong> O funcionário PODE ser escalado naquele dia/turno.</p>
+                <p>• <strong>Preferencial (listrado):</strong> O funcionário GOSTARIA de ser escalado naquele dia/turno. O gerador dará prioridade a estes.</p>
             </div>
         `
     },
@@ -88,17 +95,17 @@ const helpContentData = {
         content: `
             <div class="help-card">
                 <h4>✨ Assistente de Geração</h4>
-                <p>Siga os passos para configurar os parâmetros que o algoritmo inteligente usará para montar a escala perfeita.</p>
+                <p>Siga os passos para configurar os parâmetros que o algoritmo inteligente usará para montar a escala.</p>
                 <p><strong>Passo 1: Período:</strong> Escolha o <strong>Cargo</strong> e o <strong>intervalo de datas</strong> da escala. Este é o único passo obrigatório.</p>
-                <p><strong>Passo 2: Feriados:</strong> Informe os feriados do período e se eles serão de <strong>Folga Geral</strong> ou não. Você também pode configurar se um feriado de folga deve descontar horas da meta mensal dos funcionários.</p>
+                <p><strong>Passo 2: Feriados:</strong> Informe os feriados do período e se eles serão de <strong>Folga Geral</strong> ou não. Configure também se um feriado de folga deve descontar horas/turnos da meta dos funcionários.</p>
                 <p><strong>Passo 3: Ausências:</strong> Registre <strong>Férias, Folgas ou Afastamentos</strong> para funcionários específicos. O gerador garantirá que eles não sejam escalados nestas datas.</p>
-                <p><strong>Passo 4: Cobertura:</strong> Aqui você informa a "demanda". Defina quantos funcionários são necessários por turno (<strong>Individual</strong>) ou configure o padrão de trabalho das suas <strong>Equipes</strong> (ex: trabalham 2 dias e folgam 2).</p>
+                <p><strong>Passo 4: Cobertura:</strong> Informe a "demanda". Escolha entre definir quantos funcionários são necessários por turno/dia (<strong>Individual</strong>) ou configurar o padrão de trabalho das suas <strong>Equipes</strong> (ex: trabalham 2 dias e folgam 2), podendo adicionar cobertura individual complementar se necessário.</p>
             </div>
             <div class="help-card">
-                <h4>🎨 Edição Geral e Individual</h4>
-                <p>Após a escala ser gerada, você pode fazer ajustes finos. A tela é dividida em duas abas:</p>
-                <p><strong>Edição Geral:</strong> Mostra a grade completa da escala e ativa a <strong>Barra de Ferramentas</strong> na parte inferior, permitindo que você selecione um funcionário e "pinte" ou "apague" turnos. O editor avisará sobre possíveis conflitos com as regras.</p>
-                <p><strong>Edição Individual:</strong> Oferece uma visão focada em um único funcionário por vez, com um calendário mensal e ferramentas dedicadas para uma edição mais detalhada.</p>
+                <h4>🎨 Visualização e Edição</h4>
+                <p>Após a escala ser gerada, você pode fazer ajustes finos usando duas abas:</p>
+                <p><strong>Edição Geral:</strong> Mostra a grade completa da escala e ativa a <strong>Barra de Ferramentas</strong> (geralmente na base da tela). Com ela, você seleciona um funcionário e "pinta" turnos na grade usando os pincéis, ou usa a borracha para apagar. O editor avisará sobre possíveis conflitos com as regras.</p>
+                <p><strong>Edição Individual:</strong> Oferece uma visão focada em um único funcionário por vez, com um calendário mensal dedicado e as mesmas ferramentas de pincel/borracha para uma edição mais detalhada e visualização clara da carga e dias consecutivos.</p>
             </div>
         `
     },
@@ -108,15 +115,15 @@ const helpContentData = {
             <div class="help-card">
                 <h4>📂 Acessando seu Histórico</h4>
                 <p>Esta tela é o seu arquivo de todas as escalas que você gerou e salvou.</p>
-                <p><strong>Filtrar por Cargo:</strong> Para começar, selecione um cargo no menu suspenso. O sistema listará todas as escalas salvas para aquele cargo, organizadas por ano e mês.</p>
-                <p><strong>Abrir uma Escala:</strong> Simplesmente clique no card da escala que deseja visualizar.</p>
+                <p><strong>Filtrar:</strong> Para começar, selecione um <strong>Cargo</strong> e depois o <strong>Ano</strong> desejado. O sistema listará todas as escalas salvas que correspondem aos filtros, organizadas por mês.</p>
+                <p><strong>Abrir uma Escala:</strong> Simplesmente clique no card da escala que deseja visualizar. O ícone ⚠️ indica escalas com turnos vagos, enquanto ✅ indica escalas completas.</p>
             </div>
             <div class="help-card">
                 <h4>⚙️ Ações na Escala</h4>
-                <p>Ao abrir uma escala, você terá um painel de resumo e botões de ação:</p>
-                <p><strong>✏️ Editar Escala:</strong> Leva você de volta ao Editor Manual, permitindo fazer ajustes na escala salva e salvá-la novamente.</p>
+                <p>Ao abrir uma escala, você terá um painel de resumo (com abas para Carga Horária, Estatísticas e Observações) e botões de ação:</p>
+                <p><strong>✏️ Editar Escala:</strong> Leva você de volta ao Editor Manual (igual ao da Geração Automática), permitindo fazer ajustes na escala salva e salvá-la novamente.</p>
                 <p><strong>🔥 Excluir:</strong> Apaga permanentemente a escala do seu histórico.</p>
-                <p><strong>🖨️ Exportar para PDF:</strong> Abre as opções para gerar um arquivo PDF da escala, seja no formato de grade completa ou um relatório diário detalhado, pronto para impressão.</p>
+                <p><strong>🖨️ Exportar para PDF:</strong> Abre as opções para gerar um arquivo PDF da escala, seja no formato de grade completa (Visão Geral) ou um relatório diário detalhado, prontos para impressão ou compartilhamento.</p>
             </div>
         `
     },
@@ -126,13 +133,13 @@ const helpContentData = {
             <div class="help-card">
                 <h4>📊 Analisando o Desempenho</h4>
                 <p>Esta seção transforma os dados de uma escala salva em insights visuais, ajudando a verificar se a distribuição de trabalho foi justa e eficiente.</p>
-                <p><strong>Como Funciona:</strong> Primeiro, selecione o <strong>Cargo</strong> para listar as escalas salvas. Em seguida, clique na escala que deseja analisar para gerar os relatórios.</p>
+                <p><strong>Como Funciona:</strong> Primeiro, selecione o <strong>Cargo</strong> e o <strong>Ano</strong> para listar as escalas salvas. Em seguida, clique na escala que deseja analisar para gerar o dashboard de relatórios.</p>
             </div>
             <div class="help-card">
-                <h4>📈 Gráficos Disponíveis</h4>
-                <p><strong>Horas/Turnos vs. Meta:</strong> Compara o total de horas ou turnos que cada funcionário realizou contra a meta que foi definida para ele.</p>
-                <p><strong>Distribuição de Turnos:</strong> Mostra um resumo de quantos turnos de cada tipo foram alocados no total.</p>
-                <p><strong>Folgas de Fim de Semana:</strong> Exibe a contagem de sábados e domingos de folga para cada funcionário no período.</p>
+                <h4>📈 Dashboard de Análise</h4>
+                <p>O dashboard possui duas abas principais:</p>
+                <p><strong>Visão Geral:</strong> Apresenta KPIs (indicadores chave) como total de horas, horas extras e ausências. Inclui uma tabela de ranking de funcionários (ordenável por diferentes métricas) e gráficos sobre a distribuição geral de turnos e folgas de fim de semana.</p>
+                <p><strong>Análise Individual:</strong> Permite aprofundar nos dados de um funcionário específico (selecionado na tabela da Visão Geral). Mostra os KPIs individuais, um resumo dos tipos de turnos realizados e um calendário visual da atividade do funcionário naquela escala.</p>
             </div>
         `
     },
@@ -141,20 +148,25 @@ const helpContentData = {
         content: `
             <div class="help-card">
                 <h4>⚙️ Geral</h4>
-                <p>Na aba "Geral", você pode definir o nome de usuário ou da empresa que aparece na saudação da tela inicial.</p>
+                <p>Na aba "Geral", você pode definir o nome de usuário ou da empresa que aparece na saudação da tela inicial e na tela de carregamento.</p>
             </div>
             <div class="help-card">
                 <h4>💾 Dados (Backup e Restauração)</h4>
-                <p><strong>ESSENCIAL:</strong> Seus dados são salvos apenas no seu navegador. Use a função de <strong>Exportar (Backup)</strong> regularmente para criar um arquivo de segurança.</p>
-                <p>Se você trocar de computador ou limpar os dados do navegador, poderá usar a função de <strong>Importar</strong> para restaurar tudo a partir desse arquivo.</p>
+                <p><strong>ESSENCIAL:</strong> Seus dados (turnos, funcionários, escalas, etc.) são salvos <strong>apenas neste programa</strong>, no seu computador. Use a função de <strong>📤 Exportar (Backup)</strong> regularmente para criar um arquivo de segurança (<code>.json</code>). Guarde este arquivo em local seguro!</p>
+                <p>Se você trocar de computador, limpar os dados do programa, ou ocorrer algum problema, poderá usar a função de <strong>📥 Importar</strong> para restaurar tudo a partir do seu arquivo de backup. <strong>Atenção:</strong> A importação substitui todos os dados atuais.</p>
+                 <p><strong>Backup Automático:</strong> Você pode configurar o sistema para baixar um arquivo de backup automaticamente Diariamente ou Semanalmente, como uma segurança adicional.</p>
             </div>
             <div class="help-card">
                 <h4>ℹ️ Sobre e Recursos</h4>
-                <p>Aqui você encontra links para os Termos de Uso, Política de Privacidade e um atalho para ver os atalhos de teclado do editor manual.</p>
+                <p>Aqui você encontra links úteis:</p>
+                <p>• <strong>Termos de Uso e Política de Privacidade:</strong> Documentos legais sobre o uso do software.</p>
+                <p>• <strong>Atalhos de Teclado:</strong> Lista os comandos de teclado disponíveis no Editor Manual da escala.</p>
+                <p>• <strong>Reportar um Problema:</strong> Abre seu cliente de e-mail para enviar um feedback ou relatar um erro.</p>
+                <p>• <strong>Apoiar o Projeto (PIX):</strong> Se o Escala Fácil te ajudou, considere apoiar o desenvolvimento!</p>
             </div>
             <div class="help-card">
-                <h4>⚠️ Avançado (Zona de Perigo)</h4>
-                <p>Tenha muito cuidado nesta seção. As opções aqui permitem <strong>apagar permanentemente todos os seus dados</strong> do aplicativo. Use apenas se tiver certeza absoluta do que está fazendo e possuir um backup recente.</p>
+                <h4>⚠️ Zona de Risco</h4>
+                <p>Tenha muito cuidado nesta seção. A opção de <strong>🔥 Apagar Todos os Dados</strong> remove permanentemente tudo do aplicativo neste programa. Use apenas se tiver certeza absoluta e possuir um backup recente.</p>
             </div>
         `
     }
@@ -177,6 +189,8 @@ function toggleHelpPanel(show) {
     if (show) {
         body.classList.remove('help-panel-hiding');
         body.classList.add('help-panel-active');
+        // Garante que o painel volte ao topo ao abrir
+        if(helpPanelContent) helpPanelContent.scrollTop = 0;
     } else {
         body.classList.add('help-panel-hiding');
         // Espera a animação de fechamento terminar para remover a classe principal
@@ -188,8 +202,8 @@ function toggleHelpPanel(show) {
 }
 
 /**
- * Carrega o conteúdo de ajuda específico para a página atual.
- * @param {string} pageId - O ID da página (ex: 'turnos', 'cargos').
+ * Carrega o conteúdo de ajuda específico para a tela atual.
+ * @param {string} pageId - O ID da tela (ex: 'turnos', 'cargos').
  */
 function loadHelpContent(pageId) {
     const helpData = helpContentData[pageId];
@@ -200,8 +214,12 @@ function loadHelpContent(pageId) {
         parseEmojisInElement(helpPanelContent); // Garante que emojis sejam renderizados corretamente
         contextHelpBtn.style.display = 'flex';
     } else {
-        // Esconde o botão se não houver conteúdo de ajuda para a página
+        // Esconde o botão se não houver conteúdo de ajuda para a tela
         contextHelpBtn.style.display = 'none';
+        // Limpa o conteúdo se não houver ajuda (evita mostrar conteúdo antigo)
+        helpPanelTitle.textContent = 'Ajuda';
+        helpPanelContent.innerHTML = '<p class="muted">Não há ajuda disponível para esta seção.</p>';
+
     }
 }
 
@@ -218,3 +236,10 @@ if (helpPanelCloseBtn) {
 if (helpPanelBackdrop) {
     helpPanelBackdrop.addEventListener('click', () => toggleHelpPanel(false));
 }
+
+// Fecha o painel se o usuário pressionar a tecla Escape
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && body.classList.contains('help-panel-active')) {
+        toggleHelpPanel(false);
+    }
+});

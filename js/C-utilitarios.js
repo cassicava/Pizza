@@ -10,7 +10,8 @@ function saveJSON(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {
         console.error("Erro ao salvar no localStorage:", e);
-        showToast("Erro ao salvar! O armazenamento pode estar cheio.", "error");
+        // Alterado "navegador" para "programa"
+        showToast("Erro ao salvar! O armazenamento local do programa pode estar cheio.", "error");
     }
 }
 
@@ -103,23 +104,23 @@ function showToast(message, type = 'info') {
         toast.classList.remove("visible", "hiding", "success", "error", "info");
         toast.classList.add("hidden");
     }
-    
+
     toast.classList.remove("hidden");
     toast.classList.add(type, "visible");
-    
+
     toastMessage.textContent = message;
     parseEmojisInElement(toastMessage);
 
     toastTimeoutId = setTimeout(() => {
         toast.classList.remove("visible");
         toast.classList.add("hiding");
-        
+
         setTimeout(() => {
             toast.classList.add("hidden");
             toast.classList.remove("hiding", type);
             toastTimeoutId = null;
-        }, 400); 
-    }, 4500); 
+        }, 400);
+    }, 4500);
 }
 
 function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "Cancelar", checkbox = null }) {
@@ -177,8 +178,8 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
         parseEmojisInElement($("#modalMessage"));
 
         modalActionsContainer.classList.toggle('modal-actions-column', columnLayout);
-        
-        modalActionsContainer.innerHTML = ''; 
+
+        modalActionsContainer.innerHTML = '';
         actions.forEach(action => {
             const button = document.createElement('button');
             button.id = `modal-action-${action.id}`;
@@ -202,7 +203,7 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
             backdrop.classList.add("hidden");
             resolve(value);
         };
-        
+
         const backdropClickHandler = (e) => {
             if (e.target === backdrop) {
                 cleanupAndResolve(null);
@@ -362,12 +363,12 @@ function playConfettiAnimation(sourceElement) {
         confetti.style.left = `${startX}px`;
         confetti.style.top = `${startY}px`;
         confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        
+
         const angle = Math.random() * 360;
         const velocity = Math.random() * 300 + 150;
         const translateX = Math.cos(angle * Math.PI / 180) * velocity;
         const translateY = Math.sin(angle * Math.PI / 180) * velocity - (velocity * 0.5);
-        
+
         const rotation = Math.random() * 720 - 360;
         const scale = Math.random() * 0.5 + 0.5;
         const duration = Math.random() * 1 + 1.5;
@@ -412,7 +413,7 @@ function renderAnoSelect(selector, startYear = 2025, futureYears = 2) {
         option.textContent = year;
         selectEl.appendChild(option);
     }
-    
+
     selectEl.value = currentValue;
 }
 
@@ -428,7 +429,7 @@ function playEmojiBurst(event) {
         const emoji = document.createElement('span');
         emoji.className = 'burst-emoji';
         emoji.textContent = catEmojis[Math.floor(Math.random() * catEmojis.length)];
-        
+
         emoji.style.left = `${rect.left + rect.width / 2}px`;
         emoji.style.top = `${rect.top + rect.height / 2}px`;
 
@@ -461,7 +462,7 @@ function playStarBurst(originX, originY) {
         const star = document.createElement('span');
         star.className = 'star-burst-particle';
         star.textContent = '✨';
-        
+
         star.style.left = `${originX}px`;
         star.style.top = `${originY}px`;
 
@@ -521,7 +522,7 @@ function setupTabbedPanel(panelSelector, dirtyFormKey = null, onTabSwitch = null
     const switchTab = (tabId) => {
         tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
         contents.forEach(c => c.classList.toggle('active', c.dataset.tabContent === tabId));
-        
+
         if (addBtn) {
             addBtn.style.display = (tabId === 'gerenciar') ? 'inline-flex' : 'none';
         }
@@ -536,7 +537,7 @@ function setupTabbedPanel(panelSelector, dirtyFormKey = null, onTabSwitch = null
             if (tab.classList.contains('active')) return;
 
             const currentTabId = $('.painel-tab-btn.active', panel)?.dataset.tab;
-            
+
             // Verifica se está saindo da aba de formulário e se há alterações não salvas
             if (dirtyFormKey && dirtyForms[dirtyFormKey] && currentTabId === 'formulario') {
                 const { confirmed } = await showConfirm({
@@ -590,7 +591,7 @@ function showDownloadToast(isSuccess, message = '') {
     if (downloadToastTimeout) {
         clearTimeout(downloadToastTimeout);
     }
-    
+
     toast.classList.remove('visible', 'success', 'error');
     void toast.offsetWidth;
 
@@ -605,7 +606,7 @@ function showDownloadToast(isSuccess, message = '') {
     }
 
     parseEmojisInElement(toast);
-    
+
     toast.classList.add('visible');
 
     downloadToastTimeout = setTimeout(() => {

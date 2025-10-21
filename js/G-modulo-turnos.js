@@ -31,12 +31,14 @@ const filtroTurnosInput = $("#filtroTurnos");
 const tblTurnosBody = $("#tblTurnos tbody");
 const formTabButton = $('.painel-tab-btn[data-tab="formulario"]', pageTurnos);
 
-
+// --- MELHORIA: Paleta de Cores Atualizada ---
+// Cores removidas por semelhança com cores de ausência (Verde Menta, Ciano Suave, Laranja Suave)
 const PALETA_CORES = [
-    '#e0f2fe', '#fecaca', '#fed7aa', '#fef08a', '#d9f99d', '#bfdbfe', '#a5b4fc', '#f5d0fe',
-    '#dcfce7', '#fca5a5', '#fbbf24', '#facc15', '#a3e635', '#93c5fd', '#818cf8', '#e879f9',
+    /* '#e0f2fe', */ '#fecaca', /* '#fed7aa', */ '#fef08a', '#d9f99d', '#bfdbfe', '#a5b4fc', '#f5d0fe',
+    /* '#dcfce7', */ '#fca5a5', '#fbbf24', '#facc15', '#a3e635', '#93c5fd', '#818cf8', '#e879f9',
     '#fae8ff', '#f87171', '#f97316', '#eab308', '#84cc16', '#60a5fa', '#6366f1', '#d946ef'
 ];
+// -------------------------------------------
 
 
 function setTurnoFormDirty(isDirty) { dirtyForms.turnos = isDirty; }
@@ -142,19 +144,22 @@ function selectCor(cor) {
     } else {
         const swatch = $(`#turnoCorPalette .color-swatch[data-cor="${cor}"]`);
         if (swatch) swatch.classList.add('selected');
-        pickerTrigger.style.backgroundColor = ''; 
+        pickerTrigger.style.backgroundColor = '';
     }
 }
 
 function getLeastUsedColor() {
     const { turnos } = store.getState();
     const colorCounts = PALETA_CORES.reduce((acc, color) => ({ ...acc, [color]: 0 }), {});
-    
+
     turnos.filter(t => !t.isSystem).forEach(t => {
         if (colorCounts.hasOwnProperty(t.cor)) {
             colorCounts[t.cor]++;
         }
     });
+
+    // Se a paleta estiver vazia, retorna uma cor padrão
+    if (PALETA_CORES.length === 0) return '#e2e8f0';
 
     return Object.entries(colorCounts).sort((a, b) => a[1] - b[1])[0][0];
 }
@@ -189,14 +194,14 @@ function renderTurnos() {
     const { turnos } = store.getState();
     const filtro = filtroTurnosInput.value.toLowerCase();
     tblTurnosBody.innerHTML = "";
-    
+
     const turnosEditaveis = turnos.filter(t => !t.isSystem);
 
     const turnosFiltrados = turnosEditaveis.filter(t => t.nome.toLowerCase().includes(filtro) || (t.sigla && t.sigla.toLowerCase().includes(filtro)));
     const turnosOrdenados = [...turnosFiltrados].sort((a, b) => a.nome.localeCompare(b.nome));
     if (turnosOrdenados.length === 0) {
         const isEmpty = filtro === '' && turnosEditaveis.length === 0;
-        const emptyStateText = isEmpty 
+        const emptyStateText = isEmpty
             ? `<div class="empty-state"><div class="empty-state-icon">🕒</div>
                <h3>Nenhum Turno Cadastrado</h3>
                <p>Crie os turnos de trabalho da sua operação para começar.</p>
@@ -261,7 +266,7 @@ async function saveTurnoFromForm() {
         validateInput(turnoAlmocoInput, false);
         return;
     }
-    
+
     const inicio = turnoInicioInput.value;
     const fim = turnoFimInput.value;
     const diasDeDiferenca = Number(turnoFimDiaSelect.value);
@@ -288,9 +293,9 @@ async function saveTurnoFromForm() {
     };
 
     lastSavedTurnoId = dadosTurno.id;
-    
+
     store.dispatch('SAVE_TURNO', dadosTurno);
-    
+
     showToast("Turno salvo com sucesso!");
     switchTurnosTab('gerenciar');
 }
@@ -298,9 +303,9 @@ async function saveTurnoFromForm() {
 function editTurnoInForm(id) {
     const { turnos } = store.getState();
     const turno = turnos.find(t => t.id === id);
-    if (!turno || turno.isSystem) return; 
-    
-    cancelEditTurno(); 
+    if (!turno || turno.isSystem) return;
+
+    cancelEditTurno();
     editingTurnoId = id;
 
     turnoNomeInput.value = turno.nome;
@@ -320,7 +325,7 @@ function editTurnoInForm(id) {
     btnSalvarTurno.textContent = "💾 Salvar Alterações";
     parseEmojisInElement(btnSalvarTurno);
     setTurnoFormDirty(false);
-    
+
     formTabButton.innerHTML = `📝 Editando: ${turno.nome}`;
     switchTurnosTab('formulario');
 }
@@ -335,11 +340,11 @@ function cancelEditTurno() {
     turnoAlmocoInput.value = "";
 
     selectCor(getLeastUsedColor() || PALETA_CORES[0]);
-    
+
     $$('.invalid', pageTurnos).forEach(el => el.classList.remove('invalid'));
     $(`.toggle-btn[data-value="nao"]`, descansoToggleGroup).click();
     updateTurnoCargaPreview();
-    
+
     btnSalvarTurno.textContent = "💾 Salvar Turno";
     formTabButton.innerHTML = "📝 Novo Turno"; // Redefine o título da aba com emoji
     parseEmojisInElement(btnSalvarTurno);
@@ -359,7 +364,7 @@ async function deleteTurno(id) {
     if (isTurnoInUseEscala) {
         blockingIssues.push("Está sendo utilizado em uma ou mais <strong>escalas salvas</strong>.");
     }
-    
+
     // 2. Verificar em cargos
     const cargosUsando = cargos.filter(c => (c.turnosIds || []).includes(id));
     if (cargosUsando.length > 0) {
@@ -421,7 +426,7 @@ function initTurnosPage() {
         cancelEditTurno();
         switchTurnosTab('gerenciar');
     });
-    
+
     tblTurnosBody.addEventListener('click', handleTurnosTableClick);
     filtroTurnosInput.addEventListener("input", renderTurnos);
 
