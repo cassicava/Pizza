@@ -4,6 +4,39 @@
 
 // --- Armazenamento do Conteúdo de Ajuda Detalhado ---
 const helpContentData = {
+    // --- CONTEÚDO PARA A TELA INICIAL ---
+    home: {
+        title: "Ajuda: Tela Inicial",
+        content: `
+            <div class="help-card">
+                <h4>🏠 Bem-vindo ao Escala Fácil!</h4>
+                <p>Esta é a sua central de controle. A partir daqui, você acessa todas as funcionalidades para criar e gerenciar suas escalas.</p>
+                <p>O fluxo recomendado para começar é seguir os passos indicados nos cards de <strong>Cadastros Essenciais</strong>.</p>
+            </div>
+            <div class="help-card">
+                <h4>📝 Cadastros Essenciais (Passos 1-3)</h4>
+                <p><strong>Passo 1: 🕒 Turnos:</strong> Defina os horários de trabalho da sua operação. Ex: Turno Diurno (07:00-19:00), Turno Noturno (19:00-07:00), Turno Manhã (08:00-14:00).</p>
+                <p><strong>Passo 2: 🏥 Cargos:</strong> Crie as funções ou postos de trabalho (ex: Enfermeiro, Técnico, Recepcionista) e associe a eles os turnos que podem cumprir. Defina também os dias e horários em que cada cargo precisa de cobertura.</p>
+                <p><strong>Passo 3: 👨‍⚕️ Funcionários:</strong> Cadastre as pessoas da sua equipe, atribuindo a cada uma um cargo e definindo sua disponibilidade e preferências para cada turno que ela pode realizar.</p>
+            </div>
+             <div class="help-card">
+                <h4>👥 Equipes (Opcional)</h4>
+                <p><strong>🤝 Equipes:</strong> Se você trabalha com grupos fixos que sempre se revezam juntos (ex: Equipe A, Equipe B em um regime 12x36), cadastre-os aqui. Isso simplifica a montagem de escalas de rodízio.</p>
+            </div>
+            <div class="help-card">
+                <h4>⚙️ Crie e Gerencie suas Escalas</h4>
+                <p>Após realizar os cadastros essenciais, você está pronto para:</p>
+                <p><strong>✨ Geração Automática:</strong> Use o assistente inteligente para criar uma nova escala. O sistema distribuirá os funcionários (ou equipes) de acordo com as regras, disponibilidade e cobertura definidas por você.</p>
+                <p><strong>🗂️ Escalas Salvas:</strong> Acesse, visualize, edite ou exporte todas as escalas que você já salvou.</p>
+                <p><strong>📈 Relatórios:</strong> Analise as métricas das suas escalas salvas, como distribuição de horas, folgas e cumprimento de metas.</p>
+            </div>
+            <div class="help-card">
+                <h4>💡 Dica</h4>
+                <p>Mantenha seus cadastros (principalmente a disponibilidade dos funcionários) sempre atualizados para garantir que o gerador automático crie as escalas mais precisas e eficientes possíveis!</p>
+            </div>
+        `
+    },
+    // --- FIM DO CONTEÚDO DA TELA INICIAL ---
     turnos: {
         title: "Ajuda: Cadastro de Turnos",
         content: `
@@ -148,13 +181,14 @@ const helpContentData = {
         content: `
             <div class="help-card">
                 <h4>⚙️ Geral</h4>
-                <p>Na aba "Geral", você pode definir o nome de usuário ou da empresa que aparece na saudação da tela inicial e na tela de carregamento.</p>
+                <p>Na aba "Geral", você pode definir o nome de usuário que aparece na saudação da tela inicial e na tela de carregamento.</p>
             </div>
             <div class="help-card">
                 <h4>💾 Dados (Backup e Restauração)</h4>
                 <p><strong>ESSENCIAL:</strong> Seus dados (turnos, funcionários, escalas, etc.) são salvos <strong>apenas neste programa</strong>, no seu computador. Use a função de <strong>📤 Exportar (Backup)</strong> regularmente para criar um arquivo de segurança (<code>.json</code>). Guarde este arquivo em local seguro!</p>
                 <p>Se você trocar de computador, limpar os dados do programa, ou ocorrer algum problema, poderá usar a função de <strong>📥 Importar</strong> para restaurar tudo a partir do seu arquivo de backup. <strong>Atenção:</strong> A importação substitui todos os dados atuais.</p>
                  <p><strong>Backup Automático:</strong> Você pode configurar o sistema para baixar um arquivo de backup automaticamente Diariamente ou Semanalmente, como uma segurança adicional.</p>
+                 <p><strong>⚠️ Ações Irreversíveis:</strong> Tenha muito cuidado nesta seção. A opção de <strong>🔥 Apagar Todos os Dados</strong> remove permanentemente tudo do aplicativo neste programa. Use apenas se tiver certeza absoluta e possuir um backup recente.</p>
             </div>
             <div class="help-card">
                 <h4>ℹ️ Sobre e Recursos</h4>
@@ -164,10 +198,7 @@ const helpContentData = {
                 <p>• <strong>Reportar um Problema:</strong> Abre seu cliente de e-mail para enviar um feedback ou relatar um erro.</p>
                 <p>• <strong>Apoiar o Projeto (PIX):</strong> Se o Escala Fácil te ajudou, considere apoiar o desenvolvimento!</p>
             </div>
-            <div class="help-card">
-                <h4>⚠️ Zona de Risco</h4>
-                <p>Tenha muito cuidado nesta seção. A opção de <strong>🔥 Apagar Todos os Dados</strong> remove permanentemente tudo do aplicativo neste programa. Use apenas se tiver certeza absoluta e possuir um backup recente.</p>
-            </div>
+
         `
     }
 };
@@ -204,6 +235,7 @@ function toggleHelpPanel(show) {
 /**
  * Carrega o conteúdo de ajuda específico para a tela atual.
  * @param {string} pageId - O ID da tela (ex: 'turnos', 'cargos').
+ * @returns {boolean} - Retorna true se encontrou conteúdo de ajuda, false caso contrário.
  */
 function loadHelpContent(pageId) {
     const helpData = helpContentData[pageId];
@@ -212,14 +244,12 @@ function loadHelpContent(pageId) {
         helpPanelTitle.textContent = helpData.title;
         helpPanelContent.innerHTML = helpData.content;
         parseEmojisInElement(helpPanelContent); // Garante que emojis sejam renderizados corretamente
-        contextHelpBtn.style.display = 'flex';
+        return true; // Encontrou conteúdo
     } else {
-        // Esconde o botão se não houver conteúdo de ajuda para a tela
-        contextHelpBtn.style.display = 'none';
         // Limpa o conteúdo se não houver ajuda (evita mostrar conteúdo antigo)
         helpPanelTitle.textContent = 'Ajuda';
         helpPanelContent.innerHTML = '<p class="muted">Não há ajuda disponível para esta seção.</p>';
-
+        return false; // Não encontrou conteúdo
     }
 }
 

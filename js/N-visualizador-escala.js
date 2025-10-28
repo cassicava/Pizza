@@ -31,7 +31,7 @@ function handleFocoBrushClick(event) {
 
     const turnoId = brush.dataset.turnoId;
     focoIndividualState.selectedBrushId = focoIndividualState.selectedBrushId === turnoId ? null : turnoId;
-    
+
     renderFocoFerramentasPinceis(currentEscala.owner);
 }
 
@@ -41,13 +41,14 @@ function handleFocoCalendarClick(event) {
 
     const date = dayCell.dataset.date;
     const employeeId = focoIndividualState.selectedEmployeeId;
+    // CORREÇÃO: Busca o slot usando currentEscala que é compartilhado
     const existingSlot = currentEscala.slots.find(s => s.assigned === employeeId && s.date === date);
 
     if (focoIndividualState.editMode === 'eraser') {
         if (existingSlot) {
-            handleRemoveShiftClick(existingSlot.id);
+            handleRemoveShiftClick(existingSlot.id); // Chama a função global de remoção
         }
-    } 
+    }
     else if (focoIndividualState.editMode === 'employee') {
         const brushId = focoIndividualState.selectedBrushId;
         if (!brushId) {
@@ -55,9 +56,11 @@ function handleFocoCalendarClick(event) {
             return;
         }
         if (existingSlot && existingSlot.turnoId === brushId) {
-            handleRemoveShiftClick(existingSlot.id);
+             // Se clicar com o mesmo pincel, remove (toggle)
+            handleRemoveShiftClick(existingSlot.id); // Chama a função global de remoção
         } else {
-            handleAddShiftClick(employeeId, brushId, date);
+            // Adiciona ou substitui pelo turno do pincel
+            handleAddShiftClick(employeeId, brushId, date); // Chama a função global de adição
         }
     }
 }
@@ -76,7 +79,7 @@ function renderEscalaLegend(escala, container) {
 
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const allLegendItems = [];
-    
+
     const nonSystemTurnos = allTurnos.filter(t => !t.isSystem && (cargo.turnosIds?.includes(t.id) || t.isSystem));
     const systemTurnosSet = new Set();
     const activeSystemTurnos = new Set(escala.slots.map(s => s.turnoId).filter(id => TURNOS_SISTEMA_AUSENCIA.hasOwnProperty(id)));
@@ -93,7 +96,7 @@ function renderEscalaLegend(escala, container) {
     });
 
     const activeTurnos = new Set(escala.slots.map(s => s.turnoId));
-    
+
     const finalHTML = allLegendItems.map(turno => {
         const isActive = activeTurnos.has(turno.id);
         const classInactive = !isActive ? 'inactive' : '';
@@ -155,8 +158,8 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             }
             return a.nome.localeCompare(b.nome); // Desempate por nome
         });
-    
-    const turnosDoCargo = cargo 
+
+    const turnosDoCargo = cargo
         ? turnos.filter(t => !t.isSystem && cargo.turnosIds.includes(t.id)).sort((a, b) => a.inicio.localeCompare(b.inicio))
         : [];
 
@@ -200,7 +203,7 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 const slotAttr = isInteractive ? `data-slot-id="${slot.id}" data-turno-id="${slot.turnoId}"` : '';
                 const equipeAttr = isInteractive && slot.equipeId ? `data-equipe-id="${slot.equipeId}"` : '';
                 const textColor = getContrastingTextColor(turno.cor);
-                const extraClass = slot.isExtra ? 'celula-hora-extra' : '';
+                const extraClass = slot.isExtra ? 'celula-hora-extra' : ''; // Aplica classe se for extra
                 tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} title="${turno.nome}">${turno.sigla || '?'}</td>`;
             } else if (feriadoFolga) {
                 tableHTML += `<td class="celula-feriado-folga" title="${feriadoFolga.nome}">FOLGA</td>`;
@@ -226,35 +229,35 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             });
             tableHTML += `</tr>`;
         });
-        
+
         // CORREÇÃO NO CÁLCULO DE VAGAS
         turnosDoCargo.forEach(turno => {
             let hasVagas = false;
             let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
-            
+
             const coberturaTurno = cobertura[turno.id] || {}; // Cobertura pode ser objeto ou número
-            
+
             dateRange.forEach(date => {
                 const d = new Date(date + 'T12:00:00');
                 const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
                 const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
                 const isDiaUtil = cargoDiasOperacionais.has(diaSemanaId) && !feriadoFolga;
-                
+
                 let vagas = 0;
                 if (isDiaUtil) {
                     // Determina a cobertura necessária para ESTE dia da semana
-                    const coberturaNecessaria = typeof coberturaTurno === 'object' 
-                        ? (coberturaTurno[diaSemanaId] || 0) 
+                    const coberturaNecessaria = typeof coberturaTurno === 'object'
+                        ? (coberturaTurno[diaSemanaId] || 0)
                         : (coberturaTurno || 0); // Fallback se for número (versão antiga)
 
                     const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
                     vagas = coberturaNecessaria - coberturaAtual;
-                    
+
                     if (vagas > 0) {
                         hasVagas = true;
                     }
                 }
-                
+
                 rowVagasHTML += `<td ${vagas > 0 ? 'style="color: var(--danger); font-weight: bold;"' : ''}>${vagas > 0 ? vagas : ''}</td>`;
             });
             rowVagasHTML += `</tr>`;
@@ -301,7 +304,7 @@ function updateTableFooter(escala) {
     turnosDoCargo.forEach(turno => {
         let hasVagas = false;
         let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
-        
+
         const coberturaTurno = cobertura[turno.id] || {}; // Cobertura pode ser objeto ou número
 
         dateRange.forEach(date => {
@@ -309,22 +312,22 @@ function updateTableFooter(escala) {
             const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
             const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
             const isDiaUtil = cargoDiasOperacionais.has(diaSemanaId) && !feriadoFolga;
-            
+
             let vagas = 0;
             if (isDiaUtil) {
                 // Determina a cobertura necessária para ESTE dia da semana
-                const coberturaNecessaria = typeof coberturaTurno === 'object' 
-                    ? (coberturaTurno[diaSemanaId] || 0) 
+                const coberturaNecessaria = typeof coberturaTurno === 'object'
+                    ? (coberturaTurno[diaSemanaId] || 0)
                     : (coberturaTurno || 0); // Fallback se for número (versão antiga)
-                
+
                 const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
                 vagas = coberturaNecessaria - coberturaAtual;
-                
+
                 if (vagas > 0) {
                     hasVagas = true;
                 }
             }
-            
+
             rowVagasHTML += `<td ${vagas > 0 ? 'style="color: var(--danger); font-weight: bold;"' : ''}>${vagas > 0 ? vagas : ''}</td>`;
         });
         rowVagasHTML += `</tr>`;
@@ -368,7 +371,7 @@ function renderPainelDaEscala(escala) {
                  const coberturaNecessaria = typeof coberturaTurno === 'object'
                     ? (coberturaTurno[diaSemanaId] || 0)
                     : (coberturaTurno || 0);
-                
+
                 const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turnoId && s.assigned).length;
                 vagas += Math.max(0, coberturaNecessaria - coberturaAtual);
             });
@@ -378,8 +381,12 @@ function renderPainelDaEscala(escala) {
     const totalHorasExtras = funcsDaEscala.reduce((acc, func) => {
         if (func.medicaoCarga === 'horas' || !func.medicaoCarga) {
             const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60);
-            const metaHoras = calcularMetaHoras(func, escala.inicio, escala.fim);
-            return acc + Math.max(0, horasTrabalhadas - metaHoras);
+             // CORREÇÃO: Usa a meta calculada ou a override para calcular extra
+            const metaOriginal = calcularMetaHoras(func, escala.inicio, escala.fim);
+            const metaConsiderada = (escala.metasOverride && escala.metasOverride[func.id] !== undefined)
+                ? parseFloat(escala.metasOverride[func.id])
+                : metaOriginal;
+            return acc + Math.max(0, horasTrabalhadas - metaConsiderada);
         }
         return acc;
     }, 0);
@@ -417,9 +424,9 @@ function renderPainelDaEscala(escala) {
     funcsDaEscala.forEach(func => {
         const medicao = func.medicaoCarga || 'horas';
         let realizado, meta, saldo, unidade, saldoLabel;
-        
+
         const temOverride = escala.metasOverride && escala.metasOverride[func.id] !== undefined;
-        
+
         if (medicao === 'turnos') {
             realizado = escala.historico[func.id]?.turnosTrabalhados || 0;
             const { cargos } = store.getState();
@@ -513,7 +520,7 @@ function renderPainelDaEscala(escala) {
             <h5 style="margin-top: 0; margin-bottom: 8px; color: var(--muted);">Legenda de Turnos e Ausências</h5>
             <div class="escala-legenda turnos-legenda"></div>
         </div>
-        
+
         <fieldset class="regras-fieldset" style="margin-top: 24px;">
             <legend>Estatísticas Resumidas</legend>
             <div class="painel-stats-grid">
@@ -548,10 +555,14 @@ function renderPainelDaEscala(escala) {
     const obsTextarea = $(`#${obsTextareaId}`, painelContainer);
     if(obsTextarea) {
         obsTextarea.oninput = () => {
-            currentEscala.observacoes = obsTextarea.value;
-            setGeradorFormDirty(true);
+             // Garante que currentEscala exista antes de modificar
+            if (currentEscala) {
+                currentEscala.observacoes = obsTextarea.value;
+                setGeradorFormDirty(true);
+            }
         };
     }
+
 
     const turnosLegendaContainer = $('.turnos-legenda', painelContainer);
     renderEscalaLegend(escala, turnosLegendaContainer);
@@ -559,13 +570,13 @@ function renderPainelDaEscala(escala) {
     $('.painel-tabs-toggle-group', painelContainer)?.addEventListener('click', (event) => {
         const btn = event.target.closest('.painel-tab-btn');
         if (!btn) return;
-        
+
         $$('.painel-tabs-toggle-group .painel-tab-btn', painelContainer).forEach(b => b.classList.remove('active'));
         $$('.painel-tab-content', painelContainer).forEach(c => c.classList.remove('active'));
-        
+
         btn.classList.add('active');
         const targetContent = $(`.painel-tab-content[data-tab-content="${btn.dataset.tab}"]`, painelContainer);
-        targetContent.classList.add('active');
+        if (targetContent) targetContent.classList.add('active'); // Verifica se targetContent existe
 
         if (btn.dataset.tab === 'observacoes') {
              const obsField = $(`#${obsTextareaId}`, targetContent);
@@ -610,16 +621,22 @@ function renderPainelDaEscala(escala) {
         resumoList.addEventListener('click', (event) => {
             const funcItem = event.target.closest('.resumo-func-item');
             if (!funcItem) return;
-            
+
             const funcId = funcItem.dataset.funcId;
+             // Garante que currentEscala exista antes de interagir
+            if (!currentEscala) return;
 
             if (event.target.closest('.btn-edit-meta')) {
                 const outroEditando = $('.resumo-func-item.is-editing');
                 if(outroEditando) outroEditando.classList.remove('is-editing');
-                
+
                 funcItem.classList.add('is-editing');
-                $('.meta-input', funcItem).focus();
-            } 
+                const metaInput = $('.meta-input', funcItem);
+                if (metaInput) {
+                    metaInput.focus();
+                    metaInput.select(); // Seleciona o texto para facilitar a edição
+                }
+            }
             else if (event.target.closest('.btn-cancel-edit')) {
                 funcItem.classList.remove('is-editing');
                 // Restaura o valor original do input ao cancelar
@@ -636,16 +653,17 @@ function renderPainelDaEscala(escala) {
                         metaOriginal = calcularMetaHoras(func, escala.inicio, escala.fim);
                     }
                      const metaInput = $('.meta-input', funcItem);
-                     metaInput.value = metaOriginal; // Restaura valor visual
+                     if (metaInput) metaInput.value = metaOriginal; // Restaura valor visual
                 }
             }
             else if (event.target.closest('.btn-confirm-edit')) {
                 const input = $('.meta-input', funcItem);
+                if (!input) return; // Sai se não encontrar o input
                 const novoValor = parseFloat(input.value);
 
                 if (!isNaN(novoValor) && novoValor >= 0) {
                     if (!currentEscala.metasOverride) currentEscala.metasOverride = {};
-                    
+
                     currentEscala.metasOverride[funcId] = novoValor;
                     setGeradorFormDirty(true);
                     renderPainelDaEscala(currentEscala); // Re-renderiza tudo para recalcular e sair do modo de edição
@@ -656,34 +674,42 @@ function renderPainelDaEscala(escala) {
             }
         });
     }
+     parseEmojisInElement(painelContainer); // Garante emojis no painel
 }
 
 // --- FUNÇÕES DE RENDERIZAÇÃO PRINCIPAIS ---
 
 function renderEscalaTable(escala) {
     currentEscala = escala;
-    
+
     // Configura o estado inicial do Foco Individual
     const funcsDaEscala = store.getState().funcionarios.filter(f => escala.historico && escala.historico[f.id]);
     focoIndividualState.selectedEmployeeId = funcsDaEscala.length > 0 ? funcsDaEscala[0].id : null;
     focoIndividualState.selectedBrushId = null;
     focoIndividualState.editMode = 'employee';
 
-    $(`#${escala.owner}-wizard-container`).classList.add('hidden');
-    $(`#${escala.owner}-escalaView`).classList.remove('hidden');
+    const owner = escala.owner || 'gerador'; // Define 'gerador' como padrão se owner não existir
+    escala.owner = owner; // Garante que a propriedade owner esteja definida
 
-    const titleTextEl = $(`#${escala.owner}-escalaViewTitle`);
-    const titleInputEl = $(`#${escala.owner}-escalaViewTitleInput`);
+    const wizardContainer = $(`#${owner}-wizard-container`);
+    if(wizardContainer) wizardContainer.classList.add('hidden');
+
+    const escalaView = $(`#${owner}-escalaView`);
+    if(escalaView) escalaView.classList.remove('hidden');
+
+    const titleTextEl = $(`#${owner}-escalaViewTitle`);
+    const titleInputEl = $(`#${owner}-escalaViewTitleInput`);
     if (titleTextEl) titleTextEl.textContent = escala.nome;
     if (titleInputEl) titleInputEl.value = escala.nome;
 
-    renderCurrentView(escala.owner);
-    setupViewTabs(escala.owner);
+    renderCurrentView(owner);
+    setupViewTabs(owner);
 
-    if (typeof initEditor === 'function') {
+    if (typeof initEditor === 'function' && owner === 'gerador') { // Só inicializa editor para o gerador
         initEditor();
     }
 }
+
 
 function renderCurrentView(owner) {
     const tabsContainer = $(`#${owner}-view-tabs`);
@@ -694,26 +720,38 @@ function renderCurrentView(owner) {
 
     if (activeTab === 'geral') {
         renderEscalaGeralView(owner);
-        if (toolbox) toolbox.classList.remove('hidden');
-        loadToolboxState();
+        // Só mostra a toolbox se estiver na view do gerador
+        if (owner === 'gerador' && toolbox) {
+            toolbox.classList.remove('hidden');
+            loadToolboxState();
+             // CORREÇÃO: Chama updateAllIndicators aqui também
+            if (typeof updateAllIndicators === 'function') {
+                updateAllIndicators();
+            }
+        } else {
+             if (toolbox) toolbox.classList.add('hidden');
+             if (fab) fab.classList.add('hidden');
+             updatePagePaddingForToolbox(true); // Garante reset do padding
+        }
     } else if (activeTab === 'individual') {
         renderFocoIndividualView(owner);
+        // Esconde a toolbox principal na visão individual
         if (toolbox) toolbox.classList.add('hidden');
         if (fab) fab.classList.add('hidden');
-        updatePagePaddingForToolbox(true);
+        updatePagePaddingForToolbox(true); // Reseta padding
     }
 }
 
 function renderEscalaGeralView(owner) {
     const container = $(`#${owner}-escalaTabelaWrap`);
-    renderGenericEscalaTable(currentEscala, container, { isInteractive: true });
+    renderGenericEscalaTable(currentEscala, container, { isInteractive: owner === 'gerador' }); // Só interativo no gerador
     renderPainelDaEscala(currentEscala);
 }
 
 function renderFocoIndividualView(owner) {
-    const container = $(`#gerador-foco-individual-container`);
-    if (!container) return;
-    
+    const container = $(`#gerador-foco-individual-container`); // Foco individual só existe no gerador
+    if (!container || owner !== 'gerador') return;
+
     container.innerHTML = `
         <div class="foco-coluna-ferramentas">
             <div id="foco-ferramentas-selecao"></div>
@@ -745,6 +783,11 @@ function renderFocoFerramentasSelecao(owner) {
         .filter(f => currentEscala.historico && currentEscala.historico[f.id])
         .sort((a,b) => a.nome.localeCompare(b.nome));
 
+    // Garante que haja um funcionário selecionado, se possível
+    if (!focoIndividualState.selectedEmployeeId && funcsDaEscala.length > 0) {
+        focoIndividualState.selectedEmployeeId = funcsDaEscala[0].id;
+    }
+
     const selectOptions = funcsDaEscala.map(f => `<option value="${f.id}" ${f.id === focoIndividualState.selectedEmployeeId ? 'selected' : ''}>${f.nome}</option>`).join('');
 
     container.innerHTML = `
@@ -758,7 +801,7 @@ function renderFocoFerramentasSelecao(owner) {
 function renderFocoFerramentasModos(owner) {
     const container = $(`#foco-ferramentas-modos`);
     if (!container) return;
-    
+
     container.innerHTML = `
         <div class="toggle-group">
             <button class="toolbox-mode-btn ${focoIndividualState.editMode === 'employee' ? 'active' : ''}" data-mode="employee" title="Pincel de Turnos">🎨 Pincel</button>
@@ -773,7 +816,7 @@ function renderFocoFerramentasModos(owner) {
 function renderFocoFerramentasMetricas(owner) {
     const container = $(`#foco-ferramentas-metricas`);
     if (!container) return;
-    
+
     const employeeId = focoIndividualState.selectedEmployeeId;
     if(!employeeId) {
         container.innerHTML = '';
@@ -794,8 +837,10 @@ function renderFocoFerramentasMetricas(owner) {
         </div>
     `;
     const card = $('.employee-indicators-card', container);
-    if (card) updateIndicatorsInCard(card);
+    // CORREÇÃO: Chama updateIndicatorsInCard que agora lê o histórico do currentEscala global
+    if (card && currentEscala) updateIndicatorsInCard(card);
 }
+
 
 function renderFocoFerramentasPinceis(owner) {
     const container = $(`#foco-ferramentas-pinceis`);
@@ -807,9 +852,10 @@ function renderFocoFerramentasPinceis(owner) {
 
     if (selectedFunc) {
         const { turnos } = store.getState();
-        const turnosDeTrabalho = turnos.filter(t => !t.isSystem && selectedFunc.disponibilidade && selectedFunc.disponibilidade[t.id]);
+        const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)]; // Inclui sistema
+        const turnosDeTrabalho = allTurnos.filter(t => !t.isSystem && selectedFunc.disponibilidade && selectedFunc.disponibilidade[t.id]);
         const turnosDeSistema = Object.values(TURNOS_SISTEMA_AUSENCIA);
-        
+
         systemBrushesHTML = turnosDeSistema.map(t => renderBrush(t, focoIndividualState.selectedBrushId)).join('');
         normalBrushesHTML = turnosDeTrabalho.map(t => renderBrush(t, focoIndividualState.selectedBrushId)).join('');
     }
@@ -822,6 +868,7 @@ function renderFocoFerramentasPinceis(owner) {
         </div>
     `;
     container.onclick = handleFocoBrushClick;
+     parseEmojisInElement(container); // Garante emojis nos pincéis
 }
 
 function renderFocoIndividualCalendar(owner) {
@@ -852,7 +899,7 @@ function renderFocoIndividualCalendar(owner) {
         const daysInMonth = new Date(year, month, 0).getDate();
 
         html += `<div class="calendar-instance"><h4 class="month-title">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</h4><div class="calendar-grid">${DIAS_SEMANA.map(d => `<div class="calendar-header ${['dom', 'sab'].includes(d.id) ? 'weekend-header' : ''}">${d.abrev}</div>`).join('')}${Array(firstDayOfMonth).fill('<div class="calendar-day empty"></div>').join('')}`;
-        
+
         for (let dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
             const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
             if (!rangeSet.has(date)) {
@@ -869,7 +916,7 @@ function renderFocoIndividualCalendar(owner) {
             let classes = 'calendar-day';
             if ([0, 6].includes(dayOfWeek)) classes += ' weekend';
             if (date === today) classes += ' day-today';
-            
+
             const feriadoFolga = currentEscala.feriados.find(f => f.date === date && !f.trabalha);
             const isCargoDiaNaoUtil = !cargoDiasOperacionais.has(diaSemanaId);
 
@@ -884,7 +931,7 @@ function renderFocoIndividualCalendar(owner) {
                                 <span class="day-shift-sigla" style="color: ${textColor};">${turno.sigla}</span>
                              </div>`;
             }
-            
+
             html += `<div class="${classes}" data-date="${date}">
                         <span class="day-number">${dayNumber}</span>
                         ${shiftHTML}
@@ -894,6 +941,7 @@ function renderFocoIndividualCalendar(owner) {
     }
     container.innerHTML = html;
 
+    // CORREÇÃO: Re-associa o listener ao grid após renderizar
     const calendarGrid = $('.calendar-grid', container);
     if(calendarGrid) calendarGrid.onclick = handleFocoCalendarClick;
 }
@@ -917,14 +965,19 @@ function updateTableAfterEdit(escala) {
     updateTableCells(escala);
     updateTableFooter(escala);
     renderPainelDaEscala(escala);
-    
+
     // Se a aba de foco individual estiver visível, re-renderiza seu conteúdo
     const tabsContainer = $(`#${owner}-view-tabs`);
     const activeTab = tabsContainer ? $('.painel-tab-btn.active', tabsContainer)?.dataset.tab : 'geral';
     if (activeTab === 'individual') {
-        renderFocoIndividualView(owner);
+        renderFocoIndividualView(owner); // Re-renderiza a visão individual completa
+    }
+     // CORREÇÃO: Atualiza os indicadores da toolbox principal também
+     if (typeof updateAllIndicators === 'function') {
+        updateAllIndicators();
     }
 }
+
 
 function updateTableCells(escala) {
     const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
@@ -933,7 +986,7 @@ function updateTableCells(escala) {
     const { turnos, cargos, equipes } = store.getState(); // Adiciona equipes
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const getTurnoInfo = (turnoId) => allTurnos.find(t => t.id === turnoId) || {};
-    
+
     const cargo = cargos.find(c => c.id === escala.cargoId);
     const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
 
@@ -965,9 +1018,9 @@ function updateTableCells(escala) {
             }
             return a.nome.localeCompare(b.nome);
         });
-    
+
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
-    
+
     // Remonta as linhas do tbody na nova ordem
     funcsDaEscala.forEach(func => {
         const row = document.createElement('tr');
@@ -1000,7 +1053,9 @@ function updateTableCells(escala) {
 
             if (slot) {
                 const turno = getTurnoInfo(slot.turnoId);
+                // CORREÇÃO: Garante que a classe 'celula-hora-extra' seja aplicada corretamente
                 if (slot.isExtra) cell.classList.add('celula-hora-extra');
+                else cell.classList.remove('celula-hora-extra'); // Garante remover se não for mais extra
                 cell.dataset.slotId = slot.id;
                 cell.dataset.turnoId = slot.turnoId;
                 if (slot.equipeId) cell.dataset.equipeId = slot.equipeId;
@@ -1020,6 +1075,10 @@ function updateTableCells(escala) {
             } else {
                  // Adiciona fundo cinza claro para células vazias de membros de equipe
                  if (func.equipeId) cell.style.backgroundColor = '#f0f0f0';
+                 cell.textContent = ''; // Limpa conteúdo explícito
+                 cell.style.backgroundColor = ''; // Limpa bg explícito se não for de equipe
+                 cell.style.color = ''; // Limpa cor explícita
+                 cell.title = ''; // Limpa title
             }
             row.appendChild(cell);
         });
@@ -1041,7 +1100,7 @@ async function salvarEscalaAtual(options = {}) {
             turnos
         } = store.getState();
         const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
-        
+
         const allSlotsToSnapshot = currentEscala.slots.filter(s => s.assigned);
 
         const funcsInvolvedIds = new Set(allSlotsToSnapshot.map(s => s.assigned));
@@ -1051,7 +1110,7 @@ async function salvarEscalaAtual(options = {}) {
             funcionarios: {},
             turnos: {}
         };
-        
+
         const obsTextareaId = `${currentEscala.owner}-escala-observacoes-textarea`;
         const obsTextarea = $(`#${obsTextareaId}`);
         if(obsTextarea) {
@@ -1059,7 +1118,7 @@ async function salvarEscalaAtual(options = {}) {
         } else if (!currentEscala.observacoes) {
             currentEscala.observacoes = '';
         }
-        
+
 
         funcsInvolvedIds.forEach(id => {
             const func = funcionarios.find(f => f.id === id);

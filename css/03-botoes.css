@@ -13,7 +13,7 @@ button {
     justify-content: center;
     /* ADICIONADO: Necessário para o efeito Ripple */
     position: relative;
-    overflow: hidden;
+    overflow: hidden; /* Garante que o ripple não saia do botão */
 }
 
 button:active {
@@ -99,6 +99,9 @@ button.danger:hover {
     -webkit-background-clip: border-box;
     background-clip: border-box;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    /* ADICIONADO: Necessário para o efeito Ripple */
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-cta:hover {
@@ -145,13 +148,15 @@ button.danger:hover {
 }
 
 /* --- EFEITO RIPPLE (ONDULAÇÃO) --- */
-button .ripple {
+/* Garante que o ripple não interfira com outros elementos */
+button .ripple, .btn-cta .ripple, .home-card .ripple, .escala-card .ripple, .welcome-option-card .ripple {
     position: absolute;
     border-radius: 50%;
     background-color: rgba(255, 255, 255, 0.6);
     transform: scale(0);
     animation: ripple 0.6s linear;
     pointer-events: none; /* Garante que a ondulação não interfira com o clique */
+    z-index: 1; /* Adicionado para garantir que fique acima do conteúdo interno mas abaixo de outros elementos sobrepostos se houver */
 }
 
 @keyframes ripple {

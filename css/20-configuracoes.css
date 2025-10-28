@@ -11,27 +11,36 @@
     padding-top: 8px;
 }
 
-/* NOVO: Estilo unificado para o container de abas */
+/* Container das abas de Configurações SEM fundo/borda */
 .config-painel .painel-tabs {
-    background-color: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 4px;
+    background-color: transparent; /* Remove fundo cinza */
+    border: none;
+    border-radius: 0;
+    padding: 0; /* Remove padding */
+    width: fit-content;
 }
 
+/* Botões das abas de Configurações TOTALMENTE arredondados */
 .config-painel .painel-tabs .painel-tab-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 8px 16px;
     font-size: 0.95rem;
-    font-weight: 500;   /* Fonte igual às outras abas */
-    border-radius: 8px;
+    font-weight: 500;
+    border-radius: 999px; /* Totalmente arredondado */
 }
 
 .config-painel .painel-tabs .painel-tab-btn span {
     font-size: 1.2rem;
     line-height: 1;
+}
+
+/* Mantém o estilo do botão ativo */
+.config-painel .painel-tabs .painel-tab-btn.active {
+    background-color: var(--card);
+    color: var(--brand);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
 }
 
 
@@ -190,17 +199,15 @@
 }
 
 #pix-details {
-    /* REMOVIDO width e max-width daqui */
     text-align: center;
 }
 
-/* Aumenta o tamanho da imagem */
 .pix-qr-code-image {
-    width: 200px;  /* AUMENTADO */
-    height: 200px; /* AUMENTADO */
+    width: 200px;
+    height: 200px;
     border-radius: 16px;
     display: block;
-    margin: 0 auto 12px auto; /* Adiciona margem inferior */
+    margin: 0 auto 12px auto;
     background-color: var(--bg);
     border: 1px solid var(--border);
     object-fit: contain;
@@ -214,9 +221,8 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     padding-left: 12px;
-    /* ALTERADO: Remove width 100% e adiciona max-width */
-    max-width: 260px; /* Define uma largura máxima para o container da chave */
-    margin-right: auto; /* Mantém alinhado à esquerda se houver espaço */
+    max-width: 260px;
+    margin-right: auto;
     margin-left: 0;
 }
 
@@ -258,16 +264,13 @@
         display: flex;
         justify-content: flex-start;
     }
-    /* Altera o layout do card PIX para coluna única antes */
     .support-card-content {
         grid-template-columns: 1fr;
-        gap: 24px; /* Mantém o espaçamento */
+        gap: 24px;
     }
-    /* Centraliza a chave PIX quando em coluna única e mantém max-width */
     .pix-key-container {
         margin-left: auto;
         margin-right: auto;
-        /* max-width: 260px; */ /* Já definido acima */
     }
 }
 
@@ -275,13 +278,11 @@
     .config-links-container {
         grid-template-columns: 1fr;
     }
-    /* Reduz um pouco a imagem em telas muito pequenas */
     .pix-qr-code-image {
         width: 160px;
         height: 160px;
     }
-    /* Garante que a chave PIX não fique muito larga */
     .pix-key-container {
-        max-width: 90%; /* Usa porcentagem em telas muito pequenas */
+        max-width: 90%;
     }
 }

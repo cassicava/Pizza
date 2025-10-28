@@ -1,7 +1,3 @@
-/**************************************
- * 🚀 Inicialização e Navegação
- **************************************/
-
 const dirtyForms = {
     turnos: false,
     cargos: false,
@@ -13,7 +9,6 @@ const dirtyForms = {
 let isNavigating = false;
 
 async function handleDataCorruptionError() {
-    // Esconde a splash screen para mostrar o modal de erro
     const splashScreen = $("#splash-screen");
     if (splashScreen) {
         splashScreen.style.display = 'none';
@@ -30,7 +25,7 @@ async function handleDataCorruptionError() {
     });
 
     if (action === 'import') {
-        importAllData(); // Função agora é chamada diretamente
+        importAllData();
     } else if (action === 'reset') {
         const { confirmed } = await showConfirm({
             title: "Tem Certeza?",
@@ -38,11 +33,10 @@ async function handleDataCorruptionError() {
             confirmText: "Sim, Apagar Tudo"
         });
         if (confirmed) {
-            await performHardReset(); // Chama a função de reset
+            await performHardReset();
         }
     }
 }
-
 
 function updateWelcomeMessage() {
     const welcomeEl = $("#welcomeTitle");
@@ -54,10 +48,17 @@ function updateWelcomeMessage() {
 
 function updateHomeScreenDashboard() {
     const { turnos, cargos, funcionarios, equipes } = store.getState();
-    if($("#home-turnos-count")) $("#home-turnos-count").textContent = turnos.filter(t => !t.isSystem).length > 0 ? `${turnos.filter(t => !t.isSystem).length} cadastrado(s)` : '';
-    if($("#home-cargos-count")) $("#home-cargos-count").textContent = cargos.length > 0 ? `${cargos.length} cadastrado(s)` : '';
-    if($("#home-funcionarios-count")) $("#home-funcionarios-count").textContent = funcionarios.length > 0 ? `${funcionarios.length} cadastrado(s)` : '';
-    if($("#home-equipes-count")) $("#home-equipes-count").textContent = equipes.length > 0 ? `${equipes.length} cadastrada(s)` : '';
+    const metricTurnosEl = $("#metric-turnos");
+    const metricCargosEl = $("#metric-cargos");
+    const metricFuncionariosEl = $("#metric-funcionarios");
+    const metricEquipesEl = $("#metric-equipes");
+
+    if (metricTurnosEl) metricTurnosEl.textContent = `🕒 Turnos: ${turnos.filter(t => !t.isSystem).length}`;
+    if (metricCargosEl) metricCargosEl.textContent = `🏥 Cargos: ${cargos.length}`;
+    if (metricFuncionariosEl) metricFuncionariosEl.textContent = `👨‍⚕️ Funcionários: ${funcionarios.length}`;
+    if (metricEquipesEl) metricEquipesEl.textContent = `🤝 Equipes: ${equipes.length}`;
+
+    parseEmojisInElement($(".quick-metrics-panel"));
 }
 
 function go(page, options = {}) {
@@ -69,7 +70,7 @@ function go(page, options = {}) {
     if (currentPageId === page && !options.force) return;
 
     (async () => {
-        if (dirtyForms[currentPageId]) {
+        if (currentPageId && dirtyForms[currentPageId]) {
             const { confirmed } = await showConfirm({
                 title: "Descartar Alterações?",
                 message: "Você tem alterações não salvas. Deseja sair e perdê-las?",
@@ -93,7 +94,7 @@ function go(page, options = {}) {
                     case 'gerar-escala':
                         resetGeradorWizard();
                         currentEscala = null;
-                        if (typeof cleanupEditor === 'function') cleanupEditor(); // Limpa a toolbox e o padding
+                        if (typeof cleanupEditor === 'function') cleanupEditor();
                         break;
                 }
             }
@@ -103,21 +104,25 @@ function go(page, options = {}) {
                 nextPageEl.classList.add('active');
             }
 
-            // --- INTEGRAÇÃO DO SISTEMA DE AJUDA ---
-            toggleHelpPanel(false); // Garante que o painel feche ao navegar
-            loadHelpContent(page);  // Carrega o conteúdo de ajuda para a nova página
-            // -----------------------------------------
+            toggleHelpPanel(false);
+            const helpBtn = $("#context-help-btn");
+            const hasHelpContent = loadHelpContent(page);
+            if (helpBtn) {
+                 helpBtn.style.display = hasHelpContent ? 'flex' : 'none';
+            }
 
             $$(".tab-btn").forEach(b => b.classList.remove("active"));
             const activeTab = $(`.tab-btn[data-page="${page}"]`);
             if (activeTab) activeTab.classList.add('active');
 
             const pageTitleEl = $("#page-title");
-            if (page === 'home') {
-                pageTitleEl.textContent = `Início`;
-            } else if (activeTab) {
-                const tabTextEl = activeTab.querySelector('.tab-text');
-                if (tabTextEl) pageTitleEl.textContent = tabTextEl.textContent; // Verifica se tabTextEl existe
+            if (pageTitleEl) {
+                if (page === 'home') {
+                    pageTitleEl.textContent = `Início`;
+                } else if (activeTab) {
+                    const tabTextEl = activeTab.querySelector('.tab-text');
+                    if (tabTextEl) pageTitleEl.textContent = tabTextEl.textContent;
+                }
             }
 
             window.scrollTo(0, 0);
@@ -143,7 +148,7 @@ function go(page, options = {}) {
                     renderFiltroEscalasCargo();
                     renderEscalasList();
                     break;
-                 case 'configuracoes': // Garante que o form de config seja carregado ao navegar
+                 case 'configuracoes':
                     loadConfigForm();
                     break;
             }
@@ -168,7 +173,7 @@ function renderRouter(actionName) {
 
     switch(actionName) {
         case 'LOAD_STATE':
-            renderTurnos(); renderCargos(); renderFuncs(); renderEquipes(); renderEscalasList();
+            renderTurnos(); renderCargos(); renderFuncs(); renderArchivedFuncs(); renderEquipes(); renderEscalasList();
             renderTurnosSelects(); renderFuncCargoSelect(); renderEquipeCargoSelect();
             loadConfigForm(); updateWelcomeMessage();
             break;
@@ -188,7 +193,10 @@ function renderRouter(actionName) {
         case 'DELETE_FUNCIONARIO':
         case 'ARCHIVE_FUNCIONARIO':
         case 'UNARCHIVE_FUNCIONARIO':
-            if (currentPageId === 'funcionarios') renderFuncs();
+            if (currentPageId === 'funcionarios') {
+                 renderFuncs();
+                 renderArchivedFuncs();
+            }
             if (currentPageId === 'equipes') renderEquipes();
             break;
         case 'SAVE_EQUIPE':
@@ -202,9 +210,7 @@ function renderRouter(actionName) {
         case 'SAVE_CONFIG':
             loadConfigForm();
             updateWelcomeMessage();
-             // --- MELHORIA: Chama a verificação de backup após salvar config ---
             triggerAutoBackupIfNeeded();
-             // ----------------------------------------------------------------
             break;
     }
 }
@@ -216,6 +222,11 @@ function setupAppListeners() {
         go(c.dataset.goto);
     }));
     $("#header-settings-btn").addEventListener('click', () => go('configuracoes'));
+
+    const btnGotoRelatorios = $("#btn-goto-relatorios");
+    if(btnGotoRelatorios) {
+        btnGotoRelatorios.addEventListener('click', () => go('relatorios'));
+    }
 }
 
 function initMainApp() {
@@ -235,30 +246,22 @@ function initMainApp() {
     store.subscribe(renderRouter);
     renderRouter('LOAD_STATE');
 
-    // --- MELHORIA: Chama verificação de backup após carregar estado ---
     triggerAutoBackupIfNeeded();
-    // -------------------------------------------------------------
 
-    // [CORREÇÃO] A duração total da animação agora é controlada pelo CSS.
-    // O JavaScript apenas inicia a saída e espera ela terminar.
     setTimeout(() => {
         splashScreen.classList.add('closing');
 
-        // Espera a transição de fade-out da splash screen terminar
         splashScreen.addEventListener('transitionend', () => {
             splashScreen.style.display = 'none';
             body.classList.remove('app-loading');
 
-            // Agora, com a splash screen totalmente fora do caminho, navega para a home.
-            // Isso garante que a animação dos cards será acionada corretamente.
             go("home", { force: true });
-            const pageTitleEl = $("#page-title"); // Garante que pageTitleEl é definido
-            if (pageTitleEl) pageTitleEl.textContent = "Início"; // Define o título após a navegação
-
+            const pageTitleEl = $("#page-title");
+            if (pageTitleEl) pageTitleEl.textContent = "Início";
 
         }, { once: true });
 
-    }, 4000); // Inicia a saída 1s antes do tempo total para uma transição suave
+    }, 4000);
 }
 
 function init() {
@@ -267,34 +270,30 @@ function init() {
         document.body.style.setProperty('--mouse-y', `${e.clientY}px`);
     });
 
-    // Pega a referência da splash screen
     const splashScreen = $("#splash-screen");
 
     store.dispatch('LOAD_STATE');
 
-    // Verifica se houve erro de corrupção durante o LOAD_STATE
     if (store.getState().dataCorrupted) {
         handleDataCorruptionError();
-        return; // Interrompe a inicialização normal
+        return;
     }
 
     const onboardingComplete = localStorage.getItem('ge_onboarding_complete') === 'true';
 
     if (!onboardingComplete) {
-        // Primeira vez abrindo: esconde a splash screen e mostra o onboarding
         if (splashScreen) {
             splashScreen.style.display = 'none';
         }
         initWelcomeScreen();
     } else {
-        // Já usou antes: esconde a tela de boas-vindas (caso exista) e inicia o app com a splash screen
         const welcomeOverlay = $("#welcome-overlay");
         if(welcomeOverlay) {
             welcomeOverlay.style.display = 'none';
         }
 
         setupAppListeners();
-        initMainApp(); // initMainApp agora chama triggerAutoBackupIfNeeded internamente
+        initMainApp();
     }
 }
 

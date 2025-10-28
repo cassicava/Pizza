@@ -1,5 +1,5 @@
 /**************************************************************
- * 🛠️ Lógica do Editor Manual (v7.2 - Feedback de Conflito Aprimorado)
+ * 🛠️ Lógica do Editor Manual (v7.3 - Correção de Atualização da Toolbox)
  **************************************************************/
 
 const editorState = {
@@ -37,7 +37,7 @@ function updatePagePaddingForToolbox(reset = false) {
     const activePage = $('.page.active');
     if (!activePage) return;
 
-    const toolboxHeight = 120;
+    const toolboxHeight = 120; // Altura aproximada da toolbox + margens
 
     activePage.style.paddingTop = '';
     activePage.style.paddingBottom = '';
@@ -73,7 +73,7 @@ function loadToolboxState() {
 
     toolboxState.isMinimized = savedState?.isMinimized || false;
     toolboxState.dockPosition = savedState?.dockPosition || 'bottom';
-    editorState.enforceRules = savedState?.enforceRules !== false;
+    editorState.enforceRules = savedState?.enforceRules !== false; // Padrão é true
 
     toolbox.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
     fab.classList.toggle('is-docked-top', toolboxState.dockPosition === 'top');
@@ -91,8 +91,9 @@ function loadToolboxState() {
     if(dockBtnSpan) {
         dockBtnSpan.textContent = toolboxState.dockPosition === 'top' ? '🔽' : '🔼';
         dockBtnSpan.parentElement.title = toolboxState.dockPosition === 'top' ? 'Mover para a Base' : 'Mover para o Topo';
+        parseEmojisInElement(dockBtnSpan.parentElement); // Parse emoji aqui
     }
-    parseEmojisInElement(toolbox);
+
 
     updatePagePaddingForToolbox();
 }
@@ -143,17 +144,25 @@ function cleanupEditor() {
     }
     // Remove listener de teclado global para evitar conflitos
     document.onkeydown = null;
+    // Remove listener de mouseover da tabela se existir
+    const tableWrap = $(`#${currentEscala?.owner}-escalaTabelaWrap`); // Usa optional chaining
+    if(tableWrap) tableWrap.onmouseover = null;
 }
+
 
 function setupViewTabs(owner) {
     const tabsContainer = $(`#${owner}-view-tabs`);
     if (!tabsContainer) return;
 
-    tabsContainer.addEventListener('click', (e) => {
+    // Remove listeners antigos para evitar duplicação (caso setup seja chamado mais de uma vez)
+    const newTabsContainer = tabsContainer.cloneNode(true);
+    tabsContainer.parentNode.replaceChild(newTabsContainer, tabsContainer);
+
+    newTabsContainer.addEventListener('click', (e) => {
         const btn = e.target.closest('.painel-tab-btn');
         if (!btn || btn.classList.contains('active')) return;
 
-        $$('.painel-tab-btn', tabsContainer).forEach(b => b.classList.remove('active'));
+        $$('.painel-tab-btn', newTabsContainer).forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
         const targetTab = btn.dataset.tab;
@@ -161,9 +170,10 @@ function setupViewTabs(owner) {
             content.classList.toggle('active', content.dataset.tabContent === targetTab);
         });
 
-        renderCurrentView(owner);
+        renderCurrentView(owner); // Chama renderCurrentView que chama initEditor se necessário
     });
 }
+
 
 // --- LÓGICA DE VALIDAÇÃO ---
 
@@ -218,13 +228,14 @@ function findPotentialConflicts(employeeId, turnoId, date, escala) {
             }
         });
 
-        if (slotDate.getUTCDay() === 6 && (totalSaturdays - workedWeekends.saturdays) < minFolgasSabados) {
+        if (slotDate.getUTCDay() === 6 && totalSaturdays > 0 && (totalSaturdays - workedWeekends.saturdays) < minFolgasSabados) {
             conflitos.push({ type: 'weekend', message: `Viola o mínimo de ${minFolgasSabados} sábado(s) de folga no mês.` });
         }
-        if (slotDate.getUTCDay() === 0 && (totalSundays - workedWeekends.sundays) < minFolgasDomingos) {
+        if (slotDate.getUTCDay() === 0 && totalSundays > 0 && (totalSundays - workedWeekends.sundays) < minFolgasDomingos) {
             conflitos.push({ type: 'weekend', message: `Viola o mínimo de ${minFolgasDomingos} domingo(s) de folga no mês.` });
         }
     }
+
 
     return conflitos; // Retorna array de objetos { type, message }
 }
@@ -234,8 +245,7 @@ function findPotentialConflicts(employeeId, turnoId, date, escala) {
 
 function initEditor() {
     const toolbox = $("#editor-toolbox");
-    if (toolbox) {
-        // CORREÇÃO: Removido comentário interno {* Badge... *}
+    if (toolbox && !toolbox.querySelector('.toolbox-layout-wrapper')) { // Previne re-render se já existir
         toolbox.innerHTML = `
             <div class="toolbox-layout-wrapper">
                 <div class="toolbox-group-left">
@@ -270,7 +280,14 @@ function initEditor() {
                     </div>
                 </div>
             </div>`;
+         // Adiciona listeners aos botões fixos da toolbox AQUI, após o innerHTML
+        $$(".toolbox-mode-btn, .toolbox-tool-btn", toolbox).forEach(btn => btn.onclick = () => setEditMode(btn.dataset.mode));
+        const dockBtn = $('#toggle-dock-btn', toolbox);
+        if (dockBtn) dockBtn.onclick = toggleDockPosition;
+        const sizeBtn = $('#toggle-size-btn', toolbox);
+        if (sizeBtn) sizeBtn.onclick = toggleToolboxSize;
     }
+
 
     Object.assign(editorState, {
         editMode: 'employee', selectedCell: null, focusedEmployeeId: null,
@@ -280,74 +297,65 @@ function initEditor() {
     });
 
     const fab = $("#editor-toolbox-fab");
+    // Adiciona listener ao FAB aqui, garantindo que ele exista
+    if (fab) fab.onclick = toggleToolboxSize;
+
     if (!toolbox || !fab) return;
 
     loadToolboxState(); // Carrega estado (minimizado, doca, regras)
 
-    // Limpa listeners antigos para evitar duplicação
-    $$(".toolbox-mode-btn, .toolbox-tool-btn, .toolbox-window-btn, #editor-toolbox-fab").forEach(btn => {
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
-    });
-
+    // Limpa listeners antigos do conteúdo dinâmico
     const dynamicContent = $("#toolbox-dynamic-content");
-    dynamicContent.innerHTML = '';
-    // Limpa listeners do container dinâmico
-    const newDynamicContent = dynamicContent.cloneNode(false); // Clona sem conteúdo e listeners
+    const newDynamicContent = dynamicContent.cloneNode(false);
     dynamicContent.parentNode.replaceChild(newDynamicContent, dynamicContent);
-
-
-    document.onkeydown = null; // Remove listener de teclado global
-    const tableWrap = $(`#${currentEscala.owner}-escalaTabelaWrap`);
-    if (tableWrap) {
-        // Limpa listeners da tabela
-        const newTableWrap = tableWrap.cloneNode(true); // Clona com conteúdo, mas sem listeners
-        tableWrap.parentNode.replaceChild(newTableWrap, tableWrap);
-    }
-
-    if (marqueeObserver) {
-        marqueeObserver.disconnect();
-    }
-    marqueeObserver = new ResizeObserver(entries => {
-        for (let entry of entries) {
-            const nameEl = entry.target.querySelector('.brush-name');
-            if (nameEl) {
-                const isOverflowing = nameEl.scrollWidth > nameEl.clientWidth;
-                nameEl.classList.toggle('should-marquee', isOverflowing);
-            }
-        }
-    });
-
-    // Readiciona listeners aos botões clonados
-    $$(".toolbox-mode-btn, .toolbox-tool-btn").forEach(btn => btn.onclick = () => setEditMode(btn.dataset.mode));
-    $('#toggle-dock-btn').onclick = toggleDockPosition;
-    $('#toggle-size-btn').onclick = toggleToolboxSize;
-    $('#editor-toolbox-fab').onclick = toggleToolboxSize; // Listener para o FAB clonado
-
-    // Readiciona listeners ao container dinâmico clonado
-    const currentDynamicContent = $("#toolbox-dynamic-content"); // Pega a referência do elemento clonado
-    currentDynamicContent.onclick = handleToolboxClick;
-    currentDynamicContent.onmouseover = handleToolboxMouseover;
-    currentDynamicContent.onmouseout = handleToolboxMouseout;
-    currentDynamicContent.addEventListener('change', (e) => {
+    // Readiciona listeners ao conteúdo dinâmico clonado
+    newDynamicContent.onclick = handleToolboxClick;
+    newDynamicContent.onmouseover = handleToolboxMouseover;
+    newDynamicContent.onmouseout = handleToolboxMouseout;
+    newDynamicContent.addEventListener('change', (e) => {
         if (e.target.id === 'toolbox-employee-select') {
             handleEmployeeSelectChange(e);
         }
     });
 
-    // Readiciona listeners à tabela clonada
-    const currentTableWrap = $(`#${currentEscala.owner}-escalaTabelaWrap`);
-    if (currentTableWrap) {
-        currentTableWrap.onclick = handleTableClick;
-        currentTableWrap.onmouseover = handleTableMouseover;
+    // Limpa listener antigo da tabela e readiciona ao elemento correto
+    document.onkeydown = null; // Remove listener global
+    const tableWrap = $(`#${currentEscala.owner}-escalaTabelaWrap`);
+    if (tableWrap) {
+        // CORREÇÃO: Remove listeners específicos do elemento antigo antes de clonar
+        tableWrap.onclick = null;
+        tableWrap.onmouseover = null;
+
+        const newTableWrap = tableWrap.cloneNode(true); // Clona com conteúdo
+        tableWrap.parentNode.replaceChild(newTableWrap, tableWrap);
+
+        // Readiciona listeners ao novo elemento da tabela
+        newTableWrap.onclick = handleTableClick;
+        newTableWrap.onmouseover = handleTableMouseover; // Reassocia o mouseover AQUI
+    }
+
+
+    // Reconfigura o observer
+    if (marqueeObserver) {
+        marqueeObserver.disconnect();
+    } else {
+        marqueeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const nameEl = entry.target.querySelector('.brush-name');
+                if (nameEl) {
+                    const isOverflowing = nameEl.scrollWidth > nameEl.clientWidth;
+                    nameEl.classList.toggle('should-marquee', isOverflowing);
+                }
+            }
+        });
     }
 
     document.onkeydown = handleKeyboardNav; // Readiciona listener de teclado global
 
-    setEditMode('employee'); // Define o modo inicial
+    setEditMode('employee'); // Define o modo inicial e renderiza a toolbox
     runAllValidations(); // Roda validações iniciais
+    updateAllIndicators(); // CORREÇÃO: Chama para garantir que os indicadores sejam exibidos inicialmente
 }
-
 
 function setEditMode(mode) {
     if (editorState.editMode !== mode) {
@@ -368,7 +376,9 @@ function setEditMode(mode) {
         if (editorState.scheduleOrderedFuncs.length > 0) {
             const currentFocusedIndex = editorState.scheduleOrderedFuncs.findIndex(f => f.id === editorState.focusedEmployeeId);
             editorState.focusedEmployeeIndex = (currentFocusedIndex !== -1) ? currentFocusedIndex : 0;
-            editorState.focusedEmployeeId = editorState.scheduleOrderedFuncs[editorState.focusedEmployeeIndex].id;
+             // Garante que o índice esteja dentro dos limites válidos
+            editorState.focusedEmployeeIndex = Math.max(0, Math.min(editorState.focusedEmployeeIndex, editorState.scheduleOrderedFuncs.length - 1));
+            editorState.focusedEmployeeId = editorState.scheduleOrderedFuncs[editorState.focusedEmployeeIndex]?.id || null; // Usa optional chaining
         } else {
             editorState.focusedEmployeeIndex = -1;
             editorState.focusedEmployeeId = null;
@@ -384,7 +394,7 @@ function setEditMode(mode) {
     $$(".toolbox-mode-btn, .toolbox-tool-btn").forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
 
     // Adiciona/Remove classes CSS na tabela para feedback visual do cursor
-    const table = $(".escala-final-table");
+    const table = $(`#${currentEscala.owner}-escalaTabelaWrap .escala-final-table`); // Seleciona a tabela correta
     if(table) {
         table.classList.remove('employee-paint-mode', 'eraser-mode');
         if (mode === 'employee') table.classList.add('employee-paint-mode');
@@ -396,6 +406,7 @@ function setEditMode(mode) {
 function updateToolboxView() {
     const { editMode } = editorState;
     const contentEl = $("#toolbox-dynamic-content");
+    if(!contentEl) return; // Sai se o container não existir
     let contentHTML = '';
 
     // Desconecta observer antes de limpar o HTML
@@ -427,7 +438,10 @@ function updateToolboxView() {
                 marqueeObserver.observe(brush);
             }
         });
+        // CORREÇÃO: Chama updateAllIndicators AQUI também para garantir que ao trocar funcionário, os indicadores sejam atualizados
+        updateAllIndicators();
     }
+
 
     parseEmojisInElement(contentEl); // Garante que emojis sejam renderizados
 }
@@ -454,7 +468,6 @@ function renderFocusedEmployeeView() {
             <select id="toolbox-employee-select" title="Trocar de funcionário (Q/E)">${selectOptions}</select>
         </div>`;
 
-    // CORREÇÃO: Removido comentário interno {* Indicadores... *}
     const indicatorsCard = `
         <div class="toolbox-card employee-indicators-card" data-employee-id="${focusedEmployeeId}">
             <div class="workload-summary-compact">
@@ -479,11 +492,8 @@ function renderFocusedEmployeeView() {
             ${normalBrushesHTML}
         </div>`;
 
-    // Atualiza indicadores de forma assíncrona para garantir que o DOM esteja pronto
-    setTimeout(() => {
-        const card = $('.employee-indicators-card');
-        if (card) updateIndicatorsInCard(card);
-    }, 0);
+    // CORREÇÃO: Não chama mais updateIndicatorsInCard via setTimeout aqui,
+    // pois será chamado pelo updateToolboxView após o innerHTML ser aplicado.
 
     return `<div class="focused-employee-view">${selectorCard}${indicatorsCard}${brushesCard}</div>`;
 }
@@ -599,16 +609,19 @@ function handleTableClick(event) {
 
 function handleTableMouseover(event) {
     const cell = event.target.closest('.editable-cell');
-    if (cell && editorState.editMode === 'employee') {
+    if (cell && editorState.editMode === 'employee') { // Só atualiza dias se estiver no modo pincel
         const { date } = cell.dataset;
         if (date && date !== editorState.lastHoveredDate) {
             editorState.lastHoveredDate = date;
-            const card = $(".employee-indicators-card");
-            // Atualiza indicador de dias consecutivos ao passar o mouse
-            if (card) updateConsecutiveDaysIndicator(card, date);
+            // CORREÇÃO: Busca o card diretamente aqui, garantindo a referência atual
+            const card = $("#toolbox-dynamic-content .employee-indicators-card");
+            if (card && card.dataset.employeeId === editorState.focusedEmployeeId) { // Garante que é o card do funcionário focado
+                updateConsecutiveDaysIndicator(card, date);
+            }
         }
     }
 }
+
 
 function handleToolboxClick(event) {
     const target = event.target;
@@ -774,18 +787,25 @@ function handleEmployeeSelectChange(event) {
 
 // Atualiza todos os indicadores (carga, dias consecutivos) para o funcionário focado
 function updateAllIndicators() {
-     const card = $(".employee-indicators-card");
-     if (card && card.dataset.employeeId === editorState.focusedEmployeeId) { // Verifica se o card é do func focado
+    // CORREÇÃO: Busca o card dentro da toolbox dinâmica AQUI
+    const card = $("#toolbox-dynamic-content .employee-indicators-card");
+     // Garante que só atualize se o card existir e pertencer ao funcionário focado
+     if (card && card.dataset.employeeId === editorState.focusedEmployeeId) {
          updateIndicatorsInCard(card);
+     } else if (card && !editorState.focusedEmployeeId) {
+         // Se nenhum funcionário está focado (ex: modo borracha), limpa os indicadores
+         updateIndicatorsInCard(card, true); // Passa true para forçar limpeza
      }
 }
 
 
-function updateIndicatorsInCard(card) {
+function updateIndicatorsInCard(card, forceClear = false) {
     const employeeId = card.dataset.employeeId;
+    // CORREÇÃO: Lê o employee do store
     const employee = store.getState().funcionarios.find(f => f.id === employeeId);
-    if (!employee || !currentEscala || !currentEscala.historico || !currentEscala.historico[employeeId]) {
-         // Limpa indicadores se não houver dados
+
+    // Limpa indicadores se forceClear for true ou se não houver dados
+    if (forceClear || !employee || !currentEscala || !currentEscala.historico || !currentEscala.historico[employeeId]) {
          const workloadText = $('.workload-text-compact', card);
          if (workloadText) workloadText.textContent = '-/-';
          const mainBar = $('.progress-bar-main', card);
@@ -797,6 +817,7 @@ function updateIndicatorsInCard(card) {
          return;
     };
 
+
     const medicao = employee.medicaoCarga || 'horas';
     let progresso, meta, unidade, mainPercentage = 0, overtimePercentage = 0;
     const historicoFunc = currentEscala.historico[employeeId];
@@ -806,15 +827,15 @@ function updateIndicatorsInCard(card) {
     const temOverride = currentEscala.metasOverride && currentEscala.metasOverride[employeeId] !== undefined;
     if (medicao === 'turnos') {
         const { cargos } = store.getState();
-        const cargo = cargos.find(c => c.id === employee.cargoId);
+        const cargo = cargos.find(c => c.id === employee.cargoId); // Usa employee do store
         const diasOp = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
-        metaOriginal = calcularMetaTurnos(employee, currentEscala.inicio, currentEscala.fim, diasOp);
+        metaOriginal = calcularMetaTurnos(employee, currentEscala.inicio, currentEscala.fim, diasOp); // Usa employee do store
         meta = temOverride ? parseFloat(currentEscala.metasOverride[employeeId]) : metaOriginal;
         progresso = historicoFunc.turnosTrabalhados || 0;
         unidade = ' turnos';
         mainPercentage = meta > 0 ? (progresso / meta) * 100 : (progresso > 0 ? 1000 : 0);
     } else { // Horas
-        metaOriginal = calcularMetaHoras(employee, currentEscala.inicio, currentEscala.fim);
+        metaOriginal = calcularMetaHoras(employee, currentEscala.inicio, currentEscala.fim); // Usa employee do store
         meta = temOverride ? parseFloat(currentEscala.metasOverride[employeeId]) : metaOriginal;
         progresso = (historicoFunc.horasTrabalhadas / 60) || 0;
         unidade = 'h';
@@ -849,6 +870,7 @@ function updateIndicatorsInCard(card) {
 
 function updateConsecutiveDaysIndicator(card, targetDate) {
     const employeeId = card.dataset.employeeId;
+    // CORREÇÃO: Busca o container DENTRO do card fornecido
     const container = $('.consecutive-days-container', card);
     if (employeeId && container && currentEscala) { // Verifica se currentEscala existe
         const { turnos } = store.getState();
@@ -988,7 +1010,7 @@ async function handleAddShiftClick(employeeId, turnoId, date) {
 
     setGeradorFormDirty(true); // Marca que houve alterações
     updateTableAfterEdit(currentEscala); // Atualiza a tabela e o painel
-    updateAllIndicators(); // Atualiza os indicadores na toolbox
+    // CORREÇÃO: updateAllIndicators é chamado por updateTableAfterEdit, removido daqui
     runSurgicalValidation([employeeId]); // Revalida apenas o funcionário modificado
     highlightEmployeeRow(employeeId); // Garante que a linha continue destacada
 }
@@ -1001,10 +1023,11 @@ function handleRemoveShiftClick(slotId) {
     const slot = currentEscala.slots[slotIndex];
     if (!slot.assigned) return; // Slot já está vazio
 
-    const { turnos } = store.getState();
+    const { turnos, funcionarios, cargos } = store.getState(); // Adiciona funcionarios e cargos
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const turno = allTurnos.find(t => t.id === slot.turnoId);
     const employeeId = slot.assigned;
+    const funcionario = funcionarios.find(f => f.id === employeeId); // Pega dados do funcionário
 
     // Desconta do histórico apenas se for um turno de trabalho
     if (turno && !turno.isSystem && currentEscala.historico[employeeId]) {
@@ -1026,9 +1049,53 @@ function handleRemoveShiftClick(slotId) {
         currentEscala.slots.splice(slotIndex, 1);
     }
 
+    // --- CORREÇÃO: Recalcular isExtra para os turnos restantes ---
+    if (funcionario) { // Só recalcula se o funcionário existe
+        const medicao = funcionario.medicaoCarga || 'horas';
+        let meta;
+        const temOverride = currentEscala.metasOverride && currentEscala.metasOverride[employeeId] !== undefined;
+
+        // Calcula a meta (igual à lógica de adicionar)
+        if (medicao === 'turnos') {
+            const cargo = cargos.find(c => c.id === currentEscala.cargoId);
+            const diasOp = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
+            const metaOriginal = calcularMetaTurnos(funcionario, currentEscala.inicio, currentEscala.fim, diasOp);
+            meta = temOverride ? parseFloat(currentEscala.metasOverride[employeeId]) : metaOriginal;
+        } else {
+            const metaOriginal = calcularMetaHoras(funcionario, currentEscala.inicio, currentEscala.fim);
+            meta = temOverride ? parseFloat(currentEscala.metasOverride[employeeId]) : metaOriginal;
+        }
+
+        // Itera pelos slots restantes do funcionário e atualiza isExtra
+        let currentTotalHoras = 0;
+        let currentTotalTurnos = 0;
+        // Ordena por data para recalcular corretamente com base no acumulado
+        const slotsDoFuncRestantes = currentEscala.slots
+            .filter(s => s.assigned === employeeId)
+            .sort((a,b) => a.date.localeCompare(b.date));
+
+        slotsDoFuncRestantes.forEach(s => {
+            const tInfo = allTurnos.find(t => t.id === s.turnoId);
+            if(tInfo && !tInfo.isSystem) { // Só considera turnos de trabalho
+                if(medicao === 'turnos') {
+                    currentTotalTurnos++; // Acumula turnos ANTES de verificar
+                    s.isExtra = currentTotalTurnos > meta;
+                } else {
+                    const cargaTurno = calcCarga(tInfo.inicio, tInfo.fim, tInfo.almocoMin, tInfo.diasDeDiferenca);
+                    currentTotalHoras += cargaTurno; // Acumula horas ANTES de verificar
+                    s.isExtra = (currentTotalHoras / 60) > meta;
+                }
+            } else {
+                delete s.isExtra; // Remove flag de turnos de sistema
+            }
+        });
+    }
+    // --- FIM DA CORREÇÃO ---
+
+
     setGeradorFormDirty(true); // Marca alterações
     updateTableAfterEdit(currentEscala); // Atualiza UI
-    updateAllIndicators(); // Atualiza indicadores
+    // CORREÇÃO: updateAllIndicators é chamado por updateTableAfterEdit, removido daqui
     runSurgicalValidation([employeeId]); // Revalida funcionário
     highlightEmployeeRow(employeeId); // Mantém destaque
 }
@@ -1114,7 +1181,7 @@ async function handleClearAssignments(onlyFocused = false) {
 
         setGeradorFormDirty(true); // Marca alterações
         updateTableAfterEdit(currentEscala); // Atualiza UI
-        updateAllIndicators(); // Atualiza indicadores (para o focado, se for o caso)
+        // CORREÇÃO: updateAllIndicators é chamado por updateTableAfterEdit, removido daqui
         runSurgicalValidation(targetEmployees); // Revalida os funcionários afetados
         showToast(`Alocações removidas ${onlyFocused ? 'do funcionário focado' : 'de todos os funcionários'}.`);
     }
@@ -1150,7 +1217,7 @@ function updateFocusedEmployee(animate = false) {
      // Garante que o índice esteja dentro dos limites
      editorState.focusedEmployeeIndex = Math.max(0, Math.min(editorState.focusedEmployeeIndex, editorState.scheduleOrderedFuncs.length - 1));
 
-    editorState.focusedEmployeeId = editorState.scheduleOrderedFuncs[editorState.focusedEmployeeIndex].id;
+    editorState.focusedEmployeeId = editorState.scheduleOrderedFuncs[editorState.focusedEmployeeIndex]?.id || null; // Usa optional chaining
     highlightEmployeeRow(editorState.focusedEmployeeId); // Destaca a linha
 
     const contentEl = $("#toolbox-dynamic-content");
@@ -1174,6 +1241,7 @@ function updateFocusedEmployee(animate = false) {
         if (select) select.focus({ preventScroll: true }); // Evita scroll ao focar
     }
 }
+
 
 function handleToggleRules(value) {
     editorState.enforceRules = value === 'on';
@@ -1208,7 +1276,7 @@ function focusCell(row, col) {
         cell.focus({ preventScroll: true }); // Define o foco do navegador na célula (sem rolar de novo)
 
         // Atualiza indicador de dias consecutivos para a data da célula focada
-        const card = $(".employee-indicators-card");
+        const card = $("#toolbox-dynamic-content .employee-indicators-card"); // Busca dentro da toolbox
         if (card && cell.dataset.date) {
              editorState.lastHoveredDate = cell.dataset.date; // Atualiza lastHoveredDate
              updateConsecutiveDaysIndicator(card, cell.dataset.date);

@@ -86,7 +86,7 @@
                 <div class="welcome-form-group">
                     <label for="welcome-nome-input" class="welcome-label">Primeiro, como podemos te chamar?</label>
                     <input type="text" id="welcome-nome-input" class="welcome-input"
-                        placeholder="Seu nome ou nome da empresa">
+                        placeholder="Seu nome">
                 </div>
                 <button id="welcome-personalizacao-next" class="welcome-btn welcome-btn-primary">Próximo</button>
                 <button class="welcome-btn-secondary welcome-btn-back" data-to-step="1">
@@ -175,7 +175,8 @@
                 <span class="tab-text">Escalas Salvas</span>
             </button>
             <button class="tab-btn" data-page="relatorios">
-                <span class="tab-icon">📊</span>
+
+                <span class="tab-icon">📈</span>
                 <span class="tab-text">Relatórios</span>
             </button>
         </div>
@@ -189,7 +190,8 @@
     <main class="container">
         <header id="main-header">
             <h1 id="page-title"></h1>
-            <button id="context-help-btn">💡 Ajuda</button>
+
+            <button id="context-help-btn" style="display: none;">💡 Ajuda</button>
             <div class="header-user-info">
                 <h2 id="welcomeTitle" class="welcome-title"></h2>
                 <button id="header-settings-btn" class="header-action-btn" title="Configurações" aria-label="Abrir Configurações">⚙️</button>
@@ -197,65 +199,61 @@
         </header>
 
         <section id="page-home" class="page">
-
-            <h2 class="home-section-title">Cadastros Essenciais</h2>
-            <div class="grid-4-col">
-                <div class="home-card-wrapper">
-                    <a class="card home-card" data-goto="turnos">
-                        <h3>🕒 Turnos</h3>
-                        <p id="home-turnos-count" class="home-card-count"></p>
-                        <p class="home-card-desc">Crie os horários de trabalho, com almoço e descansos obrigatórios.</p>
-                    </a>
-                    <span class="card-step">Passo 1</span>
+            <div class="quick-metrics-panel card">
+                <div class="metrics-items">
+                    <span id="metric-turnos" class="metric-item">🕒 Turnos: 0</span>
+                    <span class="metric-separator">|</span>
+                    <span id="metric-cargos" class="metric-item">🏥 Cargos: 0</span>
+                    <span class="metric-separator">|</span>
+                    <span id="metric-funcionarios" class="metric-item">👨‍⚕️ Funcionários: 0</span>
+                     <span class="metric-separator">|</span>
+                    <span id="metric-equipes" class="metric-item">🤝 Equipes: 0</span>
                 </div>
-                <div class="home-card-wrapper">
-                    <a class="card home-card" data-goto="cargos">
-                        <h3>🏥 Cargos</h3>
-                        <p id="home-cargos-count" class="home-card-count"></p>
-                        <p class="home-card-desc">Defina os cargos e associe os turnos que podem cumprir.</p>
-                    </a>
-                    <span class="card-step">Passo 2</span>
-                </div>
-                <div class="home-card-wrapper">
-                    <a class="card home-card" data-goto="funcionarios">
-                        <h3>👨‍⚕️ Funcionários</h3>
-                        <p id="home-funcionarios-count" class="home-card-count"></p>
-                        <p class="home-card-desc">Adicione seus funcionários, cargos e disponibilidade.</p>
-                    </a>
-                    <span class="card-step">Passo 3</span>
-                </div>
-                <div class="home-card-wrapper">
-                    <a class="card home-card" data-goto="equipes">
-                        <h3>🤝 Equipes</h3>
-                        <p id="home-equipes-count" class="home-card-count"></p>
-                        <p class="home-card-desc">Crie grupos fixos de funcionários para escalas de rodízio.</p>
-                    </a>
-                    <span class="card-optional-step">Opcional</span>
-                </div>
+                <button id="btn-goto-relatorios" class="metrics-report-btn secondary">📈 Relatórios</button>
             </div>
 
-            <h2 class="home-section-title">Crie e Gerencie suas Escalas</h2>
-            <div class="grid-3-col">
-                <div class="home-card-wrapper">
-                    <a class="card home-card" data-goto="gerar-escala">
-                        <h3>✨ Geração Automática</h3>
-                        <p class="home-card-desc">O sistema distribui os funcionários de forma otimizada e inteligente.</p>
-                    </a>
+            <div class="home-layout-grid">
+                <div class="home-column-main">
+                    <h3 class="home-column-title">Crie e Gerencie suas Escalas</h3>
+                    <div class="home-card-wrapper">
+                         <a class="card home-card" data-goto="gerar-escala">
+                            <h3>✨ Geração Automática</h3>
+                            <p class="home-card-description">Crie novas escalas de trabalho de forma inteligente com o assistente passo a passo.</p>
+                         </a>
+                    </div>
+                     <div class="home-card-wrapper">
+                         <a class="card home-card" data-goto="escalas-salvas">
+                            <h3>🗂️ Escalas Salvas</h3>
+                             <p class="home-card-description">Acesse, visualize, edite e exporte as escalas que você já criou e salvou.</p>
+                         </a>
+                    </div>
                 </div>
-                <div class="home-card-wrapper">
-                    <a class="card home-card" data-goto="escalas-salvas">
-                        <h3>🗂️ Escalas Salvas</h3>
-                        <p class="home-card-desc">Acesse, gerencie, edite e exporte todas as escalas salvas por você.</p>
-                    </a>
-                </div>
-                <div class="home-card-wrapper">
-                    <a class="card home-card" data-goto="relatorios">
-                        <h3>📊 Relatórios</h3>
-                        <p class="home-card-desc">Analise métricas e a distribuição de horas das suas escalas.</p>
-                    </a>
+                <div class="home-column-side">
+                    <h3 class="home-column-title">Cadastros Essenciais</h3>
+                     <div class="home-side-grid">
+                        <div class="home-card-wrapper">
+                             <a class="card home-card" data-goto="turnos">
+                                <h3>🕒 Turnos</h3>
+                             </a>
+                        </div>
+                        <div class="home-card-wrapper">
+                             <a class="card home-card" data-goto="cargos">
+                                <h3>🏥 Cargos</h3>
+                             </a>
+                        </div>
+                        <div class="home-card-wrapper">
+                            <a class="card home-card" data-goto="funcionarios">
+                                <h3>👨‍⚕️ Funcionários</h3>
+                             </a>
+                        </div>
+                        <div class="home-card-wrapper">
+                            <a class="card home-card" data-goto="equipes">
+                                <h3>🤝 Equipes</h3>
+                             </a>
+                        </div>
+                     </div>
                 </div>
             </div>
-
         </section>
 
         <section id="page-turnos" class="page">
@@ -468,8 +466,10 @@
              <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
-                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Cadastrados</button>
+                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Ativos</button>
                         <button class="painel-tab-btn" data-tab="formulario">📝 Novo Funcionário</button>
+
+                        <button class="painel-tab-btn" data-tab="arquivados">🗃️ Arquivados</button>
                     </div>
                     <div class="painel-actions">
                         <button class="primary btn-add-new" data-action="add-new">➕ Adicionar Novo Funcionário</button>
@@ -479,10 +479,7 @@
                     <div class="painel-tab-content active" data-tab-content="gerenciar">
                         <div class="form-row">
                             <input type="search" id="filtroFuncionarios" placeholder="🔎 Buscar funcionário..." style="width: 100%;" />
-                            <label class="check-inline" style="flex-grow: 0;">
-                                <input type="checkbox" id="mostrarArquivadosCheck"> Mostrar arquivados
-                            </label>
-                        </div>
+                            </div>
                         <table class="table" id="tblFuncionarios">
                             <thead>
                                 <tr>
@@ -589,6 +586,22 @@
                             <button id="btnSalvarFunc" class="success">💾 Salvar Funcionário</button>
                             <button id="btnCancelarFunc" class="purple">🗑️ Cancelar</button>
                         </div>
+                    </div>
+                     <div class="painel-tab-content" data-tab-content="arquivados">
+                        <div class="form-row">
+                            <input type="search" id="filtroFuncionariosArquivados" placeholder="🔎 Buscar funcionário arquivado..." style="width: 100%;" />
+                        </div>
+                        <table class="table" id="tblFuncionariosArquivados">
+                           <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Cargo</th>
+                                    <th>Último Contrato</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -886,7 +899,7 @@
                         <button class="painel-tab-btn active" data-tab="geral"><span>⚙️</span> Geral</button>
                         <button class="painel-tab-btn" data-tab="dados"><span>💾</span> Dados</button>
                         <button class="painel-tab-btn" data-tab="sobre"><span>ℹ️</span> Sobre</button>
-                        <button class="painel-tab-btn" data-tab="zona-risco"><span>⚠️</span> Zona de Risco</button>
+
                     </div>
                 </div>
                 <div class="painel-content" id="config-content">
@@ -896,13 +909,13 @@
                             <div class="config-item-group">
                                 <div class="config-item">
                                     <div class="config-item-label">
-                                        <h3>Nome de Usuário/Empresa</h3>
+                                        <h3>Nome de Usuário</h3>
                                         <p>Usado para personalizar a saudação na tela inicial.</p>
                                     </div>
                                     <div class="config-item-control">
                                         <div class="animated-field" style="width: 100%; max-width: 300px;">
                                             <input type="text" id="configNome" placeholder=" " />
-                                            <label for="configNome">Seu nome ou nome da empresa</label>
+                                            <label for="configNome">Seu nome</label>
                                         </div>
                                     </div>
                                 </div>
@@ -962,6 +975,23 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="card card--danger-zone">
+                            <h2 class="config-card-title">⚠️ Ações Irreversíveis</h2>
+                            <p class="config-card-subtitle">A ação abaixo é destrutiva e não pode ser desfeita. Use com extrema cautela.</p>
+                             <div class="config-item-group">
+                                 <div class="config-item">
+                                    <div class="config-item-label">
+                                        <h3>Apagar Todos os Dados</h3>
+                                        <p class="warning-text"><strong>Ação irreversível.</strong> Remove permanentemente todos os turnos, cargos, funcionários, equipes e escalas salvas deste programa.</p>
+                                    </div>
+                                    <div class="config-item-control">
+                                        <button id="btnHardReset" class="danger">🔥 Apagar Todos os Dados</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <div class="config-pane" data-pane="sobre">
@@ -995,24 +1025,8 @@
                         </div>
                     </div>
 
-                    <div class="config-pane" data-pane="zona-risco">
-                        <div class="card card--danger-zone">
-                            <h2 class="config-card-title">⚠️ Zona de Risco</h2>
-                            <p class="config-card-subtitle">A ação abaixo é destrutiva e não pode ser desfeita. Use com extrema cautela.</p>
 
-                             <div class="config-item-group">
-                                 <div class="config-item">
-                                    <div class="config-item-label">
-                                        <h3>Apagar Todos os Dados</h3>
-                                        <p class="warning-text"><strong>Ação irreversível.</strong> Remove permanentemente todos os turnos, cargos, funcionários, equipes e escalas salvas deste programa.</p>
-                                    </div>
-                                    <div class="config-item-control">
-                                        <button id="btnHardReset" class="danger">🔥 Apagar Todos os Dados</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </section>
@@ -1069,21 +1083,8 @@
         <button id="loader-cancel-btn" class="danger">Cancelar Geração</button>
     </div>
 
-    <div id="download-toast" class="hidden">
-        <div class="download-toast-icon">
-            <svg class="feedback-icon" viewBox="0 0 52 52">
-                <circle class="feedback-circle" cx="26" cy="26" r="25" fill="none"/>
-                <path class="feedback-checkmark" fill="none" d="M14 27l7.8 7.8L38 22"/>
-                <path class="feedback-x" fill="none" d="M16 16 36 36 M36 16 16 36"/>
-            </svg>
-        </div>
-        <div class="download-toast-text">
-            <h3 id="download-toast-title"></h3>
-            <p id="download-toast-subtitle"></p>
-        </div>
-    </div>
 
-    <div id="download-feedback-toast">
+    <div id="download-feedback-toast" class="hidden">
         <div class="feedback-toast-icon-sequence">
             <div class="icon-set success-icons">
                 <span class="icon icon-step-1">📥</span>

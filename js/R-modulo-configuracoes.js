@@ -49,8 +49,12 @@ function saveConfig() {
 async function exportAllData(isAutoBackup = false) {
     if (!isAutoBackup) {
         showLoader("Preparando arquivo de backup...");
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Adiciona um pequeno delay para o loader aparecer antes do processamento pesado
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    let success = false;
+    let errorMessage = '';
 
     try {
         const allData = {};
@@ -58,11 +62,9 @@ async function exportAllData(isAutoBackup = false) {
             allData[key] = loadJSON(KEYS[key], null);
         }
 
-        // --- MELHORIA: Não exporta a flag de corrupção ---
-        delete allData.dataCorrupted; // Evita salvar a flag no backup
-        // -----------------------------------------------
+        delete allData.dataCorrupted;
 
-        const dataStr = JSON.stringify(allData); // Não precisa de indentação para autobackup
+        const dataStr = JSON.stringify(allData);
         const dataBlob = new Blob([dataStr], { type: "application/json" });
 
         const date = new Date();
@@ -71,18 +73,24 @@ async function exportAllData(isAutoBackup = false) {
         const prefix = isAutoBackup ? 'autobackup' : 'backup';
         triggerDownload(dataBlob, `${prefix}_escala_facil_${dateString}_${timeString}.json`);
 
-        // --- MELHORIA: Atualiza timestamp do último autobackup ---
+        success = true; // Marca como sucesso
+
         if (isAutoBackup) {
             localStorage.setItem('ge_last_auto_backup_timestamp', Date.now().toString());
             console.log("Backup automático realizado com sucesso.");
         }
-        // ---------------------------------------------------------
 
     } catch (error) {
         console.error("Erro ao exportar dados:", error);
-        if (!isAutoBackup) showToast("Ocorreu um erro ao gerar o arquivo de backup.", "error");
+        errorMessage = "Erro ao gerar backup."; // Mensagem genérica para o toast
     } finally {
-        if (!isAutoBackup) hideLoader();
+        if (!isAutoBackup) {
+            hideLoader();
+            // --- ALTERADO: Chama o toast animado ---
+            // Espera um frame para garantir que o loader sumiu
+            requestAnimationFrame(() => showDownloadFeedbackToast(success, errorMessage));
+            // ----------------------------------------
+        }
     }
 }
 
