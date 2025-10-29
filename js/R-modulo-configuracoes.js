@@ -1,19 +1,12 @@
-/**************************************
- * ⚙️ Configurações (v2.1 - Validação de Importação e Backup Automático)
- **************************************/
-
 async function performHardReset() {
     Object.values(KEYS).forEach(key => localStorage.removeItem(key));
     localStorage.removeItem('ge_onboarding_complete');
     localStorage.removeItem('ge_onboarding_progress');
     localStorage.removeItem('ge_data_version');
-    // --- MELHORIA: Limpa timestamps de backup automático ---
     localStorage.removeItem('ge_last_auto_backup_timestamp');
-    // ---------------------------------------------------
-    // Adiciona uma pequena espera antes do toast para garantir limpeza
     await new Promise(resolve => setTimeout(resolve, 100));
-    showToast("Todos os dados foram apagados. O programa será reiniciado.", "success"); // Mudado para success e "programa"
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Aumenta espera para o toast ser lido
+    showToast("Todos os dados foram apagados. O programa será reiniciado.", "success");
+    await new Promise(resolve => setTimeout(resolve, 2000));
     location.reload();
 }
 
@@ -21,25 +14,14 @@ function loadConfigForm() {
     const { config } = store.getState();
     const configNomeInput = $("#configNome");
     if(configNomeInput) configNomeInput.value = config.nome || '';
-
-    // --- MELHORIA: Carrega configuração de backup automático ---
-    const configAutobackupSelect = $("#configAutobackup");
-    if (configAutobackupSelect) configAutobackupSelect.value = config.autobackup || 'disabled';
-    // --------------------------------------------------------
 }
 
 function saveConfig() {
     const { config } = store.getState();
     const configNomeInput = $("#configNome");
-    // --- MELHORIA: Salva configuração de backup automático ---
-    const configAutobackupSelect = $("#configAutobackup");
-    // --------------------------------------------------------
     const newConfig = {
         ...config,
         nome: configNomeInput ? configNomeInput.value.trim() : '',
-        // --- MELHORIA: Inclui configuração de backup no save ---
-        autobackup: configAutobackupSelect ? configAutobackupSelect.value : 'disabled'
-        // -----------------------------------------------------
     };
 
     store.dispatch('SAVE_CONFIG', newConfig);
@@ -49,7 +31,6 @@ function saveConfig() {
 async function exportAllData(isAutoBackup = false) {
     if (!isAutoBackup) {
         showLoader("Preparando arquivo de backup...");
-        // Adiciona um pequeno delay para o loader aparecer antes do processamento pesado
         await new Promise(resolve => setTimeout(resolve, 100));
     }
 
@@ -73,7 +54,7 @@ async function exportAllData(isAutoBackup = false) {
         const prefix = isAutoBackup ? 'autobackup' : 'backup';
         triggerDownload(dataBlob, `${prefix}_escala_facil_${dateString}_${timeString}.json`);
 
-        success = true; // Marca como sucesso
+        success = true;
 
         if (isAutoBackup) {
             localStorage.setItem('ge_last_auto_backup_timestamp', Date.now().toString());
@@ -82,14 +63,11 @@ async function exportAllData(isAutoBackup = false) {
 
     } catch (error) {
         console.error("Erro ao exportar dados:", error);
-        errorMessage = "Erro ao gerar backup."; // Mensagem genérica para o toast
+        errorMessage = "Erro ao gerar backup.";
     } finally {
         if (!isAutoBackup) {
             hideLoader();
-            // --- ALTERADO: Chama o toast animado ---
-            // Espera um frame para garantir que o loader sumiu
             requestAnimationFrame(() => showDownloadFeedbackToast(success, errorMessage));
-            // ----------------------------------------
         }
     }
 }
@@ -109,20 +87,17 @@ async function importAllData() {
             try {
                 const importedData = JSON.parse(event.target.result);
 
-                // --- MELHORIA: Validação básica da estrutura do arquivo ---
                 if (!importedData || typeof importedData !== 'object') {
                     throw new Error("Arquivo inválido. O conteúdo não é um objeto JSON válido.");
                 }
                 const requiredKeys = ['turnos', 'cargos', 'funcionarios', 'equipes', 'escalas', 'config'];
-                const missingKeys = requiredKeys.filter(key => !Array.isArray(importedData[key]) && key !== 'config'); // Config é objeto
+                const missingKeys = requiredKeys.filter(key => !Array.isArray(importedData[key]) && key !== 'config');
                 if (missingKeys.length > 0) {
                     throw new Error(`Arquivo de backup inválido. Faltam dados essenciais: ${missingKeys.join(', ')}.`);
                 }
                 if (typeof importedData.config !== 'object' || importedData.config === null) {
                      throw new Error(`Arquivo de backup inválido. A seção 'config' está ausente ou mal formatada.`);
                 }
-                // Validação mais profunda pode ser adicionada aqui (verificar IDs, etc.)
-                // ---------------------------------------------------------
 
                 const { confirmed } = await showPromptConfirm({
                     title: "Confirmar Importação?",
@@ -136,19 +111,15 @@ async function importAllData() {
                     showLoader("Importando dados...");
                     for (const key in KEYS) {
                         if (importedData.hasOwnProperty(key)) {
-                            // Garante que salve um array vazio se a chave existir mas for null/undefined no JSON
                             saveJSON(KEYS[key], importedData[key] || (key === 'config' ? {} : []));
                         }
                     }
-                    // Adiciona a versão após a importação para evitar migrações desnecessárias
-                    localStorage.setItem('ge_data_version', "1.3"); // Ou a versão atual do seu B-armazenamento-dados.js
-                    // --- MELHORIA: Limpa timestamp de backup automático após importar ---
+                    localStorage.setItem('ge_data_version', "1.3");
                     localStorage.removeItem('ge_last_auto_backup_timestamp');
-                    // -----------------------------------------------------------------
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    hideLoader(); // Esconde loader antes do toast
-                    showToast("Dados importados com sucesso! O programa será reiniciado.", "success"); // Alterado "aplicação" para "programa"
-                    setTimeout(() => location.reload(), 2000); // Aumenta espera
+                    hideLoader();
+                    showToast("Dados importados com sucesso! O programa será reiniciado.", "success");
+                    setTimeout(() => location.reload(), 2000);
                 }
             } catch (error) {
                 console.error("Erro ao importar dados:", error);
@@ -162,32 +133,11 @@ async function importAllData() {
     fileInput.click();
 }
 
-// --- MELHORIA: Função para verificar e disparar backup automático ---
 function triggerAutoBackupIfNeeded() {
-    const { config } = store.getState();
-    const mode = config.autobackup || 'disabled';
-    if (mode === 'disabled') return;
-
-    const lastBackupTimestamp = parseInt(localStorage.getItem('ge_last_auto_backup_timestamp') || '0', 10);
-    const now = Date.now();
-    let interval = 0;
-
-    if (mode === 'daily') {
-        interval = 24 * 60 * 60 * 1000; // 1 dia em ms
-    } else if (mode === 'weekly') {
-        interval = 7 * 24 * 60 * 60 * 1000; // 1 semana em ms
-    }
-
-    if (interval > 0 && (now - lastBackupTimestamp >= interval)) {
-        console.log(`Disparando backup automático (${mode})...`);
-        exportAllData(true); // Chama exportAllData no modo automático (sem loader/toast)
-    }
+   return;
 }
-// -----------------------------------------------------------------
-
 
 function exibirTermosDeUso(requireScrollableConfirm = false) {
-    // ... (conteúdo HTML dos termos permanece o mesmo, mas a lógica de exibição é chamada a partir daqui) ...
     const termosDeUsoHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
             <h3>🔒 ESCALA FÁCIL — TERMOS DE USO E LICENÇA DE SOFTWARE (VENDA ÚNICA)</h3>
@@ -243,7 +193,7 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
             <hr>
 
             <h4>9. Legislação e Foro</h4>
-            <p>Estes Termos são regidos pelas <strong>leis brasileiras</strong>. Fica eleito o foro da <strong>comarca de [CIDADE - UF]</strong> como competente para resolver quaisquer controvérsias, com renúncia a qualquer outro.</p>
+            <p>Estes Termos são regidos pelas <strong>leis brasileiras</strong>. Fica eleito o foro da <strong>comarca de Pradópolis - SP</strong> como competente para resolver quaisquer controvérsias, com renúncia a qualquer outro.</p>
             <hr>
 
             <h4>10. Contato</h4>
@@ -268,7 +218,6 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
 }
 
 function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
-    // ... (conteúdo HTML da política permanece o mesmo, mas a lógica de exibição é chamada a partir daqui) ...
      const politicaHTML = `
         <div style="font-size: 0.9rem; line-height: 1.6;">
             <h3>🛡️ POLÍTICA DE PRIVACIDADE — ESCALA FÁCIL</h3>
@@ -318,7 +267,6 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
         </div>
     `;
 
-
     if (requireScrollableConfirm) {
         return showScrollableConfirmModal({
             title: "Política de Privacidade do Escala Fácil",
@@ -335,7 +283,6 @@ function exibirPoliticaDePrivacidade(requireScrollableConfirm = false) {
 }
 
 function exibirAtalhosDeTeclado() {
-    // ... (conteúdo HTML dos atalhos permanece o mesmo, mas a lógica de exibição é chamada a partir daqui) ...
     const shortcuts = [
         { keys: ['↑', '↓', '←', '→'], desc: 'Navegam pela grade da escala.' },
         { keys: ['Q', 'E'], desc: 'Trocam o funcionário focado na Barra de Ferramentas.' },
@@ -375,16 +322,14 @@ function exibirAtalhosDeTeclado() {
         contentHTML: shortcutsHTML
     });
 
-    // Adiciona animação de keypress em cascata
     setTimeout(() => {
         const items = $$('.shortcut-item');
         items.forEach((item, index) => {
-            // Aplica a classe que dispara a animação CSS com um pequeno delay
             setTimeout(() => {
                 item.classList.add('animate-keys');
-            }, (index * 100) + 150); // Delay inicial + delay por item
+            }, (index * 100) + 150);
         });
-    }, 300); // Delay inicial geral
+    }, 300);
 }
 
 
@@ -392,7 +337,6 @@ function initConfiguracoesPage() {
     const page = $("#page-configuracoes");
     if (!page) return;
 
-    // --- Lógica das Abas ---
     const tabs = $$("#config-tabs .painel-tab-btn", page);
     const panes = $$("#config-content .config-pane", page);
 
@@ -409,7 +353,6 @@ function initConfiguracoesPage() {
         });
     });
 
-    // --- Lógica dos Botões e Controles ---
     const btnSalvar = $("#btnSalvarConfig");
     if(btnSalvar) btnSalvar.onclick = saveConfig;
 
@@ -423,7 +366,7 @@ function initConfiguracoesPage() {
     if(shortcutsCard) shortcutsCard.onclick = () => exibirAtalhosDeTeclado();
 
     const btnExport = $("#btn-export-data");
-    if(btnExport) btnExport.onclick = () => exportAllData(false); // Chama export manual
+    if(btnExport) btnExport.onclick = () => exportAllData(false);
 
     const btnImport = $("#btn-import-data");
     if(btnImport) btnImport.onclick = importAllData;
@@ -434,46 +377,34 @@ function initConfiguracoesPage() {
             const pixKeyText = $("#pix-key-text");
             if(pixKeyText){
                 navigator.clipboard.writeText(pixKeyText.textContent).then(() => {
-                    showToast('Chave PIX copiada! 📋', 'success'); // Usa tipo success
+                    showToast('Chave PIX copiada! 📋', 'success');
                 }).catch(err => {
                     console.error('Erro ao copiar a chave PIX: ', err);
-                    showToast('Erro ao copiar. Tente manualmente.', 'error'); // Usa tipo error
+                    showToast('Erro ao copiar. Tente manualmente.', 'error');
                 });
             }
         };
     }
 
-    // Listener para o botão de Hard Reset
     const btnReset = $("#btnHardReset");
     if(btnReset){
         btnReset.onclick = async () => {
             const { confirmed } = await showPromptConfirm({
                 title: "APAGAR TODOS OS DADOS?",
-                // Alterado "navegador" para "programa"
                 message: "Esta ação é IRREVERSÍVEL. Todos os turnos, cargos, funcionários, equipes e escalas salvas serão permanentemente excluídos deste programa.",
                 promptLabel: `Para confirmar, digite a palavra "APAGAR" no campo abaixo:`,
                 requiredWord: "APAGAR",
-                confirmText: "Confirmar Exclusão Definitiva" // Texto mais enfático
+                confirmText: "Confirmar Exclusão Definitiva"
             });
 
             if (confirmed) {
-                // Chama a função que agora está validada e correta
                 performHardReset();
             }
         };
     }
 
-    // --- MELHORIA: Listener para o seletor de backup automático ---
-    const configAutobackupSelect = $("#configAutobackup");
-    if (configAutobackupSelect) {
-        configAutobackupSelect.addEventListener('change', saveConfig); // Salva a preferência ao mudar
-    }
-    // -------------------------------------------------------------
-
-    // Carrega os dados iniciais no formulário ao abrir a página
     loadConfigForm();
 
-    // Atualiza o ano do copyright dinamicamente
     const currentYear = new Date().getFullYear();
     const copyrightYearEl = $("#copyright-year");
     if (copyrightYearEl) copyrightYearEl.textContent = currentYear;

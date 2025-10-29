@@ -1,26 +1,19 @@
-/**************************************
- * ⚙️ Estilos da Nova Tela de Configurações (v3.2 - Ajustes Finais)
- **************************************/
-
-
 .config-painel .painel-header {
-    background-color: var(--bg); /* Garante que o fundo do header seja o padrão */
+    background-color: var(--bg);
 }
 
 .config-painel .painel-content {
     padding-top: 8px;
 }
 
-/* Container das abas de Configurações SEM fundo/borda */
 .config-painel .painel-tabs {
-    background-color: transparent; /* Remove fundo cinza */
+    background-color: transparent;
     border: none;
     border-radius: 0;
-    padding: 0; /* Remove padding */
+    padding: 0;
     width: fit-content;
 }
 
-/* Botões das abas de Configurações TOTALMENTE arredondados */
 .config-painel .painel-tabs .painel-tab-btn {
     display: inline-flex;
     align-items: center;
@@ -28,7 +21,7 @@
     padding: 8px 16px;
     font-size: 0.95rem;
     font-weight: 500;
-    border-radius: 999px; /* Totalmente arredondado */
+    border-radius: 999px;
 }
 
 .config-painel .painel-tabs .painel-tab-btn span {
@@ -36,15 +29,12 @@
     line-height: 1;
 }
 
-/* Mantém o estilo do botão ativo */
 .config-painel .painel-tabs .painel-tab-btn.active {
     background-color: var(--card);
     color: var(--brand);
     box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
 }
 
-
-/* --- Conteúdo dos Painéis (Abas) --- */
 .config-pane {
     display: none;
     flex-direction: column;
@@ -67,8 +57,6 @@
     }
 }
 
-
-/* --- Estilo dos Cards Internos de Configuração --- */
 .config-pane > .card {
     display: flex;
     flex-direction: column;
@@ -135,8 +123,6 @@
     border-top: 1px solid var(--border);
 }
 
-
-/* --- Card da Zona de Perigo (Avançado) --- */
 .card--danger-zone {
     border-color: rgba(239, 68, 68, 0.4);
     background-color: #fff5f5;
@@ -150,7 +136,6 @@
     font-weight: 500;
 }
 
-/* --- Card "Sobre" e Links (Ajustes de layout) --- */
 .config-links-container {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -160,7 +145,7 @@
 .info-link-btn {
     display: flex;
     align-items: center;
-    justify-content: center; /* Centraliza conteúdo (ícone + texto) */
+    justify-content: center;
     gap: 12px;
     padding: 16px;
     background-color: var(--bg);
@@ -184,11 +169,10 @@
     line-height: 1;
 }
 
-/* --- Estilos para o Card de Apoio (PIX) --- */
 .support-card-content {
     display: grid;
-    grid-template-columns: 1fr auto; /* Coluna esquerda flexível, direita auto */
-    gap: 32px; /* Aumenta o espaço entre as colunas */
+    grid-template-columns: 1fr auto;
+    gap: 32px;
     align-items: center;
 }
 
@@ -212,7 +196,6 @@
     border: 1px solid var(--border);
     object-fit: contain;
 }
-
 
 .pix-key-container {
     display: flex;
@@ -251,8 +234,6 @@
     color: var(--fg);
 }
 
-
-/* --- Responsividade --- */
 @media (max-width: 992px) {
     .config-item {
         flex-direction: column;

@@ -168,7 +168,7 @@
             </button>
             <button class="tab-btn" data-page="gerar-escala">
                 <span class="tab-icon">✨</span>
-                <span class="tab-text">Geração Automática</span>
+                <span class="tab-text">Gerar Nova Escala</span>
             </button>
             <button class="tab-btn" data-page="escalas-salvas">
                 <span class="tab-icon">🗂️</span>
@@ -190,14 +190,13 @@
     <main class="container">
         <header id="main-header">
             <h1 id="page-title"></h1>
-
-            <button id="context-help-btn" style="display: none;">💡 Ajuda</button>
-            <div class="header-user-info">
-                <h2 id="welcomeTitle" class="welcome-title"></h2>
-                <button id="header-settings-btn" class="header-action-btn" title="Configurações" aria-label="Abrir Configurações">⚙️</button>
+            <div class="header-right-group">
+                <button id="context-help-btn" style="display: none;">💡 Ajuda</button>
+                <div class="header-user-info">
+                </div>
             </div>
         </header>
-
+<br/><br/>
         <section id="page-home" class="page">
             <div class="quick-metrics-panel card">
                 <div class="metrics-items">
@@ -209,15 +208,17 @@
                      <span class="metric-separator">|</span>
                     <span id="metric-equipes" class="metric-item">🤝 Equipes: 0</span>
                 </div>
-                <button id="btn-goto-relatorios" class="metrics-report-btn secondary">📈 Relatórios</button>
+                <div class="home-card-wrapper metrics-report-btn-wrapper">
+                    <button id="btn-goto-relatorios" class="metrics-report-btn secondary">📈 Relatórios</button>
+                </div>
             </div>
-
+<br/><br/><br/>
             <div class="home-layout-grid">
                 <div class="home-column-main">
                     <h3 class="home-column-title">Crie e Gerencie suas Escalas</h3>
                     <div class="home-card-wrapper">
                          <a class="card home-card" data-goto="gerar-escala">
-                            <h3>✨ Geração Automática</h3>
+                            <h3>✨ Gerar Nova Escala</h3>
                             <p class="home-card-description">Crie novas escalas de trabalho de forma inteligente com o assistente passo a passo.</p>
                          </a>
                     </div>
@@ -234,21 +235,25 @@
                         <div class="home-card-wrapper">
                              <a class="card home-card" data-goto="turnos">
                                 <h3>🕒 Turnos</h3>
+                                <p class="home-card-description-small">Defina os horários.</p>
                              </a>
                         </div>
                         <div class="home-card-wrapper">
                              <a class="card home-card" data-goto="cargos">
                                 <h3>🏥 Cargos</h3>
+                                <p class="home-card-description-small">Crie funções e regras.</p>
                              </a>
                         </div>
                         <div class="home-card-wrapper">
                             <a class="card home-card" data-goto="funcionarios">
                                 <h3>👨‍⚕️ Funcionários</h3>
+                                <p class="home-card-description-small">Cadastre sua equipe.</p>
                              </a>
                         </div>
                         <div class="home-card-wrapper">
                             <a class="card home-card" data-goto="equipes">
                                 <h3>🤝 Equipes</h3>
+                                <p class="home-card-description-small">Agrupe para rodízios.</p>
                              </a>
                         </div>
                      </div>
@@ -959,25 +964,11 @@
                                         <button id="btn-import-data" class="secondary">📥 Importar de um Arquivo</button>
                                     </div>
                                 </div>
-                                <div class="config-item">
-                                    <div class="config-item-label">
-                                        <h3>Backup Automático (Download)</h3>
-                                        <p>Opcionalmente, o sistema pode gerar e baixar um arquivo de backup automaticamente em intervalos regulares.</p>
-                                        <p class="muted" style="font-size: 0.8rem;">* O download automático pode não funcionar corretamente em todas as configurações do sistema.</p>
-                                    </div>
-                                    <div class="config-item-control">
-                                        <select id="configAutobackup" style="min-width: 180px;">
-                                            <option value="disabled">Desativado</option>
-                                            <option value="daily">Diariamente</option>
-                                            <option value="weekly">Semanalmente</option>
-                                        </select>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
                         <div class="card card--danger-zone">
-                            <h2 class="config-card-title">⚠️ Ações Irreversíveis</h2>
+                            <h2 class="config-card-title">⚠️ Zona de Perigo</h2>
                             <p class="config-card-subtitle">A ação abaixo é destrutiva e não pode ser desfeita. Use com extrema cautela.</p>
                              <div class="config-item-group">
                                  <div class="config-item">

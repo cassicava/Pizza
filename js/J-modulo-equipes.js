@@ -122,7 +122,7 @@ function renderEquipes() {
         const isEmpty = filtro === '' && equipes.length === 0;
         const emptyHTML = isEmpty 
             ? `<div class="empty-state" style="grid-column: 1 / -1; padding: 24px;">
-                    <div class="empty-state-icon">👥</div>
+                    <div class="empty-state-icon">🤝</div>
                     <h3>Nenhuma Equipe Cadastrada</h3>
                     <p>Use o formulário acima para criar sua primeira equipe.</p>
                </div>`

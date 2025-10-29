@@ -1,7 +1,3 @@
-/**************************************
- * 🏛️ Painel de Gerenciamento (CRUD com Abas)
- **************************************/
-
 .painel-gerenciamento {
     padding: 0;
     overflow: hidden;
@@ -19,11 +15,9 @@
 .painel-gerenciamento .painel-tabs {
     display: flex;
     gap: 4px;
-
-    /* Estilo unificado para o container de abas */
     background-color: var(--bg);
     border: none;
-    border-radius: 12px; /* Mantém o container com borda levemente arredondada */
+    border-radius: 12px;
     padding: 4px;
     width: fit-content;
 }
@@ -32,7 +26,6 @@
     border: none;
     background: transparent;
     padding: 8px 16px;
-    /* ALTERADO: Bordas totalmente arredondadas */
     border-radius: 999px;
     font-weight: 500;
     color: var(--muted);
@@ -59,7 +52,6 @@
     display: block;
 }
 
-/* Esconde os cards que servem apenas como wrappers de formulário dentro das abas de CRUD */
 .painel-crud .painel-tab-content > .card,
 .painel-crud .painel-tab-content .card-lista {
     margin-top: 0;
@@ -69,7 +61,6 @@
     background-color: transparent;
 }
 
-/* Desativa o efeito de hover nesses cards wrapper */
 .painel-crud .painel-tab-content > .card:hover,
 .painel-crud .painel-tab-content .card-lista:hover {
     transform: none;

@@ -1,10 +1,3 @@
-/**************************************
- * 🏦 Store (Gerenciador de Estado)
- **************************************/
-
-// O store centraliza todos os dados da aplicação, evitando variáveis globais
-// e facilitando o gerenciamento e a reatividade dos dados.
-
 const KEYS = {
     turnos: "ge_turnos",
     cargos: "ge_cargos",
@@ -15,7 +8,6 @@ const KEYS = {
 };
 
 const store = {
-    // 1. STATE: Onde todos os dados da aplicação residem.
     state: {
         turnos: [],
         cargos: [],
@@ -23,35 +15,24 @@ const store = {
         equipes: [],
         escalas: [],
         config: { nome: '' },
-        dataCorrupted: false, // Nova flag para indicar dados corrompidos
+        dataCorrupted: false,
     },
 
-    // 2. LISTENERS: Funções que serão chamadas quando o estado mudar.
     listeners: [],
 
-    // 3. GETTERS: Funções para obter o estado atual.
     getState() {
         return this.state;
     },
 
-    // 4. ACTIONS: Funções que modificam o estado. São a única maneira de alterar os dados.
-    /**
-     * Função central para despachar ações que modificam o estado.
-     * @param {string} actionName - O nome da ação a ser executada (ex: 'LOAD_STATE', 'SAVE_TURNO').
-     * @param {*} payload - Os dados necessários para a ação.
-     */
     dispatch(actionName, payload) {
-        // As ações encontram a mutação correspondente para alterar o estado.
         if (typeof this.mutations[actionName] === 'function') {
             this.mutations[actionName](this.state, payload);
-            // Após a mutação, notificamos todos os 'listeners' sobre a mudança.
             this.notify(actionName);
         } else {
             console.error(`Ação "${actionName}" não encontrada.`);
         }
     },
 
-    // 5. MUTATIONS: Funções puras que efetivamente alteram o estado.
     mutations: {
         SET_DATA_CORRUPTION_FLAG(state, isCorrupted) {
             state.dataCorrupted = isCorrupted;
@@ -59,19 +40,15 @@ const store = {
 
         LOAD_STATE(state) {
             try {
-                const DATA_VERSION = "1.3"; // Versão incrementada para incluir regras de alocação no cargo
+                const DATA_VERSION = "1.3";
                 const currentVersion = localStorage.getItem('ge_data_version');
 
-                // Carregamento e Migração
                 state.escalas = loadJSON(KEYS.escalas, []).map(e => ({ ...e, observacoes: e.observacoes || '' }));
                 state.funcionarios = loadJSON(KEYS.funcs, []);
                 state.cargos = loadJSON(KEYS.cargos, []);
 
                 if (currentVersion !== DATA_VERSION) {
-                    // Migração v1.0 -> v1.1: Garante que todos os funcionários tenham um status.
                     state.funcionarios = state.funcionarios.map(f => ({ ...f, status: f.status || 'ativo' }));
-
-                    // Migração v1.2 -> v1.3: Adiciona regras de alocação padrão aos cargos existentes.
                     state.cargos = state.cargos.map(c => {
                         if (!c.regras) c.regras = {};
                         if (!c.regras.hasOwnProperty('maxDiasConsecutivos')) c.regras.maxDiasConsecutivos = 6;
@@ -85,12 +62,11 @@ const store = {
                     localStorage.setItem('ge_data_version', DATA_VERSION);
                 }
 
-
                 state.turnos = loadJSON(KEYS.turnos, []);
                 state.equipes = loadJSON(KEYS.equipes, []);
                 state.config = loadJSON(KEYS.config, { nome: '' });
+                delete state.config.autobackup;
 
-                // Garante que os turnos de sistema (folga, férias) estejam sempre presentes e atualizados no estado
                 const systemTurnos = Object.values(TURNOS_SISTEMA_AUSENCIA);
                 systemTurnos.forEach(systemTurno => {
                     const index = state.turnos.findIndex(t => t.id === systemTurno.id);
@@ -103,10 +79,9 @@ const store = {
 
             } catch (error) {
                 console.error("ERRO CRÍTICO AO CARREGAR DADOS:", error);
-                this.SET_DATA_CORRUPTION_FLAG(state, true); // Chama a mutação correta
+                this.SET_DATA_CORRUPTION_FLAG(state, true);
             }
         },
-
 
         SAVE_TURNO(state, turno) {
             const index = state.turnos.findIndex(t => t.id === turno.id);
@@ -120,14 +95,12 @@ const store = {
         DELETE_TURNO(state, turnoId) {
             state.turnos = state.turnos.filter(t => t.id !== turnoId);
             saveJSON(KEYS.turnos, state.turnos);
-            // LÓGICA EM CASCATA REMOVIDA - Agora é tratada pela UI com bloqueio e aviso.
         },
 
         SAVE_CARGO(state, cargo) {
             const index = state.cargos.findIndex(c => c.id === cargo.id);
             if (index > -1) {
                 state.cargos[index] = { ...state.cargos[index], ...cargo };
-                // Cascata: ajusta disponibilidade de funcionários se um turno for removido do cargo
                 state.funcionarios.forEach(func => {
                     if (func.cargoId === cargo.id) {
                         for (const turnoId in func.disponibilidade) {
@@ -146,7 +119,6 @@ const store = {
         DELETE_CARGO(state, cargoId) {
             state.cargos = state.cargos.filter(c => c.id !== cargoId);
             saveJSON(KEYS.cargos, state.cargos);
-            // LÓGICA EM CASCATA REMOVIDA - Agora é tratada pela UI com bloqueio e aviso.
         },
 
         SAVE_FUNCIONARIO(state, func) {
@@ -160,11 +132,9 @@ const store = {
         },
         DELETE_FUNCIONARIO(state, funcId) {
             state.funcionarios = state.funcionarios.filter(f => f.id !== funcId);
-            // Cascata: remove o funcionário de qualquer equipe que ele pertença
             state.equipes.forEach(equipe => {
                 equipe.funcionarioIds = equipe.funcionarioIds.filter(id => id !== funcId);
             });
-            // Remove equipes que ficaram vazias
             state.equipes = state.equipes.filter(e => e.funcionarioIds.length > 0);
 
             saveJSON(KEYS.funcs, state.funcionarios);
@@ -215,6 +185,7 @@ const store = {
         },
 
         SAVE_CONFIG(state, config) {
+            delete config.autobackup;
             state.config = { ...state.config, ...config };
             saveJSON(KEYS.config, state.config);
         }

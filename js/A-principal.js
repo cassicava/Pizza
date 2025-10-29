@@ -210,7 +210,6 @@ function renderRouter(actionName) {
         case 'SAVE_CONFIG':
             loadConfigForm();
             updateWelcomeMessage();
-            triggerAutoBackupIfNeeded();
             break;
     }
 }
@@ -221,7 +220,6 @@ function setupAppListeners() {
         e.preventDefault();
         go(c.dataset.goto);
     }));
-    $("#header-settings-btn").addEventListener('click', () => go('configuracoes'));
 
     const btnGotoRelatorios = $("#btn-goto-relatorios");
     if(btnGotoRelatorios) {
@@ -245,8 +243,6 @@ function initMainApp() {
 
     store.subscribe(renderRouter);
     renderRouter('LOAD_STATE');
-
-    triggerAutoBackupIfNeeded();
 
     setTimeout(() => {
         splashScreen.classList.add('closing');

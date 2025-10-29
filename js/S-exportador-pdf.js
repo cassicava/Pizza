@@ -1,7 +1,3 @@
-/**************************************
- * 📄 Lógica de Exportação para PDF
- **************************************/
-
 let currentEscalaToExport = null;
 
 function showExportModal(escala) {
@@ -14,19 +10,13 @@ function hideExportModal() {
     currentEscalaToExport = null;
 }
 
-/**
- * Gera o PDF da Visão Geral da Escala (formato paisagem)
- * @param {object} escala - O objeto da escala a ser exportada.
- * @returns {jsPDF} - A instância do documento jsPDF.
- */
 function generateVisaoGeralPDF(escala) {
-    // CORREÇÃO: Cria um snapshot temporário se a escala for recém-gerada e ainda não tiver um.
     if (!escala.snapshot) {
         const { funcionarios, turnos } = store.getState();
         const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
         const funcsInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.assigned));
         const turnosInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId));
-        
+
         escala.snapshot = { funcionarios: {}, turnos: {} };
 
         funcsInvolvedIds.forEach(id => {
@@ -39,10 +29,11 @@ function generateVisaoGeralPDF(escala) {
         });
     }
 
+
     if (!escala || !escala.snapshot || !escala.snapshot.turnos || !escala.snapshot.funcionarios) {
         throw new Error("Dados da escala incompletos. Salve a escala novamente antes de exportar.");
     }
-    const { cargos, equipes } = store.getState(); // Adiciona equipes
+    const { cargos, equipes } = store.getState();
     const cargo = cargos.find(c => c.id === escala.cargoId);
     const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
 
@@ -52,16 +43,14 @@ function generateVisaoGeralPDF(escala) {
         unit: 'pt',
         format: 'a4'
     });
-    
+
     const pageWidth = doc.internal.pageSize.width;
 
-    // Funções de busca agora usam EXCLUSIVAMENTE o snapshot.
     const getTurnoInfo = (turnoId) => escala.snapshot.turnos?.[turnoId] || {};
     const getFuncInfo = (funcId) => escala.snapshot.funcionarios?.[funcId] || {};
 
     const funcsDaEscalaIds = Object.keys(escala.historico || {});
 
-    // Adiciona informação de equipe aos funcionários para ordenação
     const equipesMap = new Map();
     equipes.filter(e => e.cargoId === escala.cargoId).forEach(e => {
         e.funcionarioIds.forEach(funcId => equipesMap.set(funcId, e.id));
@@ -70,7 +59,6 @@ function generateVisaoGeralPDF(escala) {
     const funcsDaEscala = funcsDaEscalaIds
         .map(id => ({ id, ...getFuncInfo(id), equipeId: equipesMap.get(id) }))
         .filter(f => f.nome)
-        // Ordena por ID da equipe (nulls/sem equipe por último), depois pelo nome
         .sort((a,b) => {
             if (a.equipeId && !b.equipeId) return -1;
             if (!a.equipeId && b.equipeId) return 1;
@@ -79,16 +67,16 @@ function generateVisaoGeralPDF(escala) {
                 const equipeB = equipes.find(e => e.id === b.equipeId)?.nome || '';
                 return equipeA.localeCompare(equipeB);
             }
-            return a.nome.localeCompare(b.nome); // Desempate por nome
+            return a.nome.localeCompare(b.nome);
         });
 
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
-    
+
     doc.setFontSize(18);
     doc.text(escala.nome, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
     doc.setFontSize(10);
-    
+
     const head = [['Funcionário', ...dateRange.map(date => {
         const d = new Date(date + 'T12:00:00');
         const dia = d.getDate();
@@ -106,57 +94,58 @@ function generateVisaoGeralPDF(escala) {
         });
         return row;
     });
-    
+
     const pageMargin = 40;
     const availableWidth = doc.internal.pageSize.getWidth() - (pageMargin * 2);
     const funcColWidth = 60;
     const dateColWidth = (availableWidth - funcColWidth) / dateRange.length;
-    const cellHeight = dateColWidth;
+    const cellHeight = dateColWidth < 20 ? 20 : dateColWidth;
 
     doc.autoTable({
         head: head,
         body: body,
         startY: 60,
         theme: 'grid',
-        styles: { 
-            fontSize: 8, 
-            halign: 'center', 
+        styles: {
+            fontSize: 8,
+            halign: 'center',
             valign: 'middle',
-            minCellHeight: cellHeight, 
+            minCellHeight: cellHeight,
         },
-        headStyles: { 
-            fillColor: [22, 163, 74], 
-            textColor: 255, 
-            fontStyle: 'bold', 
+        headStyles: {
+            fillColor: [22, 163, 74],
+            textColor: 255,
+            fontStyle: 'bold',
             valign: 'middle',
+            cellPadding: { top: 5, bottom: 5 }
         },
-        columnStyles: { 
-            0: { 
-                halign: 'left', 
-                fontStyle: 'bold', 
+        columnStyles: {
+            0: {
+                halign: 'left',
+                fontStyle: 'bold',
                 minCellWidth: funcColWidth,
                 cellWidth: funcColWidth,
                 fontSize: 6,
                 lineHeight: 1,
-            } 
+                cellPadding: { left: 5, right: 5 }
+            }
         },
         didParseCell: function (data) {
             if (data.section === 'head' && data.column.index === 0) {
                 data.cell.styles.fontSize = 8;
             }
-             // Adiciona fundo cinza claro para linhas de funcionários da mesma equipe
              if (data.section === 'body' && data.column.index === 0) {
                 const func = funcsDaEscala[data.row.index];
                 if (func && func.equipeId) {
-                     data.cell.styles.fillColor = [240, 240, 240]; // Cinza claro
+                     data.cell.styles.fillColor = [240, 240, 240];
                 }
             }
         },
         didDrawCell: (data) => {
             const func = funcsDaEscala[data.row.index];
             const date = dateRange[data.column.index - 1];
-            
-            if (data.section === 'body' && data.column.index > 0) {
+
+            if (data.section === 'body' && data.column.index > 0 && func && date) { // Added checks for func and date
                 const d = new Date(date + 'T12:00:00');
                 const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
                 const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
@@ -164,7 +153,7 @@ function generateVisaoGeralPDF(escala) {
 
                 const slot = escala.slots.find(s => s.date === date && s.assigned === func.id);
                 const turnoInfo = slot ? getTurnoInfo(slot.turnoId) : null;
-                
+
                 let text = data.cell.text.toString().trim();
                 let bgColor = '';
                 let textColor = [0, 0, 0];
@@ -184,15 +173,14 @@ function generateVisaoGeralPDF(escala) {
                     bgColor = '#f1f5f9';
                     text = '';
                 } else {
-                     // Mantém o fundo cinza claro para células vazias de membros de equipe
                     bgColor = (func && func.equipeId) ? '#f0f0f0' : '#ffffff';
                 }
 
                 if (bgColor) {
-                    doc.setFillColor(bgColor);
+                    doc.setFillColor(bgColor); // Accepts hex string directly
                     doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                 }
-                
+
                 doc.setTextColor(textColor[0], textColor[1], textColor[2]);
                 doc.setFont(undefined, fontStyle);
                 doc.setFontSize(data.cell.styles.fontSize);
@@ -209,10 +197,10 @@ function generateVisaoGeralPDF(escala) {
     });
 
     let finalY = doc.lastAutoTable.finalY || 60;
-    
+
     const legendItems = [];
     const turnosNaEscalaIds = [...new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId))];
-    
+
     turnosNaEscalaIds.forEach(turnoId => {
         const t = getTurnoInfo(turnoId);
         if (t.sigla && t.nome) {
@@ -257,20 +245,20 @@ function generateVisaoGeralPDF(escala) {
         doc.setFillColor(item.color);
         doc.setDrawColor(50);
         doc.rect(legendX, legendY - rectSize / 2, rectSize, rectSize, 'FD');
-        
+
         doc.setTextColor(0, 0, 0);
-        
+
         const textLines = item.text.split('\n');
         let textYPos = legendY;
         if (textLines.length > 1) {
             textYPos = legendY - (lineHeight / 4);
         }
 
-        doc.text(textLines, legendX + rectSize + textSpacing, textYPos, { 
+        doc.text(textLines, legendX + rectSize + textSpacing, textYPos, {
             valign: 'middle',
-            lineHeightFactor: 1.1 
+            lineHeightFactor: 1.1
         });
-        
+
         const maxWidth = Math.max(...textLines.map(line => doc.getTextWidth(line)));
         legendX += rectSize + textSpacing + maxWidth + spacing;
     });
@@ -289,20 +277,20 @@ function generateVisaoGeralPDF(escala) {
         doc.text(observacoesLines, 40, currentY);
         currentY += (observacoesLines.length * 12) + 30;
     }
-    
+
     const feriadosFolga = escala.feriados.filter(f => !f.trabalha);
     if (feriadosFolga.length > 0) {
         doc.setFontSize(14);
         doc.setFont(undefined, 'bold');
         doc.text('Feriados com Folga Geral', 40, currentY);
         currentY += 15;
-        
+
         const feriadosHead = [['Data', 'Nome do Feriado']];
         const feriadosBody = feriadosFolga.map(f => {
             const dataFormatada = new Date(f.date + 'T12:00:00').toLocaleDateString('pt-BR');
             return [dataFormatada, f.nome];
         });
-        
+
         doc.autoTable({
             head: feriadosHead,
             body: feriadosBody,
@@ -318,46 +306,45 @@ function generateVisaoGeralPDF(escala) {
     doc.setFont(undefined, 'bold');
     doc.text('Resumo de Carga Horária no Período', 40, currentY);
     currentY += 20;
-    
+
     const resumoHead = [['Funcionário', 'Meta', 'Realizado', 'Saldo']];
     const resumoBody = funcsDaEscala.map(func => {
         let metaLabel = '';
         let realizadoLabel = '';
         let saldoLabel = '';
-        const funcionarioOriginal = store.getState().funcionarios.find(f => f.id === func.id); // Busca o funcionário original
+        const funcionarioOriginal = store.getState().funcionarios.find(f => f.id === func.id);
 
-        if (funcionarioOriginal) { // Verifica se encontrou o funcionário
+        if (funcionarioOriginal) {
              if (funcionarioOriginal.medicaoCarga === 'turnos') {
                 const { cargos } = store.getState();
                 const cargo = cargos.find(c => c.id === escala.cargoId);
                 const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
-                
+
                 const metaTurnos = calcularMetaTurnos(funcionarioOriginal, escala.inicio, escala.fim, cargoDiasOperacionais);
                 const realizadoTurnos = escala.historico[func.id]?.turnosTrabalhados || 0;
                 const saldo = realizadoTurnos - metaTurnos;
-                
+
                 metaLabel = `${metaTurnos.toFixed(0)} turnos`;
                 realizadoLabel = `${realizadoTurnos} turnos`;
                 saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(0)} turnos`;
-            } else { // Padrão 'horas'
+            } else {
                 const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
                 const metaHoras = calcularMetaHoras(funcionarioOriginal, escala.inicio, escala.fim);
                 const saldo = horasTrabalhadas - metaHoras;
-                
+
                 metaLabel = `${metaHoras.toFixed(1)}h`;
                 realizadoLabel = `${horasTrabalhadas.toFixed(1)}h`;
                 saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(1)}h`;
             }
         } else {
-             // Caso não encontre o funcionário original (pode ter sido excluído)
              metaLabel = 'N/D';
              realizadoLabel = 'N/D';
              saldoLabel = 'N/D';
         }
 
-
         return [func.nome, metaLabel, realizadoLabel, saldoLabel];
     });
+
 
     doc.autoTable({
         head: resumoHead,
@@ -370,19 +357,14 @@ function generateVisaoGeralPDF(escala) {
     return doc;
 }
 
-/**
- * Gera o PDF do Relatório Diário (formato retrato)
- * @param {object} escala - O objeto da escala a ser exportada.
- * @returns {jsPDF} - A instância do documento jsPDF.
- */
+
 function generateRelatorioDiarioPDF(escala) {
-    // CORREÇÃO: Cria um snapshot temporário se a escala for recém-gerada e ainda não tiver um.
     if (!escala.snapshot) {
         const { funcionarios, turnos } = store.getState();
         const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
         const funcsInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.assigned));
         const turnosInvolvedIds = new Set(escala.slots.filter(s => s.assigned).map(s => s.turnoId));
-        
+
         escala.snapshot = { funcionarios: {}, turnos: {} };
 
         funcsInvolvedIds.forEach(id => {
@@ -405,19 +387,19 @@ function generateRelatorioDiarioPDF(escala) {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    
+
     const getTurnoInfo = (turnoId) => escala.snapshot.turnos?.[turnoId] || {};
     const getFuncInfo = (funcId) => escala.snapshot.funcionarios?.[funcId] || {};
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
-    const leftMargin = 60; 
+    const leftMargin = 60;
     const rightMargin = pageWidth - 60;
 
     dateRange.forEach((date, index) => {
         if (index > 0) doc.addPage();
-        
+
         doc.setFontSize(14);
         doc.text('Escala Fácil', leftMargin, 40);
         doc.setFontSize(9);
@@ -430,21 +412,21 @@ function generateRelatorioDiarioPDF(escala) {
         const d = new Date(date + 'T12:00:00');
         const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'long' });
         const diaFormatado = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        
+
         let yPos = 100;
 
         doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0);
         doc.text(diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1), pageWidth / 2, yPos, { align: 'center' });
-        
+
         yPos += 20;
         doc.setFontSize(11);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(100);
         doc.text(diaFormatado, pageWidth / 2, yPos, { align: 'center' });
         yPos += 25;
-        
+
         const feriadoDoDia = escala.feriados.find(f => f.date === date);
         const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
         const isCargoDiaNaoUtil = !cargoDiasOperacionais.has(diaSemanaId);
@@ -464,14 +446,14 @@ function generateRelatorioDiarioPDF(escala) {
             }
         }
 
-        yPos += 15; 
+        yPos += 15;
 
         if (isCargoDiaNaoUtil || (feriadoDoDia && !feriadoDoDia.trabalha)) {
             const boxY = yPos - 10;
             const boxHeight = 50;
             doc.setFillColor(248, 249, 250);
             doc.rect(leftMargin, boxY, rightMargin - leftMargin, boxHeight, 'F');
-            
+
             doc.setFontSize(12);
             doc.setTextColor(150);
             const mensagem = isCargoDiaNaoUtil ? "Cargo não operacional neste dia" : "Dia de Folga Geral";
@@ -486,10 +468,10 @@ function generateRelatorioDiarioPDF(escala) {
                     if(!a.inicio || !b.inicio) return 0;
                     return a.inicio.localeCompare(b.inicio);
                 });
-            
+
             turnosOrdenados.forEach(turno => {
                 if (!turno.id) return;
-                
+
                 const funcionariosAlocados = escala.slots
                     .filter(s => s.date === date && s.turnoId === turno.id && s.assigned)
                     .map(s => {
@@ -497,39 +479,39 @@ function generateRelatorioDiarioPDF(escala) {
                         const isExtra = s.isExtra ? ' (H. Extra)' : '';
                         return `${func.nome || 'Funcionário Removido'}${isExtra}`;
                     });
-                
+
                 if (turno.isSystem && funcionariosAlocados.length === 0) {
-                    return; 
+                    return;
                 }
 
                 const tituloTurno = (turno.isSystem || !turno.inicio)
                     ? turno.nome
                     : `${turno.nome} (${turno.inicio} - ${turno.fim})`;
-                
-                const cardY = yPos;
-                
-                doc.setFillColor(turno.cor || '#cccccc');
-                doc.rect(leftMargin, cardY, 8, 30, 'F'); 
 
-                doc.setFontSize(13); 
+                const cardY = yPos;
+
+                doc.setFillColor(turno.cor || '#cccccc');
+                doc.rect(leftMargin, cardY, 8, 30, 'F');
+
+                doc.setFontSize(13);
                 doc.setFont(undefined, 'bold');
                 doc.text(tituloTurno, leftMargin + 20, cardY + 19);
-                
+
                 yPos += 35;
 
                 if (funcionariosAlocados.length > 0) {
-                    doc.setFontSize(12); 
+                    doc.setFontSize(12);
                     doc.setFont(undefined, 'normal');
                     doc.setTextColor(50);
-                    
+
                     funcionariosAlocados.forEach(nome => {
                         doc.text(`\u2022 ${nome}`, leftMargin + 25, yPos);
-                        
-                        doc.setDrawColor(220, 220, 220); 
+
+                        doc.setDrawColor(220, 220, 220);
                         doc.setLineWidth(0.5);
                         doc.line(leftMargin + 25, yPos + 8, rightMargin, yPos + 8);
 
-                        yPos += 25; 
+                        yPos += 25;
                     });
 
                     const finalCardHeight = yPos - cardY - 10;
@@ -554,7 +536,7 @@ function generateRelatorioDiarioPDF(escala) {
                 }
             });
         }
-        
+
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(`Página ${index + 1} de ${dateRange.length}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
@@ -563,10 +545,249 @@ function generateRelatorioDiarioPDF(escala) {
     return doc;
 }
 
+function generateIndividualReportPDF(escala, funcionarioId) {
+    if (!escala || !funcionarioId) {
+        throw new Error("Dados insuficientes para gerar o relatório individual (escala ou funcionário ausente).");
+    }
+
+    const { funcionarios, turnos } = store.getState();
+    const metrics = calculateMetricsForScale(escala);
+    const employeeMetrics = metrics.employeeMetrics;
+    const employeeData = employeeMetrics.find(emp => emp.id === funcionarioId);
+    const funcionario = funcionarios.find(f => f.id === funcionarioId);
+
+    if (!employeeData || !funcionario) {
+        throw new Error("Funcionário não encontrado nos dados da escala para gerar o relatório.");
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const margin = 40;
+    let yPos = margin;
+
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Relatório Individual - ${employeeData.nome}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 15;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100);
+    doc.text(`Escala: ${escala.nome}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 10;
+    const periodoStr = `Período: ${new Date(escala.inicio+'T12:00:00').toLocaleDateString()} a ${new Date(escala.fim+'T12:00:00').toLocaleDateString()}`;
+    doc.text(periodoStr, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 30;
+
+    const kpiData = [
+        { label: 'Realizado', value: employeeData.medicaoCarga === 'horas' ? employeeData.horasTrabalhadas.toFixed(1) + 'h' : employeeData.turnosTrabalhados },
+        { label: 'Meta', value: employeeData.medicaoCarga === 'horas' ? employeeData.metaHoras.toFixed(1) + 'h' : employeeData.metaTurnos },
+        { label: 'Saldo', value: employeeData.medicaoCarga === 'horas' ? (employeeData.saldoHoras > 0 ? '+' : '') + employeeData.saldoHoras.toFixed(1) + 'h' : (employeeData.saldoTurnos > 0 ? '+' : '') + employeeData.saldoTurnos },
+        { label: 'Ausências', value: Object.entries(employeeData.turnosCount).filter(([n, _]) => Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === n)).reduce((sum, [_, c]) => sum + c, 0) },
+    ];
+
+    const kpiBoxWidth = (pageWidth - margin * 2) / kpiData.length - 10 * (kpiData.length -1) / kpiData.length;
+    let currentX = margin;
+
+    kpiData.forEach(kpi => {
+        doc.setFillColor(248, 249, 250);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(currentX, yPos, kpiBoxWidth, 50, 5, 5, 'FD');
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text(kpi.label, currentX + kpiBoxWidth / 2, yPos + 15, { align: 'center' });
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(37, 99, 235);
+        if(kpi.label === 'Saldo'){
+            const saldo = employeeData.medicaoCarga === 'horas' ? employeeData.saldoHoras : employeeData.saldoTurnos;
+             if (saldo > 0) doc.setTextColor(249, 115, 22);
+             else if (saldo < 0) doc.setTextColor(100, 116, 139);
+             else doc.setTextColor(37, 99, 235);
+        }
+        doc.text(String(kpi.value), currentX + kpiBoxWidth / 2, yPos + 35, { align: 'center' });
+        currentX += kpiBoxWidth + 10;
+    });
+    yPos += 50 + 25;
+
+    doc.setTextColor(0);
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Resumo de Turnos Realizados', margin, yPos);
+    yPos += 15;
+
+    const allTurnosStore = [...store.getState().turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
+    const turnosMapByName = Object.fromEntries(allTurnosStore.map(t => [t.nome, t]));
+
+    const turnosTableBody = Object.entries(employeeData.turnosCount)
+        .filter(([nome, _]) => !Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.nome === nome))
+        .sort((a,b) => b[1] - a[1])
+        .map(([nome, quantidade]) => {
+            const turnoInfo = turnosMapByName[nome];
+            const sigla = turnoInfo ? turnoInfo.sigla : '??';
+            return [ { content: sigla, styles: { fillColor: turnoInfo?.cor || '#eee', textColor: getContrastingTextColor(turnoInfo?.cor) === '#FFFFFF' ? 255 : 0 } } , nome, quantidade ];
+        });
+
+     if (turnosTableBody.length > 0) {
+        doc.autoTable({
+            head: [['Sigla', 'Tipo de Turno', 'Quantidade']],
+            body: turnosTableBody,
+            startY: yPos,
+            theme: 'grid',
+            headStyles: { fillColor: [45, 55, 72] },
+             columnStyles: { 0: { halign: 'center', fontStyle: 'bold' } },
+        });
+        yPos = doc.lastAutoTable.finalY + 25;
+     } else {
+         doc.setFontSize(10);
+         doc.setTextColor(150);
+         doc.text('Nenhum turno de trabalho alocado.', margin, yPos);
+         yPos += 25;
+     }
+
+    doc.setTextColor(0);
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Calendário de Atividades', margin, yPos);
+    yPos += 20;
+
+    const turnosMapById = new Map(allTurnosStore.map(t => [t.id, t]));
+    const slotsDoFunc = escala.slots.filter(s => s.assigned === funcionarioId);
+    const slotsByDate = Object.fromEntries(slotsDoFunc.map(s => [s.date, s]));
+    const rangeSet = new Set(dateRangeInclusive(escala.inicio, escala.fim));
+    const months = {};
+    rangeSet.forEach(date => { const monthKey = date.substring(0, 7); if (!months[monthKey]) months[monthKey] = true; });
+
+    const availableWidthForCalendar = pageWidth - margin * 2;
+    const dayWidth = availableWidthForCalendar / 7;
+    const dayHeight = 40;
+    const dayPadding = 2;
+
+    Object.keys(months).sort().forEach(monthKey => {
+        const [year, month] = monthKey.split('-').map(Number);
+        const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+        const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
+
+        if (yPos + 30 > pageHeight - margin) {
+            doc.addPage();
+            yPos = margin;
+        }
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), margin, yPos);
+        yPos += 15;
+
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        DIAS_SEMANA.forEach((dia, index) => {
+            doc.setTextColor(100);
+             if (index === 0 || index === 6) doc.setTextColor(239, 68, 68);
+             doc.text(dia.abrev, margin + index * dayWidth + dayWidth / 2, yPos, { align: 'center' });
+        });
+        yPos += 15;
+        doc.setTextColor(0);
+
+        let currentX = margin + firstDayOfMonth * dayWidth;
+        let currentDay = 1;
+
+        while (currentDay <= daysInMonth) {
+            const date = `${year}-${String(month).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+            if (rangeSet.has(date)) {
+                const d = new Date(date + 'T12:00:00');
+                const dayOfWeek = d.getUTCDay();
+                const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
+                const { cargos } = store.getState();
+                const cargo = cargos.find(c => c.id === escala.cargoId);
+                const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
+                const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
+                const isCargoDiaNaoUtil = !cargoDiasOperacionais.has(diaSemanaId);
+
+                const slot = slotsByDate[date];
+                const turno = slot ? turnosMapById.get(slot.turnoId) : null;
+
+                let fillColor = [255, 255, 255];
+                let strokeColor = [226, 232, 240];
+                let dayNumberColor = [150];
+                let sigla = '';
+                let siglaColor = [0];
+
+                if (feriadoFolga) {
+                    fillColor = [238, 242, 255]; // Light blue for FG
+                    sigla = 'FG';
+                    siglaColor = [67, 56, 202]; // Darker blue text
+                } else if (isCargoDiaNaoUtil && !slot) {
+                     fillColor = [241, 245, 249]; // Light gray hatch
+                     strokeColor = [226, 232, 240];
+                } else if (turno) {
+                    fillColor = turno.cor || '#eee'; // Turno color
+                    sigla = turno.sigla;
+                    const contrast = getContrastingTextColor(turno.cor);
+                    siglaColor = contrast === '#FFFFFF' ? [255] : [0]; // Black or White text
+                    dayNumberColor = contrast === '#FFFFFF' ? [255, 255, 255, 0.7] : [150]; // White or Gray number
+                }
+
+                // Correctly use setFillColor with hex or array
+                if (typeof fillColor === 'string') {
+                    doc.setFillColor(fillColor);
+                } else {
+                     doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+                }
+                doc.setDrawColor(strokeColor[0], strokeColor[1], strokeColor[2]);
+                doc.rect(currentX + dayPadding, yPos + dayPadding, dayWidth - dayPadding * 2, dayHeight - dayPadding * 2, 'FD');
+
+                doc.setFontSize(7);
+                doc.setTextColor(dayNumberColor[0], dayNumberColor[1] ?? dayNumberColor[0], dayNumberColor[2] ?? dayNumberColor[0]);
+                doc.text(String(currentDay), currentX + dayWidth - dayPadding - 5, yPos + dayPadding + 8, { align: 'right' });
+
+                if (sigla) {
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(siglaColor[0], siglaColor[1] ?? siglaColor[0], siglaColor[2] ?? siglaColor[0]);
+                    doc.text(sigla, currentX + dayWidth / 2, yPos + dayHeight / 2 + 3, { align: 'center', baseline: 'middle' });
+                }
+            } else {
+                 doc.setFillColor(248, 249, 250);
+                 doc.setDrawColor(226, 232, 240);
+                 doc.rect(currentX + dayPadding, yPos + dayPadding, dayWidth - dayPadding * 2, dayHeight - dayPadding * 2, 'FD');
+            }
+
+
+            const currentDayOfWeek = (firstDayOfMonth + currentDay -1) % 7;
+            if (currentDayOfWeek === 6) {
+                yPos += dayHeight;
+                currentX = margin;
+                if (yPos + dayHeight > pageHeight - margin && currentDay < daysInMonth) {
+                     doc.addPage();
+                     yPos = margin;
+                     doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text(monthName.charAt(0).toUpperCase() + monthName.slice(1), margin, yPos); yPos += 15;
+                     doc.setFontSize(8); doc.setFont(undefined, 'bold');
+                     DIAS_SEMANA.forEach((dia, index) => {
+                         doc.setTextColor(100); if (index === 0 || index === 6) doc.setTextColor(239, 68, 68);
+                         doc.text(dia.abrev, margin + index * dayWidth + dayWidth / 2, yPos, { align: 'center' });
+                     });
+                     yPos += 15; doc.setTextColor(0);
+                }
+            } else {
+                currentX += dayWidth;
+            }
+            currentDay++;
+        }
+        yPos += dayHeight + 15;
+    });
+
+
+    return doc;
+}
+
+
 async function handleExport(exportFn) {
     if (!currentEscalaToExport) return;
 
-    let escalaParaProcessar = JSON.parse(JSON.stringify(currentEscalaToExport)); // Clona para segurança
+    let escalaParaProcessar = JSON.parse(JSON.stringify(currentEscalaToExport));
 
     const isDirty = (currentEscala && currentEscala.id === escalaParaProcessar.id) && dirtyForms['gerar-escala'];
 
@@ -580,21 +801,20 @@ async function handleExport(exportFn) {
 
         if (confirmed) {
             await salvarEscalaAtual({ showToast: false });
-            setGeradorFormDirty(false); 
-            
+            setGeradorFormDirty(false);
+
             const { escalas } = store.getState();
             escalaParaProcessar = escalas.find(e => e.id === escalaParaProcessar.id);
-             // Clona novamente após salvar para garantir a versão mais recente
             if (escalaParaProcessar) escalaParaProcessar = JSON.parse(JSON.stringify(escalaParaProcessar));
-             else { // Se por algum motivo a escala sumiu após salvar (erro?), aborta
+             else {
                  showToast("Erro ao encontrar a escala após salvar. Exportação cancelada.", "error");
                  return;
              }
         }
     }
-    
+
     hideExportModal();
-    
+
     await exportFn(escalaParaProcessar);
 }
 
@@ -602,12 +822,12 @@ async function initPdfExport() {
     $('#btnExportCancelar').addEventListener('click', hideExportModal);
 
     const performExport = (loaderMessage, exportAction) => {
-        handleExport(async (escala) => { // 'escala' aqui é a cópia segura
+        handleExport(async (escala) => {
             showLoader(loaderMessage);
             await new Promise(resolve => setTimeout(resolve, 50));
-            
+
             try {
-                await exportAction(escala); // Passa a cópia segura para a função
+                await exportAction(escala);
                 hideLoader();
                 requestAnimationFrame(() => showDownloadToast(true));
             } catch (e) {
@@ -624,7 +844,7 @@ async function initPdfExport() {
             doc.save(`${escala.nome.replace(/\s/g, '_')}.pdf`);
         });
     });
-    
+
     $('#btnExportVisaoDiaria').addEventListener('click', () => {
         performExport('Gerando Relatório Diário...', (escala) => {
             const doc = generateRelatorioDiarioPDF(escala);
@@ -646,7 +866,7 @@ async function initPdfExport() {
 
             showLoader('Compactando arquivos...');
             await new Promise(res => setTimeout(res, 50));
-            
+
             const zipBlob = await zip.generateAsync({ type: "blob" });
             triggerDownload(zipBlob, `export_escala_${nomeBase}.zip`);
         });

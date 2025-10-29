@@ -1,7 +1,3 @@
-/**************************************
- * 📊 Estilos da Tela de Relatórios (Dashboard)
- **************************************/
-
 .relatorios-filtros-container {
     display: flex;
     flex-wrap: wrap;
@@ -29,7 +25,46 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 24px;
+    gap: 16px; /* Added gap for spacing */
 }
+
+/* Ensure tabs use the correct styling */
+#dashboard-tabs.painel-tabs {
+    background-color: var(--bg);
+    border: none;
+    border-radius: 12px;
+    padding: 4px;
+    width: auto; /* Allow shrinking/growing */
+    flex-shrink: 0; /* Prevent shrinking too much */
+}
+
+#dashboard-tabs .painel-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 8px 16px;
+    border-radius: 8px; /* Correct border-radius for inner buttons */
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex; /* Ensure icon and text align */
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem; /* Slightly smaller font */
+}
+
+#dashboard-tabs .painel-tab-btn span {
+    font-size: 1.1rem; /* Adjust icon size */
+    line-height: 1;
+}
+
+
+#dashboard-tabs .painel-tab-btn.active {
+    background-color: var(--card);
+    color: var(--brand);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+}
+
 
 .kpi-grid {
     display: grid;
@@ -38,7 +73,6 @@
     margin-top: 16px;
 }
 
-/* ALTERADO: Centralização e fonte maior para os KPIs da Visão Geral */
 .kpi-card {
     text-align: center;
     padding: 16px;
@@ -51,7 +85,7 @@
 }
 .kpi-card p {
     margin: 0;
-    font-size: 2.5rem; /* Fonte aumentada */
+    font-size: 2.5rem;
     font-weight: 700;
     color: var(--brand);
 }
@@ -62,7 +96,6 @@
     color: var(--muted);
 }
 
-/* NOVO: Estilo mais compacto para os KPIs da Análise Individual */
 .analise-individual-grid .kpi-card {
     padding: 12px;
 }
@@ -100,7 +133,6 @@
     height: 100%;
 }
 
-/* Análise Individual */
 .analise-individual-grid {
     display: grid;
     grid-template-columns: 380px 1fr;
@@ -145,7 +177,6 @@
 }
 
 
-/* --- Media Queries --- */
 @media (max-width: 992px) {
     .kpi-grid {
         grid-template-columns: 1fr 1fr;
@@ -156,6 +187,18 @@
     .analise-individual-col-left {
         position: static;
     }
+    .relatorios-header-card {
+        flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    }
+    #dashboard-title {
+        order: -1; /* Move title to top on wrap */
+        width: 100%; /* Take full width */
+        flex-basis: auto; /* Reset basis */
+        margin-bottom: 12px; /* Add space below title */
+    }
+     #btn-voltar-relatorios, #dashboard-tabs {
+         flex-basis: auto; /* Allow shrinking/growing */
+     }
 }
 
 @media (max-width: 768px) {
@@ -169,13 +212,20 @@
     .relatorios-header-card {
         flex-direction: column;
         gap: 12px;
-        align-items: stretch;
+        align-items: center; /* Center items vertically */
     }
-    .relatorios-header-card h2 {
-        text-align: center;
-    }
-    .relatorios-header-card .painel-tabs {
+    #dashboard-title {
+        order: -1;
         width: 100%;
-        justify-content: center;
+        text-align: center;
+        margin-bottom: 12px;
     }
+     #btn-voltar-relatorios {
+         align-self: flex-start; /* Align button left */
+         margin-bottom: 8px; /* Space below button */
+     }
+     #dashboard-tabs {
+         width: 100%;
+         justify-content: center; /* Center tabs */
+     }
 }

@@ -107,36 +107,29 @@ main.container {
     margin-bottom: 0;
     border-bottom: 1px solid var(--border);
     height: var(--header-height);
+    position: relative;
 }
 
 #page-title {
     margin: 0;
     font-size: 1.8rem;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.header-right-group {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .header-user-info {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-left: auto;
-}
-
-.header-user-info .welcome-title {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 500;
-    color: var(--muted);
-    transition: all 0.2s ease-in-out;
-}
-
-.header-user-info .welcome-title:hover {
-    animation: animated-gradient-text 6s linear infinite;
-    background: linear-gradient( to right, var(--gradient-start), var(--gradient-mid), var(--gradient-end), var(--gradient-mid), var(--gradient-start) );
-    background-size: 300% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    transform: scale(1.03);
 }
 
 .header-action-btn {
@@ -196,7 +189,7 @@ main.container {
     justify-content: space-between;
     align-items: center;
     padding: 12px 24px;
-    margin-bottom: 24px;
+    margin-bottom: 32px; /* Aumentado espaçamento */
     background-color: rgba(238, 242, 255, 0.6);
 }
 
@@ -223,17 +216,29 @@ main.container {
     color: var(--border);
 }
 
-.metrics-report-btn {
-    padding: 6px 12px;
-    font-size: 0.9rem;
+.metrics-report-btn-wrapper {
     flex-shrink: 0;
+}
+
+
+#btn-goto-relatorios.metrics-report-btn {
+    padding: 8px 16px;
+    font-size: 1rem;
+    border: none;
+    color: var(--secondary);
+    background-color: transparent;
+}
+
+#btn-goto-relatorios.metrics-report-btn:hover {
+    background-color: var(--bg);
+    color: var(--fg);
 }
 
 .home-layout-grid {
     display: grid;
     grid-template-columns: 3fr 2fr;
     gap: 24px;
-    align-items: start;
+    align-items: stretch;
 }
 
 .home-column-main {
@@ -245,8 +250,6 @@ main.container {
 }
 
 .home-column-side {
-    position: sticky;
-    top: calc(var(--header-height) + 24px);
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -258,33 +261,41 @@ main.container {
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin: 0 0 8px 0;
+    margin: 0 0 0 0;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
 }
 
+.home-column-description {
+    margin: 0;
+    font-size: 0.9rem;
+    padding-bottom: 8px;
+}
 
 .home-side-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
+    flex-grow: 1;
 }
 
 .home-card-wrapper {
     opacity: 0;
+    height: 100%;
 }
 
 #page-home.active .home-card-wrapper {
     animation: pop-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-#page-home.active .home-column-main .home-card-wrapper:nth-child(2) { animation-delay: 0.1s; }
-#page-home.active .home-column-main .home-card-wrapper:nth-child(3) { animation-delay: 0.2s; }
-
-#page-home.active .home-column-side .home-card-wrapper:nth-child(2) { animation-delay: 0.3s; }
-#page-home.active .home-column-side .home-card-wrapper:nth-child(3) { animation-delay: 0.4s; }
-#page-home.active .home-column-side .home-card-wrapper:nth-child(4) { animation-delay: 0.5s; }
-#page-home.active .home-column-side .home-card-wrapper:nth-child(5) { animation-delay: 0.6s; }
+/* Ajustes nos animation-delay para incluir o botão de relatório */
+#page-home.active .metrics-report-btn-wrapper { animation-delay: 0.1s; }
+#page-home.active .home-column-main .home-card-wrapper:nth-child(2) { animation-delay: 0.2s; }
+#page-home.active .home-column-main .home-card-wrapper:nth-child(3) { animation-delay: 0.3s; }
+#page-home.active .home-column-side .home-card-wrapper:nth-child(4) { animation-delay: 0.4s; }
+#page-home.active .home-column-side .home-card-wrapper:nth-child(5) { animation-delay: 0.5s; }
+#page-home.active .home-column-side .home-card-wrapper:nth-child(6) { animation-delay: 0.6s; }
+#page-home.active .home-column-side .home-card-wrapper:nth-child(7) { animation-delay: 0.7s; }
 
 
 .grid-2-col, .grid-3-col, .grid-4-col {
