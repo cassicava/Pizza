@@ -1,4 +1,3 @@
-/* --- ESTILOS DA SIDEBAR --- */
 .tab-btn {
     justify-content: flex-start;
     background-color: transparent;
@@ -68,7 +67,6 @@
     transform: scale(1.15) rotate(-8deg);
 }
 
-/* --- OUTROS COMPONENTES --- */
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -107,8 +105,19 @@
 }
 
 .table tbody tr {
-    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, background-color 0.2s ease-out;
 }
+
+.table tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.015);
+}
+
+.table tbody tr:not(.group-header):hover {
+    background-color: #eff6ff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
 
 .table td:has(button) {
     display: flex;
@@ -287,4 +296,3 @@
         rgba(0, 0, 0, 0.1) 8px
     ) !important;
 }
-

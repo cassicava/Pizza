@@ -1,8 +1,3 @@
-/**************************************
- * 📅 Estilos da Tela de Geração de Escala (v2 - Painel com Abas)
- **************************************/
-
-/* --- ESTRUTURA PRINCIPAL DO PAINEL --- */
 #page-gerar-escala .painel-gerenciamento {
     display: flex;
     flex-direction: column;
@@ -16,9 +11,8 @@
     flex-grow: 1;
 }
 
-/* --- ESTILOS DAS ABAS DO ASSISTENTE (WIZARD) --- */
 #gerador-wizard-tabs {
-    background-color: var(--bg); /* Fundo sutil */
+    background-color: var(--bg); 
     border: none;
     border-radius: 12px;
     padding: 4px;
@@ -30,7 +24,6 @@
     align-items: center;
     gap: 8px;
     padding: 8px 16px;
-    /* ALTERADO: Bordas totalmente arredondadas */
     border-radius: 999px;
 }
 
@@ -39,7 +32,6 @@
     font-size: 1.1rem;
 }
 
-/* Estado: Ativo (Passo Atual) */
 #gerador-wizard-tabs .painel-tab-btn.active {
     color: var(--brand);
     font-weight: 700;
@@ -50,7 +42,6 @@
     content: '➡️';
 }
 
-/* Estado: Concluído */
 #gerador-wizard-tabs .painel-tab-btn.completed {
     color: var(--muted);
     font-weight: 500;
@@ -59,7 +50,6 @@
     content: '✅';
 }
 
-/* Estado: Bloqueado (Ainda não acessível) */
 #gerador-wizard-tabs .painel-tab-btn[disabled] {
     color: var(--muted);
     opacity: 0.5;
@@ -72,8 +62,6 @@
     content: '🔒';
 }
 
-
-/* --- LAYOUTS DOS PASSOS INTERNOS --- */
 
 .passo1-grid,
 .passo2-grid {
@@ -125,7 +113,6 @@
     transition: all 0.3s ease-in-out;
 }
 
-/* --- ESTILOS DO PASSO 2 E 3 (Calendários) --- */
 .passo2-holiday-grid,
 #ausencia-step-container {
     display: grid;
@@ -371,7 +358,6 @@
 }
 
 
-/* --- Indicadores de Ausência Múltipla --- */
 .ausencia-dots-container {
     position: absolute;
     bottom: 5px;
@@ -416,8 +402,6 @@
     gap: 8px;
 }
 
-/* --- ESTILOS DA VISUALIZAÇÃO DA ESCALA --- */
-
 #gerador-painel-escala,
 #salva-painel-escala {
     margin-top: 16px;
@@ -425,7 +409,6 @@
     overflow: hidden;
 }
 
-/* Aplica fundo cinza no header do Painel da Escala */
 #gerador-painel-escala .painel-header,
 #salva-painel-escala .painel-header {
     background-color: var(--bg);
@@ -433,48 +416,48 @@
     margin-bottom: 0;
 }
 
-/* Estiliza as abas do Painel da Escala para NÃO terem fundo/borda */
 #gerador-painel-escala .painel-tabs,
-#salva-painel-escala .painel-tabs:not(#salva-view-tabs) { /* Exclui #salva-view-tabs */
-    background-color: transparent; /* Remove fundo cinza */
+#salva-painel-escala .painel-tabs:not(#salva-view-tabs) {
+    background-color: transparent;
     border: none;
-    border-radius: 0; /* Remove border-radius do container */
-    padding: 0; /* Remove padding do container */
+    border-radius: 0;
+    padding: 0;
     width: fit-content;
 }
-/* Botões das abas do Painel Escala totalmente arredondados */
-#gerador-painel-escala .painel-tab-btn:not([data-tab="geral"]):not([data-tab="individual"]), /* Exclui geral/individual */
-#salva-painel-escala .painel-tab-btn:not([data-tab="geral"]) { /* Exclui geral */
+
+.painel-tabs-toggle-group {
+    border: none;
+    background-color: transparent;
+}
+
+#gerador-painel-escala .painel-tab-btn:not([data-tab="geral"]):not([data-tab="individual"]),
+#salva-painel-escala .painel-tab-btn:not([data-tab="geral"]) {
     border: none;
     background: transparent;
     padding: 8px 16px;
-    border-radius: 999px; /* Bordas totalmente arredondadas */
+    border-radius: 999px;
     font-weight: 500;
     color: var(--muted);
     cursor: pointer;
     transition: all 0.2s ease-in-out;
 }
-/* Botão ativo do Painel Escala */
-#gerador-painel-escala .painel-tab-btn.active:not([data-tab="geral"]):not([data-tab="individual"]), /* Exclui geral/individual */
-#salva-painel-escala .painel-tab-btn.active:not([data-tab="geral"]) { /* Exclui geral */
+#gerador-painel-escala .painel-tab-btn.active:not([data-tab="geral"]):not([data-tab="individual"]),
+#salva-painel-escala .painel-tab-btn.active:not([data-tab="geral"]) {
     background-color: var(--card);
     color: var(--brand);
     box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
 }
 
-/* Adiciona padding ao conteúdo das abas do Painel da Escala */
 #gerador-painel-escala .painel-content,
 #salva-painel-escala .painel-content {
     padding: 24px;
 }
 
-/* --- ESTILOS ESPECÍFICOS PARA ABAS GERAL/INDIVIDUAL --- */
-/* Mantém o estilo antigo (container cinza, botões menos arredondados) APENAS para essas abas */
 #gerador-view-tabs, #salva-view-tabs {
-    background-color: var(--bg); /* Fundo cinza */
+    background-color: var(--bg);
     border: none;
-    border-radius: 12px; /* Borda do container */
-    padding: 4px; /* Padding do container */
+    border-radius: 12px;
+    padding: 4px;
     width: fit-content;
 }
 #gerador-view-tabs .painel-tab-btn,
@@ -482,7 +465,7 @@
     border: none;
     background: transparent;
     padding: 8px 16px;
-    border-radius: 8px; /* Borda do botão interno */
+    border-radius: 8px;
     font-weight: 500;
     color: var(--muted);
     cursor: pointer;
@@ -1117,22 +1100,20 @@
     }
 }
 
-/* --- NOVAS REGRAS PARA O CABEÇALHO DA VISUALIZAÇÃO DA ESCALA --- */
 .escala-view-header {
     display: flex;
     justify-content: space-between;
-    align-items: center; /* Garante alinhamento vertical */
+    align-items: center; 
     gap: 16px;
     margin: 0;
 }
 
-/* Ajusta o container central no header da escala salva */
 #escalaSalvaView .escala-view-header-center {
     display: flex;
-    align-items: center; /* Centraliza verticalmente */
-    gap: 16px; /* Espaço entre título e abas */
-    flex-grow: 1; /* Permite ocupar espaço */
-    justify-content: center; /* Centraliza horizontalmente */
+    align-items: center; 
+    gap: 16px; 
+    flex-grow: 1; 
+    justify-content: center; 
 }
 
 .header-actions-group {
@@ -1150,7 +1131,11 @@
     justify-content: flex-end;
 }
 
-/* --- NOVOS ESTILOS PARA O PASSO 4 REFORMULADO --- */
+#escalaSalvaView .header-actions-group button {
+    min-width: 120px;
+    justify-content: center;
+}
+
 #gerador-cobertura-turnos-container {
     display: flex;
     flex-direction: column;
@@ -1199,13 +1184,13 @@
 }
 .cobertura-individual-dias-container .dia-input-group input {
     width: 50px;
-    padding: 6px; /* Ajuste no padding */
+    padding: 6px; 
     text-align: center;
     font-size: 1rem;
     border-radius: 8px;
 }
 .cobertura-individual-dias-container .btn-replicar-cobertura {
-    margin-left: auto; /* Garante que o botão fique à direita */
+    margin-left: auto; 
 }
 
 .cobertura-equipes-container {
@@ -1216,16 +1201,16 @@
 
 .equipe-config-card {
     background-color: var(--bg);
-    border: 2px solid var(--border); /* Borda inicial sutil */
+    border: 2px solid var(--border); 
     border-radius: 12px;
     padding: 16px;
     cursor: pointer;
     transition: all 0.2s ease-out;
-    position: relative; /* Para o indicador visual */
+    position: relative; 
 }
 
 .equipe-config-card:hover {
-    border-color: #bfdbfe; /* Azul claro no hover */
+    border-color: #bfdbfe; 
     background-color: #eff6ff;
 }
 
@@ -1235,7 +1220,6 @@
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
-/* Indicador visual de seleção */
 .equipe-config-card.selected::before {
     content: '✓';
     position: absolute;
@@ -1252,9 +1236,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    pointer-events: none; /* Evita que o título capture o clique */
+    pointer-events: none; 
 }
-/* Remove o checkbox antigo */
 .equipe-config-card h4 input[type="checkbox"] {
     display: none;
 }
@@ -1262,11 +1245,11 @@
 .equipe-config-details {
     display: flex;
     flex-direction: column;
-    gap: 12px; /* Espaçamento entre as seções */
-    pointer-events: none; /* Evita que os detalhes capturem o clique */
+    gap: 12px; 
+    pointer-events: none; 
 }
 .equipe-config-details input {
-    pointer-events: all; /* Permite interação com os inputs */
+    pointer-events: all; 
 }
 
 .equipe-config-card .pattern-inputs {
@@ -1307,8 +1290,8 @@
 
 
 .equipe-config-card .equipe-pattern-explanation {
-    margin-top: 4px; /* Pequeno ajuste na margem */
+    margin-top: 4px; 
     font-size: 0.9rem;
     color: var(--muted);
-    padding: 8px 0; /* Adiciona padding vertical */
+    padding: 8px 0; 
 }

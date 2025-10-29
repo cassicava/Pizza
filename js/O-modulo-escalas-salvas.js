@@ -1,10 +1,4 @@
-/**************************************
- * 🗂️ Escalas Salvas
- **************************************/
-
 let escalaParaEditar = null; 
-
-// NOVO: Estado para gerenciar os filtros da página
 const escalasSalvasState = {
     cargoId: null,
     ano: null,
@@ -44,7 +38,16 @@ function renderFiltroEscalasAno() {
         option.textContent = ano;
         anoSelect.appendChild(option);
     });
+    
     anoSelect.disabled = !cargoId || anosDisponiveis.length === 0;
+
+    if (!anoSelect.disabled && anosDisponiveis.length > 0) {
+        try {
+            anoSelect.showPicker();
+        } catch (e) {
+            console.warn("showPicker() not supported or failed.", e);
+        }
+    }
 }
 
 function renderEscalasList() {
@@ -167,6 +170,7 @@ async function excluirEscalaSalva(id) {
         $('#escalaSalvaView').classList.add('hidden');
         $('#listaEscalasContainer').classList.remove('hidden');
         escalaParaEditar = null;
+        currentEscala = null; 
         renderEscalasList();
     }
 }
@@ -179,12 +183,17 @@ function handleEscalasSalvasContainerClick(event) {
 }
 
 function initEscalasSalvasPage() {
-    $("#btnVoltarParaLista").onclick = () => {
-        $('#escalaSalvaView').classList.add('hidden');
-        $('#listaEscalasContainer').classList.remove('hidden');
-        escalaParaEditar = null;
-        currentEscala = null; 
-    };
+    const btnVoltar = $("#btnVoltarParaLista");
+    if (btnVoltar) {
+        btnVoltar.textContent = "< Voltar"; 
+        btnVoltar.style.width = 'fit-content'; 
+        btnVoltar.onclick = () => {
+            $('#escalaSalvaView').classList.add('hidden');
+            $('#listaEscalasContainer').classList.remove('hidden');
+            escalaParaEditar = null;
+            currentEscala = null;
+        };
+    }
     $("#btnEditarEscalaSalva").onclick = editEscalaSalva;
 
     $("#btnExcluirEscalaSalva").onclick = () => {
@@ -225,10 +234,9 @@ function initEscalasSalvasPage() {
         listaEscalas.addEventListener('click', handleEscalasSalvasContainerClick);
     }
 
-    // Chamadas iniciais
     renderFiltroEscalasCargo();
     renderFiltroEscalasAno();
-    renderEscalasList(); // Renderiza a mensagem inicial
+    renderEscalasList();
 }
 
 document.addEventListener('DOMContentLoaded', initEscalasSalvasPage);

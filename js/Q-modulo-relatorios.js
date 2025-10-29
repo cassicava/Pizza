@@ -68,7 +68,16 @@ function renderRelatoriosAnoSelect() {
         option.textContent = ano;
         anoSelect.appendChild(option);
     });
+    
     anoSelect.disabled = !cargoId || anosDisponiveis.length === 0;
+
+    if (!anoSelect.disabled && anosDisponiveis.length > 0) {
+        try {
+            anoSelect.showPicker();
+        } catch (e) {
+            console.warn("showPicker() not supported or failed.", e);
+        }
+    }
 }
 
 function renderRelatoriosEscalaList() {
@@ -184,14 +193,13 @@ function renderDashboard(metrics, title) {
     const headerContainer = $('#dashboard-header-container');
     if (!headerContainer) return;
 
-    // Ajuste no HTML para centralizar o título e garantir classes corretas para abas
     headerContainer.innerHTML = `
         <div class="card relatorios-header-card">
-             <button id="btn-voltar-relatorios" class="secondary button-voltar" style="margin: 0; flex-basis: 150px; justify-content: flex-start;">&lt; Voltar para Lista</button>
+             <button id="btn-voltar-relatorios" class="secondary button-voltar" style="margin: 0; flex-basis: auto; justify-content: flex-start; width: fit-content;">&lt; Voltar</button>
             <h2 id="dashboard-title" style="margin: 0; font-size: 1.5rem; text-align: center; flex-grow: 1;"></h2>
-            <div class="painel-tabs" id="dashboard-tabs" style="flex-basis: 350px; justify-content: flex-end;">
+            <div class="painel-tabs" id="dashboard-tabs" style="flex-basis: auto; justify-content: flex-end; width: fit-content;">
                 <button class="painel-tab-btn active" data-tab="visao-geral"><span>📊</span> Visão Geral</button>
-                <button class="painel-tab-btn" data-tab="analise-individual" disabled><span>🧑‍⚕️</span> Análise Individual</button>
+                <button class="painel-tab-btn" data-tab="analise-individual"><span>🧑‍⚕️</span> Análise Individual</button>
             </div>
         </div>
     `;
@@ -214,9 +222,6 @@ function renderDashboard(metrics, title) {
     }
 
     relatoriosState.funcionarioId = null;
-
-    const tabIndividual = $('#dashboard-tabs [data-tab="analise-individual"]');
-    if(tabIndividual) tabIndividual.disabled = true;
 
     renderDashboardKPIs(metrics);
     renderRankingTable(metrics);
@@ -241,6 +246,14 @@ function handleDashboardTabClick(e) {
     $$('#dashboard-tabs .painel-tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     $$('#dashboard-content .dashboard-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === btn.dataset.tab));
+
+    if (btn.dataset.tab === 'analise-individual' && !relatoriosState.funcionarioId) {
+        if (relatoriosState.currentMetrics && relatoriosState.currentMetrics.employeeMetrics.length > 0) {
+            const firstEmployee = [...relatoriosState.currentMetrics.employeeMetrics].sort((a, b) => a.nome.localeCompare(b.nome))[0];
+            relatoriosState.funcionarioId = firstEmployee.id;
+            renderIndividualAnalysis(relatoriosState.currentMetrics, relatoriosState.funcionarioId);
+        }
+    }
 }
 
 function renderRelatoriosPage() {
@@ -615,8 +628,8 @@ function renderRankingTable(metrics) {
 
 
 function renderAggregateCharts(metrics) {
-    const { totalTurnosCount, employeeMetrics } = metrics;
-    const { turnos } = store.getState();
+    const { totalTurnosCount, employeeMetrics, escala } = metrics;
+    const { turnos, cargos } = store.getState();
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const turnosMap = Object.fromEntries(allTurnos.map(t => [t.nome, t]));
 
@@ -633,19 +646,30 @@ function renderAggregateCharts(metrics) {
     }
 
     const folgasCanvas = $('#folgasChart');
-    if (folgasCanvas) {
-        const folgasCtx = folgasCanvas.getContext('2d');
-        folgasChartInstance = new Chart(folgasCtx, {
-            type: 'bar',
-            data: {
-                labels: employeeMetrics.map(e => e.nome),
-                datasets: [
-                    { label: 'Sábados de Folga', data: employeeMetrics.map(e => e.sabadosDeFolga), backgroundColor: 'rgba(168, 85, 247, 0.7)' },
-                    { label: 'Domingos de Folga', data: employeeMetrics.map(e => e.domingosDeFolga), backgroundColor: 'rgba(249, 115, 22, 0.7)' }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
-        });
+    const folgasContainer = folgasCanvas ? folgasCanvas.closest('.chart-container') : null;
+    if (folgasCanvas && folgasContainer) {
+        const cargo = cargos.find(c => c.id === escala.cargoId);
+        const diasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
+        const operaEmFDS = diasOperacionais.includes('sab') || diasOperacionais.includes('dom');
+
+        if (!operaEmFDS) {
+            folgasCanvas.style.display = 'none';
+            folgasContainer.innerHTML = '<p class="muted" style="text-align: center; padding: 40px 20px;">Este cargo não opera em fins de semana, portanto não há dados de folgas de FDS para exibir.</p>';
+        } else {
+            folgasCanvas.style.display = 'block';
+            const folgasCtx = folgasCanvas.getContext('2d');
+            folgasChartInstance = new Chart(folgasCtx, {
+                type: 'bar',
+                data: {
+                    labels: employeeMetrics.map(e => e.nome),
+                    datasets: [
+                        { label: 'Sábados de Folga', data: employeeMetrics.map(e => e.sabadosDeFolga), backgroundColor: 'rgba(168, 85, 247, 0.7)' },
+                        { label: 'Domingos de Folga', data: employeeMetrics.map(e => e.domingosDeFolga), backgroundColor: 'rgba(249, 115, 22, 0.7)' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+            });
+        }
     }
 }
 
@@ -657,7 +681,7 @@ function renderIndividualAnalysis(metrics, employeeId) {
     const tabBtn = $('#dashboard-tabs [data-tab="analise-individual"]');
     if(tabBtn) {
         tabBtn.disabled = false;
-        tabBtn.click();
+        if(!tabBtn.classList.contains('active')) tabBtn.click();
     }
 
     const container = $('#analise-individual-content');
@@ -672,35 +696,57 @@ function renderIndividualAnalysis(metrics, employeeId) {
         ? (saldo > 0 ? '+' : '') + saldo.toFixed(1) + 'h'
         : (saldo > 0 ? '+' : '') + saldo;
 
+    const selectOptions = metrics.employeeMetrics
+        .sort((a,b) => a.nome.localeCompare(b.nome))
+        .map(f => `<option value="${f.id}" ${f.id === employeeId ? 'selected' : ''}>${f.nome}</option>`).join('');
+
     container.innerHTML = `
-        <div class="analise-individual-grid">
-            <div class="analise-individual-col-left">
-                <div class="card">
-                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px;">
-                        <h3 class="config-card-title" style="border: none; padding: 0; margin: 0;">${employeeData.nome}</h3>
-                        <button id="print-individual-report-btn" class="secondary" title="Gerar PDF do Relatório Individual">🖨️ PDF</button>
-                     </div>
-                    <div class="kpi-grid">
-                        <div class="card kpi-card"><h4>Realizado</h4><p>${employeeData.medicaoCarga === 'horas' ? employeeData.horasTrabalhadas.toFixed(1) + 'h' : employeeData.turnosTrabalhados}</p></div>
-                        <div class="card kpi-card"><h4>Meta</h4><p>${employeeData.medicaoCarga === 'horas' ? employeeData.metaHoras.toFixed(1) + 'h' : employeeData.metaTurnos}</p></div>
-                        <div class="card kpi-card"><h4>Saldo</h4><p class="${saldo > 0 ? 'positive' : (saldo < 0 ? 'negative' : '')}">${saldoText}</p></div>
-                        <div class="card kpi-card"><h4>Ausências</h4><p>${ausenciasCount}</p></div>
-                    </div>
+        <div class="card" style="padding: 12px 16px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="flex-grow: 1; display: flex; align-items: center; gap: 8px;">
+                    <label for="relatorio-individual-select-func" class="form-label" style="margin: 0; flex-shrink: 0;">Selecionar Funcionário:</label>
+                    <select id="relatorio-individual-select-func" style="width: 100%; max-width: 350px;">${selectOptions}</select>
                 </div>
-                <div class="card" id="individual-turnos-table-container">
+                <button id="print-individual-report-btn" class="secondary" style="align-self: center; flex-shrink: 0;">🖨️ Baixar Relatório</button>
+            </div>
+        </div>
+
+        <div class="analise-individual-grid-3col">
+            <div class="analise-col-kpi">
+                <div class="card kpi-card"><h4>Realizado</h4><p>${employeeData.medicaoCarga === 'horas' ? employeeData.horasTrabalhadas.toFixed(1) + 'h' : employeeData.turnosTrabalhados}</p></div>
+                <div class="card kpi-card"><h4>Meta</h4><p>${employeeData.medicaoCarga === 'horas' ? employeeData.metaHoras.toFixed(1) + 'h' : employeeData.metaTurnos}</p></div>
+                <div class="card kpi-card"><h4>Saldo</h4><p class="${saldo > 0 ? 'positive' : (saldo < 0 ? 'negative' : '')}">${saldoText}</p></div>
+                <div class="card kpi-card"><h4>Horas Extras</h4><p class="${employeeData.horasExtras > 0 ? 'positive' : ''}">${employeeData.horasExtras.toFixed(1)}h</p></div>
+                <div class="card kpi-card"><h4>Ausências</h4><p>${ausenciasCount}</p></div>
+            </div>
+            
+            <div class="analise-col-calendar">
+                <div class="card">
+                    <h3 class="config-card-title" style="border-bottom: none; padding-bottom: 8px;">Calendário de Atividades</h3>
+                    <div class="analise-individual-calendar" id="individual-calendar-container"></div>
                 </div>
             </div>
-            <div class="analise-individual-col-right">
-                <div class="card">
-                    <h3 class="config-card-title">Calendário de Atividades</h3>
-                    <div class="analise-individual-calendar" id="individual-calendar-container"></div>
+            
+            <div class="analise-col-turnos">
+                <div class="card" id="individual-turnos-table-container">
+                </div>
+                <div class="card" id="individual-ausencias-card" style="margin-top: 16px;">
                 </div>
             </div>
         </div>
     `;
     parseEmojisInElement(container);
 
+    const selectFunc = $('#relatorio-individual-select-func');
+    if(selectFunc) {
+        selectFunc.onchange = (e) => {
+            relatoriosState.funcionarioId = e.target.value;
+            renderIndividualAnalysis(metrics, relatoriosState.funcionarioId);
+        };
+    }
+
     renderIndividualTurnosTable($('#individual-turnos-table-container'), employeeData);
+    renderIndividualAusenciasCard($('#individual-ausencias-card'), metrics.escala, employeeData);
     renderIndividualActivityCalendar(metrics.escala, employeeData);
 }
 
@@ -717,8 +763,8 @@ function renderIndividualTurnosTable(container, employeeData) {
 
     if (turnosDeTrabalho.length === 0) {
         container.innerHTML = `
-            <h3 class="config-card-title">Resumo de Turnos</h3>
-            <p class="muted" style="text-align:center;">Nenhum turno de trabalho alocado para este funcionário na escala.</p>`;
+            <h3 class="config-card-title">Turnos Realizados</h3>
+            <p class="muted" style="text-align:center;">Nenhum turno de trabalho alocado.</p>`;
         return;
     }
 
@@ -735,18 +781,98 @@ function renderIndividualTurnosTable(container, employeeData) {
     }).join('');
 
     container.innerHTML = `
-        <h3 class="config-card-title">Resumo de Turnos Realizados</h3>
+        <h3 class="config-card-title">Turnos Realizados</h3>
         <table class="table table-sm">
             <thead>
                 <tr>
                     <th>Tipo de Turno</th>
-                    <th>Quantidade</th>
+                    <th>Qtd.</th>
                 </tr>
             </thead>
             <tbody>
                 ${tableRows}
             </tbody>
         </table>
+    `;
+}
+
+function renderIndividualAusenciasCard(container, escala, employeeData) {
+    if (!container) return;
+
+    const slotsDoFunc = escala.slots.filter(s => s.assigned === employeeData.id);
+    const slotsAusencia = slotsDoFunc
+        .map(s => ({ ...s, turnoInfo: Object.values(TURNOS_SISTEMA_AUSENCIA).find(t => t.id === s.turnoId) }))
+        .filter(s => s.turnoInfo)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    const groupedAusencias = slotsAusencia.reduce((acc, slot) => {
+        const nome = slot.turnoInfo.nome === 'Afast.' ? 'Afastamento' : slot.turnoInfo.nome;
+        if (!acc[nome]) acc[nome] = [];
+        acc[nome].push(slot.date);
+        return acc;
+    }, {});
+
+    const feriadoFolgaDates = escala.feriados.filter(f => !f.trabalha).map(f => f.date);
+    if (feriadoFolgaDates.length > 0) {
+        const workedDates = new Set(escala.slots
+            .filter(s => s.assigned === employeeData.id && !Object.values(TURNOS_SISTEMA_AUSENCIA).some(t => t.id === s.turnoId))
+            .map(s => s.date)
+        );
+        
+        const actualFeriadoFolgas = feriadoFolgaDates.filter(date => !workedDates.has(date));
+        
+        if (actualFeriadoFolgas.length > 0) {
+            groupedAusencias['Feriado (Folga Geral)'] = actualFeriadoFolgas;
+        }
+    }
+
+    if (Object.keys(groupedAusencias).length === 0) {
+        container.innerHTML = `
+            <h3 class="config-card-title" style="font-size: 1.1rem;">Resumo de Ausências</h3>
+            <p class="muted" style="text-align:center; font-size: 0.9rem;">Nenhuma ausência registrada nesta escala.</p>`;
+        return;
+    }
+
+    let listHTML = '';
+    const tipoOrdem = { 'Férias': 1, 'Afastamento': 2, 'Folga': 3, 'Feriado (Folga Geral)': 4 };
+    const allTurnoInfos = { ...TURNOS_SISTEMA_AUSENCIA, 'Feriado (Folga Geral)': { nome: 'Feriado (Folga Geral)', cor: '#eef2ff' } };
+
+    const sortedTipos = Object.keys(groupedAusencias).sort((a, b) => (tipoOrdem[a] || 99) - (tipoOrdem[b] || 99));
+
+    for (const tipoNome of sortedTipos) {
+        const dates = groupedAusencias[tipoNome];
+        const ranges = dates.reduce((acc, date) => {
+            if (acc.length > 0 && addDays(acc[acc.length - 1].end, 1) === date) {
+                acc[acc.length - 1].end = date;
+            } else {
+                acc.push({ start: date, end: date });
+            }
+            return acc;
+        }, []);
+        
+        const turnoInfo = Object.values(allTurnoInfos).find(t => t.nome === tipoNome);
+        const cor = turnoInfo.cor || '#eee';
+        
+        listHTML += ranges.map(range => {
+            const dateStr = range.start === range.end
+                ? new Date(range.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                : `${new Date(range.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${new Date(range.end + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+            
+            return `
+                <li style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 4px;">
+                    <span class="color-dot" style="background-color: ${cor}; width: 12px; height: 12px; flex-shrink: 0;"></span>
+                    <span style="font-weight: 500;">${tipoNome}:</span>
+                    <span class="muted" style="margin-left: auto;">${dateStr}</span>
+                </li>
+            `;
+        }).join('');
+    }
+
+    container.innerHTML = `
+        <h3 class="config-card-title" style="font-size: 1.1rem;">Resumo de Ausências</h3>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            ${listHTML}
+        </ul>
     `;
 }
 

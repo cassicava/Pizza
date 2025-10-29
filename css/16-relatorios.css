@@ -25,36 +25,35 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 24px;
-    gap: 16px; /* Added gap for spacing */
+    gap: 16px;
 }
 
-/* Ensure tabs use the correct styling */
 #dashboard-tabs.painel-tabs {
     background-color: var(--bg);
     border: none;
-    border-radius: 12px;
+    border-radius: 999px;
     padding: 4px;
-    width: auto; /* Allow shrinking/growing */
-    flex-shrink: 0; /* Prevent shrinking too much */
+    width: fit-content;
+    flex-shrink: 0;
 }
 
 #dashboard-tabs .painel-tab-btn {
     border: none;
     background: transparent;
     padding: 8px 16px;
-    border-radius: 8px; /* Correct border-radius for inner buttons */
+    border-radius: 999px;
     font-weight: 500;
     color: var(--muted);
     cursor: pointer;
     transition: all 0.2s ease-in-out;
-    display: inline-flex; /* Ensure icon and text align */
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.9rem; /* Slightly smaller font */
+    font-size: 0.9rem;
 }
 
 #dashboard-tabs .painel-tab-btn span {
-    font-size: 1.1rem; /* Adjust icon size */
+    font-size: 1.1rem;
     line-height: 1;
 }
 
@@ -96,14 +95,21 @@
     color: var(--muted);
 }
 
-.analise-individual-grid .kpi-card {
+.analise-col-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 24px;
+}
+.analise-col-kpi .kpi-card {
     padding: 12px;
 }
-.analise-individual-grid .kpi-card h4 {
+.analise-col-kpi .kpi-card h4 {
     font-size: 0.8rem;
     margin-bottom: 4px;
 }
-.analise-individual-grid .kpi-card p {
+.analise-col-kpi .kpi-card p {
     font-size: 1.8rem;
 }
 
@@ -127,24 +133,36 @@
     display: block;
 }
 
+#dashboard-content .grid-2-col {
+    align-items: stretch;
+}
+#dashboard-content .grid-2-col > .card {
+    display: flex;
+    flex-direction: column;
+}
+
 .chart-container {
     position: relative;
     width: 100%;
     height: 100%;
+    flex-grow: 1;
+    min-height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.chart-container > p.muted {
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 300px;
 }
 
-.analise-individual-grid {
+
+.analise-individual-grid-3col {
     display: grid;
-    grid-template-columns: 380px 1fr;
-    gap: 24px;
-    align-items: flex-start;
-}
-.analise-individual-col-left {
-    position: sticky;
-    top: 24px;
-    display: flex;
-    flex-direction: column;
+    grid-template-columns: 200px 1.5fr 1fr;
     gap: 16px;
+    align-items: flex-start;
 }
 
 .analise-individual-calendar {
@@ -181,23 +199,25 @@
     .kpi-grid {
         grid-template-columns: 1fr 1fr;
     }
-    .analise-individual-grid {
+    .analise-individual-grid-3col {
         grid-template-columns: 1fr;
     }
-    .analise-individual-col-left {
+    .analise-col-kpi {
         position: static;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
     }
     .relatorios-header-card {
-        flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        flex-wrap: wrap;
     }
     #dashboard-title {
-        order: -1; /* Move title to top on wrap */
-        width: 100%; /* Take full width */
-        flex-basis: auto; /* Reset basis */
-        margin-bottom: 12px; /* Add space below title */
+        order: -1;
+        width: 100%;
+        flex-basis: auto;
+        margin-bottom: 12px;
     }
      #btn-voltar-relatorios, #dashboard-tabs {
-         flex-basis: auto; /* Allow shrinking/growing */
+         flex-basis: auto;
      }
 }
 
@@ -212,7 +232,7 @@
     .relatorios-header-card {
         flex-direction: column;
         gap: 12px;
-        align-items: center; /* Center items vertically */
+        align-items: center;
     }
     #dashboard-title {
         order: -1;
@@ -221,11 +241,11 @@
         margin-bottom: 12px;
     }
      #btn-voltar-relatorios {
-         align-self: flex-start; /* Align button left */
-         margin-bottom: 8px; /* Space below button */
+         align-self: flex-start;
+         margin-bottom: 8px;
      }
      #dashboard-tabs {
          width: 100%;
-         justify-content: center; /* Center tabs */
+         justify-content: center;
      }
 }
