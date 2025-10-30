@@ -1,8 +1,3 @@
-/**************************************
- * ✨ Lógica da Tela de Boas-Vindas
- **************************************/
-
-// --- Cache de Elementos DOM ---
 const welcomeOverlay = $("#welcome-overlay");
 const nomeInput = $("#welcome-nome-input");
 const personalizacaoNextBtn = $("#welcome-personalizacao-next");
@@ -10,8 +5,6 @@ const finishBtn = $("#welcome-finish-btn");
 const termsCard = $("#welcome-terms-card");
 const privacyCard = $("#welcome-privacy-card");
 
-
-// --- Estado do Onboarding ---
 let onboardingState = {
     currentStep: 1,
     nome: '',
@@ -21,7 +14,6 @@ let termsAcceptedState = {
     privacy: false,
 };
 
-// --- Funções de Validação e Controle ---
 function validateWelcomeStep2() {
     const nomeValido = nomeInput.value.trim() !== '';
     personalizacaoNextBtn.disabled = !nomeValido;
@@ -92,7 +84,7 @@ async function handleWelcomeImport() {
         const reader = new FileReader();
         reader.onload = async (event) => {
             showLoader("Importando seus dados...");
-            await new Promise(res => setTimeout(res, 50)); // Permite que o loader apareça
+            await new Promise(res => setTimeout(res, 50)); 
 
             try {
                 const importedData = JSON.parse(event.target.result);
@@ -107,6 +99,8 @@ async function handleWelcomeImport() {
                     }
                 }
 
+                store.dispatch('LOAD_STATE');
+
                 localStorage.setItem('ge_onboarding_complete', 'true');
                 localStorage.removeItem('ge_onboarding_progress');
                 
@@ -114,7 +108,18 @@ async function handleWelcomeImport() {
                 showToast("Dados importados com sucesso! Bem-vindo(a) de volta.", 'success');
                 
                 welcomeOverlay.classList.remove('visible');
-                initMainApp();
+                
+                welcomeOverlay.addEventListener('transitionend', () => {
+                    welcomeOverlay.style.display = 'none';
+                    
+                    setupAppListeners();
+                    
+                    renderRouter('LOAD_STATE');
+
+                    go("home", { force: true });
+
+                }, { once: true });
+
 
             } catch (error) {
                 console.error("Erro ao importar dados na tela de boas-vindas:", error);
@@ -147,20 +152,15 @@ function finishOnboarding() {
     localStorage.setItem('ge_onboarding_complete', 'true');
     localStorage.removeItem('ge_onboarding_progress');
     
-    // Anima a saída da tela de boas-vindas
     welcomeOverlay.classList.remove('visible');
 
-    // Após a animação de saída, inicializa a interface principal sem a splash screen
     welcomeOverlay.addEventListener('transitionend', () => {
-        welcomeOverlay.style.display = 'none'; // Garante que será removido do fluxo
+        welcomeOverlay.style.display = 'none'; 
         
-        // Inicializa os listeners principais da aplicação
         setupAppListeners();
         
-        // Dispara o renderizador inicial para carregar os dados na UI
         renderRouter('LOAD_STATE');
 
-        // Navega diretamente para a página inicial, forçando a animação dos cards
         go("home", { force: true });
         
     }, { once: true });
@@ -173,7 +173,6 @@ function initWelcomeScreen() {
     
     showStep(onboardingState.currentStep || 1);
 
-    // --- Event Listeners ---
     $("#welcome-start-fresh").onclick = () => showStep(2, 'forward');
     $("#welcome-import-backup").onclick = handleWelcomeImport;
     personalizacaoNextBtn.onclick = () => showStep(3, 'forward');
@@ -211,7 +210,6 @@ function initWelcomeScreen() {
         saveOnboardingProgress();
     };
 
-    // Estado inicial dos botões
     checkAllTermsAccepted();
     validateWelcomeStep2();
 }

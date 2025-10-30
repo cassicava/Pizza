@@ -33,13 +33,13 @@
 
 .home-card-wrapper {
     position: relative;
-    height: 100%; /* Faz o wrapper ocupar a altura da célula da grid */
+    height: 100%;
 }
 
 .home-card {
-    display: flex; /* Alterado para flex para melhor controle interno */
+    display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* Alinha conteúdo no topo */
+    justify-content: flex-start;
     text-decoration: none;
     color: inherit;
     cursor: pointer;
@@ -47,14 +47,14 @@
     border: 1px solid rgba(255, 255, 255, 0.4);
     position: relative;
     overflow: hidden;
-    padding: 16px 20px; /* Ajustado padding */
+    padding: 16px 20px;
     text-align: left;
-    height: 100%; /* Faz o card ocupar a altura do wrapper */
-    box-sizing: border-box; /* Garante que padding não aumente o tamanho */
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .home-card h3 {
-    margin: 0 0 8px 0; /* Aumenta margem inferior */
+    margin: 0 0 8px 0;
     position: relative;
     z-index: 2;
     display: flex;
@@ -62,7 +62,7 @@
     justify-content: flex-start;
     gap: 8px;
     font-size: 1.1rem;
-    flex-shrink: 0; /* Impede que o título encolha */
+    flex-shrink: 0;
 }
 
 .home-card-description {
@@ -73,7 +73,7 @@
     position: relative;
     z-index: 2;
     padding: 0;
-    flex-grow: 1; /* Permite que a descrição ocupe espaço restante */
+    flex-grow: 1;
 }
 
 .home-card-description-small {
@@ -84,24 +84,23 @@
     position: relative;
     z-index: 2;
     padding: 0;
-    flex-grow: 1; /* Permite que a descrição ocupe espaço restante */
+    flex-grow: 1;
 }
 
-/* Centraliza conteúdo apenas nos cards da coluna lateral */
 .home-column-side .home-card {
     text-align: center;
-    align-items: center; /* Centraliza itens na coluna */
-    justify-content: center; /* Centraliza verticalmente o conteúdo */
-    padding: 16px; /* Padding igual para centralizar melhor */
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
 }
 .home-column-side .home-card h3 {
     justify-content: center;
     font-size: 1rem;
-    margin-bottom: 4px; /* Reduz margem no título centralizado */
+    margin-bottom: 4px;
 }
 .home-column-side .home-card .home-card-description-small {
     text-align: center;
-    flex-grow: 0; /* Impede que cresça demais */
+    flex-grow: 0;
 }
 
 .home-card-wrapper:hover .home-card {
@@ -173,7 +172,7 @@
     z-index: -2;
     background: linear-gradient(to right, #00BFFF, #FF00FF, #FF0000, #FF00FF, #00BFFF);
     background-size: 300% 100%;
-    animation: animated-gradient-background 6s linear infinite;
+    animation: animated-gradient-text 6s linear infinite;
     border-radius: var(--radius);
 }
 
@@ -190,8 +189,9 @@
 }
 
 .card-animated-border.card-animated-border--cat-colors::before {
-    background: linear-gradient(to right, #f97316, #fafafa, #000000, #fafafa, #f97316);
+    background: linear-gradient(to right, #f97316, #000000, #fafafa, #f97316);
     background-size: 300% 100%;
+    animation: animated-gradient-text 6s linear infinite;
 }
 
 .card-grid {

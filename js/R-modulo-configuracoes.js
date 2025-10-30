@@ -30,8 +30,7 @@ function saveConfig() {
 
 async function exportAllData(isAutoBackup = false) {
     if (!isAutoBackup) {
-        showLoader("Preparando arquivo de backup...");
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 50));
     }
 
     let success = false;
@@ -64,10 +63,10 @@ async function exportAllData(isAutoBackup = false) {
     } catch (error) {
         console.error("Erro ao exportar dados:", error);
         errorMessage = "Erro ao gerar backup.";
+        success = false;
     } finally {
         if (!isAutoBackup) {
-            hideLoader();
-            requestAnimationFrame(() => showDownloadFeedbackToast(success, errorMessage));
+            showDownloadToast(success, errorMessage);
         }
     }
 }
@@ -90,8 +89,8 @@ async function importAllData() {
                 if (!importedData || typeof importedData !== 'object') {
                     throw new Error("Arquivo inválido. O conteúdo não é um objeto JSON válido.");
                 }
-                const requiredKeys = ['turnos', 'cargos', 'funcionarios', 'equipes', 'escalas', 'config'];
-                const missingKeys = requiredKeys.filter(key => !Array.isArray(importedData[key]) && key !== 'config');
+                const requiredKeys = ['turnos', 'cargos', 'funcs', 'equipes', 'escalas', 'config'];
+                const missingKeys = requiredKeys.filter(key => !importedData.hasOwnProperty(key));
                 if (missingKeys.length > 0) {
                     throw new Error(`Arquivo de backup inválido. Faltam dados essenciais: ${missingKeys.join(', ')}.`);
                 }
@@ -99,12 +98,10 @@ async function importAllData() {
                      throw new Error(`Arquivo de backup inválido. A seção 'config' está ausente ou mal formatada.`);
                 }
 
-                const { confirmed } = await showPromptConfirm({
+                const { confirmed } = await showConfirm({
                     title: "Confirmar Importação?",
-                    message: "<strong>ATENÇÃO:</strong> Isto irá substituir TODOS os seus dados atuais (turnos, cargos, funcionários, etc.) pelos dados do arquivo. Esta ação é IRREVERSÍVEL.",
-                    promptLabel: `Para confirmar, digite a palavra "IMPORTAR":`,
-                    requiredWord: "IMPORTAR",
-                    confirmText: "Substituir Dados Atuais"
+                    message: "<strong>ATENÇÃO:</strong> Isto irá substituir TODOS os seus dados atuais (turnos, cargos, funcionários, etc.) pelos dados do arquivo. Esta ação é IRREVERSÍVEL.<br><br><strong>Deseja continuar?</strong>",
+                    confirmText: "Sim, Substituir Dados"
                 });
 
                 if (confirmed) {
@@ -389,12 +386,10 @@ function initConfiguracoesPage() {
     const btnReset = $("#btnHardReset");
     if(btnReset){
         btnReset.onclick = async () => {
-            const { confirmed } = await showPromptConfirm({
+            const { confirmed } = await showConfirm({
                 title: "APAGAR TODOS OS DADOS?",
-                message: "Esta ação é IRREVERSÍVEL. Todos os turnos, cargos, funcionários, equipes e escalas salvas serão permanentemente excluídos deste programa.",
-                promptLabel: `Para confirmar, digite a palavra "APAGAR" no campo abaixo:`,
-                requiredWord: "APAGAR",
-                confirmText: "Confirmar Exclusão Definitiva"
+                message: "Esta ação é IRREVERSÍVEL. Todos os turnos, cargos, funcionários, equipes e escalas salvas serão permanentemente excluídos deste programa.<br><br><strong>Tem certeza absoluta?</strong>",
+                confirmText: "Sim, Apagar Tudo"
             });
 
             if (confirmed) {

@@ -145,7 +145,7 @@ function generateVisaoGeralPDF(escala) {
             const func = funcsDaEscala[data.row.index];
             const date = dateRange[data.column.index - 1];
 
-            if (data.section === 'body' && data.column.index > 0 && func && date) { // Added checks for func and date
+            if (data.section === 'body' && data.column.index > 0 && func && date) { 
                 const d = new Date(date + 'T12:00:00');
                 const diaSemanaId = DIAS_SEMANA[d.getUTCDay()].id;
                 const feriadoFolga = escala.feriados.find(f => f.date === date && !f.trabalha);
@@ -177,7 +177,7 @@ function generateVisaoGeralPDF(escala) {
                 }
 
                 if (bgColor) {
-                    doc.setFillColor(bgColor); // Accepts hex string directly
+                    doc.setFillColor(bgColor); 
                     doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
                 }
 
@@ -716,21 +716,20 @@ function generateIndividualReportPDF(escala, funcionarioId) {
                 let siglaColor = [0];
 
                 if (feriadoFolga) {
-                    fillColor = [238, 242, 255]; // Light blue for FG
+                    fillColor = [238, 242, 255]; 
                     sigla = 'FG';
-                    siglaColor = [67, 56, 202]; // Darker blue text
+                    siglaColor = [67, 56, 202]; 
                 } else if (isCargoDiaNaoUtil && !slot) {
-                     fillColor = [241, 245, 249]; // Light gray hatch
+                     fillColor = [241, 245, 249]; 
                      strokeColor = [226, 232, 240];
                 } else if (turno) {
-                    fillColor = turno.cor || '#eee'; // Turno color
+                    fillColor = turno.cor || '#eee'; 
                     sigla = turno.sigla;
                     const contrast = getContrastingTextColor(turno.cor);
-                    siglaColor = contrast === '#FFFFFF' ? [255] : [0]; // Black or White text
-                    dayNumberColor = contrast === '#FFFFFF' ? [255, 255, 255, 0.7] : [150]; // White or Gray number
+                    siglaColor = contrast === '#FFFFFF' ? [255] : [0]; 
+                    dayNumberColor = contrast === '#FFFFFF' ? [255, 255, 255, 0.7] : [150]; 
                 }
 
-                // Correctly use setFillColor with hex or array
                 if (typeof fillColor === 'string') {
                     doc.setFillColor(fillColor);
                 } else {
@@ -829,11 +828,15 @@ async function initPdfExport() {
             try {
                 await exportAction(escala);
                 hideLoader();
-                requestAnimationFrame(() => showDownloadToast(true));
+                setTimeout(() => {
+                    requestAnimationFrame(() => showDownloadToast(true));
+                }, 500);
             } catch (e) {
                 console.error("Erro durante a exportação:", e);
                 hideLoader();
-                requestAnimationFrame(() => showDownloadToast(false, e.message));
+                setTimeout(() => {
+                    requestAnimationFrame(() => showDownloadToast(false, e.message));
+                }, 500);
             }
         });
     };
