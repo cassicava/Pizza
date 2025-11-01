@@ -1,14 +1,8 @@
-/**************************************
- * 🏥 Cargos
- **************************************/
-
 let editingCargoId = null;
 let lastSavedCargoId = null;
 
-// Referência à função de troca de abas
 let switchCargosTab = () => {};
 
-// --- Cache de Elementos DOM ---
 const pageCargos = $("#page-cargos");
 const cargoNomeInput = $("#cargoNome");
 const filtroCargosInput = $("#filtroCargos");
@@ -25,15 +19,16 @@ const btnCancelarCargo = $("#btnCancelarCargo");
 const tblCargosBody = $("#tblCargos tbody");
 const formTabButtonCargos = $('.painel-tab-btn[data-tab="formulario"]', pageCargos);
 
-// NOVOS ELEMENTOS
 const cargoMaxDiasConsecutivosInput = $("#cargoMaxDiasConsecutivos");
 const cargoMinFolgasSabadosInput = $("#cargoMinFolgasSabados");
 const cargoMinFolgasDomingosInput = $("#cargoMinFolgasDomingos");
-const cargoMaxDiasLabel = $("label[for='cargoMaxDiasConsecutivos']"); // Referência à label para atualização
+const cargoMaxDiasLabel = $("label[for='cargoMaxDiasConsecutivos']");
+
+const filtroCargosArquivadosInput = $("#filtroCargosArquivados");
+const tblCargosArquivadosBody = $("#tblCargosArquivados tbody");
+
 
 function setCargoFormDirty(isDirty) { dirtyForms.cargos = isDirty; }
-
-// --- LÓGICA DO FORMULÁRIO ---
 
 [cargoNomeInput, cargoMaxDiasConsecutivosInput, cargoMinFolgasSabadosInput, cargoMinFolgasDomingosInput].forEach(input => {
     input.addEventListener("input", (e) => {
@@ -41,7 +36,6 @@ function setCargoFormDirty(isDirty) { dirtyForms.cargos = isDirty; }
         if (inputEl === cargoNomeInput && inputEl.value.length > 0) {
             inputEl.value = inputEl.value.charAt(0).toUpperCase() + inputEl.value.slice(1);
         }
-        // Garante que o valor máximo não seja ultrapassado ao digitar
         if (inputEl === cargoMaxDiasConsecutivosInput && inputEl.max) {
              if (parseInt(inputEl.value) > parseInt(inputEl.max)) {
                 inputEl.value = inputEl.max;
@@ -56,22 +50,26 @@ function setCargoFormDirty(isDirty) { dirtyForms.cargos = isDirty; }
 filtroCargosInput.addEventListener("input", () => {
     renderCargos();
 });
+filtroCargosArquivadosInput.addEventListener("input", () => {
+    renderCargosArquivados();
+});
+
 
 function renderTurnosSelects() {
     const { turnos } = store.getState();
     cargoTurnosContainer.innerHTML = '';
     
-    const turnosEditaveis = turnos.filter(t => !t.isSystem);
+    const turnosAtivos = turnos.filter(t => !t.isSystem && t.status === 'ativo');
 
-    if (turnosEditaveis.length === 0) {
+    if (turnosAtivos.length === 0) {
         const p = document.createElement('p');
         p.className = 'muted';
-        p.innerHTML = `Nenhum turno cadastrado. <a href="#" onclick="go('turnos')">Cadastre um turno primeiro</a>.`;
+        p.innerHTML = `Nenhum turno ativo cadastrado. <a href="#" onclick="go('turnos')">Cadastre ou reative um turno primeiro</a>.`;
         cargoTurnosContainer.appendChild(p);
         return;
     }
 
-    const turnosOrdenados = [...turnosEditaveis].sort((a, b) => a.nome.localeCompare(b.nome));
+    const turnosOrdenados = [...turnosAtivos].sort((a, b) => a.nome.localeCompare(b.nome));
 
     turnosOrdenados.forEach(t => {
         const lbl = document.createElement("label");
@@ -85,35 +83,31 @@ function renderTurnosSelects() {
     });
 }
 
-// --- NOVA FUNÇÃO PARA ATUALIZAR ESTADO DAS REGRAS DE ALOCAÇÃO ---
 function updateAllocationRulesState() {
     const diasSelecionados = $$('input[name="cargoDias"]:checked').map(chk => chk.value);
     const trabalhaSabado = diasSelecionados.includes('sab');
     const trabalhaDomingo = diasSelecionados.includes('dom');
 
-    // Atualiza Max Dias Consecutivos
     let maxDiasPossivel = 7;
     if (!trabalhaSabado && !trabalhaDomingo) maxDiasPossivel = 5;
     else if (!trabalhaSabado || !trabalhaDomingo) maxDiasPossivel = 6;
     
     cargoMaxDiasConsecutivosInput.max = maxDiasPossivel;
     if (parseInt(cargoMaxDiasConsecutivosInput.value) > maxDiasPossivel) {
-        cargoMaxDiasConsecutivosInput.value = maxDiasPossivel; // Ajusta se o valor atual for maior que o novo máximo
+        cargoMaxDiasConsecutivosInput.value = maxDiasPossivel;
     }
     cargoMaxDiasLabel.textContent = `Máx. dias de trabalho consecutivos (máx: ${maxDiasPossivel})`;
 
-    // Atualiza Folgas Sábado
     cargoMinFolgasSabadosInput.disabled = !trabalhaSabado;
     if (!trabalhaSabado) {
         cargoMinFolgasSabadosInput.value = 0;
-        validateInput(cargoMinFolgasSabadosInput, true); // Marca como válido se desabilitado
+        validateInput(cargoMinFolgasSabadosInput, true);
     }
 
-    // Atualiza Folgas Domingo
     cargoMinFolgasDomingosInput.disabled = !trabalhaDomingo;
     if (!trabalhaDomingo) {
         cargoMinFolgasDomingosInput.value = 0;
-        validateInput(cargoMinFolgasDomingosInput, true); // Marca como válido se desabilitado
+        validateInput(cargoMinFolgasDomingosInput, true);
     }
 }
 
@@ -131,7 +125,7 @@ function renderDiasSemanaCargo() {
         container.appendChild(lbl);
         lbl.querySelector('input').addEventListener('change', () => {
             updateCargoRegrasExplicacao();
-            updateAllocationRulesState(); // Chama a nova função de atualização
+            updateAllocationRulesState();
             setCargoFormDirty(true);
         });
     });
@@ -244,14 +238,15 @@ function renderCargos() {
     
     const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
 
-    const cargosFiltrados = cargos.filter(c => c.nome.toLowerCase().includes(filtro));
+    const cargosAtivos = cargos.filter(c => c.status === 'ativo');
+    const cargosFiltrados = cargosAtivos.filter(c => c.nome.toLowerCase().includes(filtro));
     const cargosOrdenados = [...cargosFiltrados].sort((a, b) => a.nome.localeCompare(b.nome));
 
     if (cargosOrdenados.length === 0) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 5; // Atualizado para 5 colunas
-        if (filtro.length === 0 && cargos.length === 0) {
+        cell.colSpan = 5;
+        if (filtro.length === 0 && cargosAtivos.length === 0) {
             cell.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏥</div>
                 <h3>Nenhum Cargo Cadastrado</h3>
                 <p>Crie cargos e associe turnos a eles para poder cadastrar funcionários.</p>
@@ -268,8 +263,12 @@ function renderCargos() {
 
 
     cargosOrdenados.forEach(c => {
-        const numFuncionarios = funcionarios.filter(f => f.cargoId === c.id).length;
-        const nomesTurnos = (c.turnosIds || []).map(id => turnosMap[id]?.nome || "—").join(", ") || 'Nenhum';
+        const numFuncionarios = funcionarios.filter(f => f.cargoId === c.id && f.status === 'ativo').length;
+        const nomesTurnos = (c.turnosIds || [])
+            .map(id => turnosMap[id])
+            .filter(Boolean)
+            .map(t => t.nome)
+            .join(", ") || 'Nenhum';
 
         let funcionamento = 'Não definido';
         if (c.regras && c.regras.dias.length > 0) {
@@ -284,7 +283,6 @@ function renderCargos() {
             funcionamento = `${dias} (${horario})`;
         }
         
-        // Formata o resumo das regras individuais
         let regrasResumo = 'N/D';
         if (c.regras) {
             regrasResumo = `Max: ${c.regras.maxDiasConsecutivos || '?'}d / Sáb: ${c.regras.minFolgasSabados || '0'} / Dom: ${c.regras.minFolgasDomingos || '0'}`;
@@ -301,7 +299,7 @@ function renderCargos() {
             <td style="font-size: 0.8rem; white-space: nowrap;">${regrasResumo}</td> 
             <td>
                 <button class="secondary" data-action="edit" data-id="${c.id}" aria-label="Editar o cargo ${c.nome}">✏️ Editar</button>
-                <button class="danger" data-action="delete" data-id="${c.id}" aria-label="Excluir o cargo ${c.nome}">🔥 Excluir</button>
+                <button class="danger" data-action="archive" data-id="${c.id}" aria-label="Arquivar o cargo ${c.nome}">🗃️ Arquivar</button>
             </td>
         `;
         tblCargosBody.appendChild(tr);
@@ -317,6 +315,71 @@ function renderCargos() {
         lastSavedCargoId = null;
     }
 }
+
+function renderCargosArquivados() {
+    const { cargos, turnos } = store.getState();
+    const filtro = filtroCargosArquivadosInput.value.toLowerCase();
+    tblCargosArquivadosBody.innerHTML = "";
+    
+    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
+
+    const cargosArquivados = cargos.filter(c => c.status === 'arquivado');
+    const cargosFiltrados = cargosArquivados.filter(c => c.nome.toLowerCase().includes(filtro));
+    const cargosOrdenados = [...cargosFiltrados].sort((a, b) => a.nome.localeCompare(b.nome));
+
+    if (cargosOrdenados.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 4;
+        if (filtro.length === 0 && cargosArquivados.length === 0) {
+            cell.innerHTML = `<div class="empty-state" style="padding: 24px;"><div class="empty-state-icon">🗃️</div>
+                <h3>Nenhum Cargo Arquivado</h3>
+                <p>Cargos arquivados aparecerão aqui.</p>
+            </div>`;
+        } else {
+            cell.textContent = `Nenhum cargo arquivado encontrado com o termo "${filtro}".`;
+            cell.className = 'muted center';
+        }
+        row.appendChild(cell);
+        tblCargosArquivadosBody.appendChild(row);
+        parseEmojisInElement(tblCargosArquivadosBody);
+        return;
+    }
+
+    cargosOrdenados.forEach(c => {
+        const nomesTurnos = (c.turnosIds || [])
+            .map(id => turnosMap[id])
+            .filter(Boolean)
+            .map(t => t.nome)
+            .join(", ") || 'Nenhum';
+
+        let funcionamento = 'Não definido';
+        if (c.regras && c.regras.dias.length > 0) {
+            const dias = c.regras.dias.map(d => DIAS_SEMANA.find(dia => dia.id === d)?.abrev).join(', ') || '';
+            const tipoHorario = c.regras.tipoHorario || 'automatico';
+            let horario = 'N/D';
+            if (tipoHorario === '24h') horario = '24h';
+            else if (c.regras.inicio && c.regras.fim) horario = `${c.regras.inicio}-${c.regras.fim}`;
+            funcionamento = `${dias} (${horario})`;
+        }
+        
+        const tr = document.createElement("tr");
+        tr.dataset.cargoId = c.id;
+        tr.style.opacity = '0.7';
+        
+        tr.innerHTML = `
+            <td>${c.nome}</td>
+            <td>${nomesTurnos}</td>
+            <td>${funcionamento}</td>
+            <td>
+                <button class="secondary" data-action="unarchive" data-id="${c.id}" aria-label="Reativar o cargo ${c.nome}">🔄 Reativar</button>
+            </td>
+        `;
+        tblCargosArquivadosBody.appendChild(tr);
+    });
+    parseEmojisInElement(tblCargosArquivadosBody);
+}
+
 
 function validateCargoForm() {
     let isValid = true;
@@ -350,7 +413,6 @@ function validateCargoForm() {
         validateInput(cargoFimInput, true);
     }
     
-    // Validação dos novos campos (verifica apenas se não estão desabilitados)
     if (!cargoMaxDiasConsecutivosInput.disabled && !validateInput(cargoMaxDiasConsecutivosInput)) isValid = false;
     if (!cargoMinFolgasSabadosInput.disabled && !validateInput(cargoMinFolgasSabadosInput)) isValid = false;
     if (!cargoMinFolgasDomingosInput.disabled && !validateInput(cargoMinFolgasDomingosInput)) isValid = false;
@@ -369,14 +431,20 @@ async function saveCargoFromForm() {
     const nome = cargoNomeInput.value.trim();
     const turnosIds = $$('input[name="cargoTurno"]:checked').map(chk => chk.value);
     
-    const { cargos, equipes, funcionarios } = store.getState();
+    const { cargos, equipes, funcionarios, turnos } = store.getState();
     if (cargos.some(c => c.nome.toLowerCase() === nome.toLowerCase() && c.id !== editingCargoId)) {
         return showToast("Já existe um cargo com este nome.");
     }
     
     if (editingCargoId) {
         const cargoOriginal = cargos.find(c => c.id === editingCargoId);
-        const turnosRemovidosIds = cargoOriginal.turnosIds.filter(id => !turnosIds.includes(id));
+        
+        const turnosAtivosStore = turnos.filter(t => t.status === 'ativo').map(t => t.id);
+        const turnosAtivosSelecionados = turnosIds.filter(id => turnosAtivosStore.includes(id));
+
+        const turnosRemovidosIds = cargoOriginal.turnosIds
+            .filter(id => turnosAtivosStore.includes(id)) 
+            .filter(id => !turnosAtivosSelecionados.includes(id));
         
         if (turnosRemovidosIds.length > 0) {
             const equipesAfetadas = equipes.filter(e => e.cargoId === editingCargoId && turnosRemovidosIds.includes(e.turnoId));
@@ -392,6 +460,7 @@ async function saveCargoFromForm() {
         
         const funcsAfetados = funcionarios.filter(f => 
             f.cargoId === editingCargoId && 
+            f.status === 'ativo' &&
             turnosRemovidosIds.some(turnoId => f.disponibilidade && f.disponibilidade[turnoId])
         );
 
@@ -403,21 +472,28 @@ async function saveCargoFromForm() {
             return;
         }
     }
+    
+    const turnosArquivadosNoCargo = editingCargoId 
+        ? cargos.find(c => c.id === editingCargoId).turnosIds.filter(id => !turnos.some(t => t.id === id && t.status === 'ativo'))
+        : [];
+    
+    const turnosIdsFinais = [...new Set([...turnosIds, ...turnosArquivadosNoCargo])];
+
 
     const cargoData = {
         id: editingCargoId || uid(),
         nome,
-        turnosIds,
+        turnosIds: turnosIdsFinais,
         regras: {
             dias: $$('input[name="cargoDias"]:checked').map(chk => chk.value),
             tipoHorario: cargoTipoHorarioHiddenInput.value,
             inicio: cargoInicioInput.value,
             fim: cargoFimInput.value,
-            // Salvando os novos valores
             maxDiasConsecutivos: parseInt(cargoMaxDiasConsecutivosInput.value, 10) || 6,
-            minFolgasSabados: parseInt(cargoMinFolgasSabadosInput.value, 10) || 0, // Padrão 0 se desabilitado
-            minFolgasDomingos: parseInt(cargoMinFolgasDomingosInput.value, 10) || 0, // Padrão 0 se desabilitado
-        }
+            minFolgasSabados: parseInt(cargoMinFolgasSabadosInput.value, 10) || 0,
+            minFolgasDomingos: parseInt(cargoMinFolgasDomingosInput.value, 10) || 0,
+        },
+        status: 'ativo'
     };
 
     lastSavedCargoId = cargoData.id;
@@ -433,7 +509,7 @@ function editCargoInForm(id) {
     const cargo = cargos.find(c => c.id === id);
     if (!cargo) return;
 
-    cancelEditCargo(); // Limpa o formulário antes de preencher
+    cancelEditCargo();
     editingCargoId = id;
 
     cargoNomeInput.value = cargo.nome;
@@ -448,15 +524,14 @@ function editCargoInForm(id) {
         cargoInicioInput.value = cargo.regras.inicio || '';
         cargoFimInput.value = cargo.regras.fim || '';
         
-        // Preenchendo os novos campos
-        cargoMaxDiasConsecutivosInput.value = cargo.regras.maxDiasConsecutivos ?? 6; // Usa ?? para fallback se for undefined
+        cargoMaxDiasConsecutivosInput.value = cargo.regras.maxDiasConsecutivos ?? 6;
         cargoMinFolgasSabadosInput.value = cargo.regras.minFolgasSabados ?? 1;
         cargoMinFolgasDomingosInput.value = cargo.regras.minFolgasDomingos ?? 1;
     }
     
     updateAutomaticoHorario();
     updateCargoRegrasExplicacao();
-    updateAllocationRulesState(); // Atualiza o estado dos inputs de regras
+    updateAllocationRulesState();
 
     btnSalvarCargo.textContent = "💾 Salvar Alterações";
     parseEmojisInElement(btnSalvarCargo);
@@ -476,7 +551,6 @@ function cancelEditCargo() {
     cargoInicioInput.value = "";
     cargoFimInput.value = "";
     
-    // Limpando e resetando os novos campos
     cargoMaxDiasConsecutivosInput.value = "6";
     cargoMinFolgasSabadosInput.value = "1";
     cargoMinFolgasDomingosInput.value = "1";
@@ -486,57 +560,65 @@ function cancelEditCargo() {
 
     $(`.toggle-btn[data-value="automatico"]`, cargoHorarioToggle).click();
     updateCargoRegrasExplicacao();
-    updateAllocationRulesState(); // Reset o estado dos inputs de regras
+    updateAllocationRulesState();
 
     btnSalvarCargo.textContent = "💾 Salvar Cargo";
     formTabButtonCargos.innerHTML = "📝 Novo Cargo";
     parseEmojisInElement(btnSalvarCargo);
     setCargoFormDirty(false);
-    
-    // Não foca automaticamente para evitar scroll inesperado
-    // cargoNomeInput.focus(); 
 }
 
-async function deleteCargo(id) {
-    const { escalas, funcionarios } = store.getState();
+async function archiveCargo(id) {
+    const { funcionarios, equipes } = store.getState();
     const blockingIssues = [];
 
-    // 1. Verificar em escalas salvas
-    const escalasAfetadas = escalas.filter(e => e.cargoId === id);
-    if (escalasAfetadas.length > 0) {
-        const plural = escalasAfetadas.length > 1;
-        blockingIssues.push(`Está sendo utilizado em <strong>${escalasAfetadas.length} escala${plural ? 's' : ''} salva${plural ? 's' : ''}</strong>.`);
-    }
-
-    // 2. Verificar em funcionários ativos
-    const funcsUsando = funcionarios.filter(f => f.cargoId === id && f.status !== 'arquivado');
+    const funcsUsando = funcionarios.filter(f => f.cargoId === id && f.status === 'ativo');
     if (funcsUsando.length > 0) {
         const nomesFuncs = funcsUsando.map(f => `<strong>${f.nome}</strong>`).join(', ');
-        blockingIssues.push(`Está sendo utilizado pelo(s) funcionário(s): ${nomesFuncs}.`);
+        blockingIssues.push(`Está sendo utilizado pelo(s) funcionário(s) ativo(s): ${nomesFuncs}.`);
+    }
+    
+    const equipesUsando = equipes.filter(e => e.cargoId === id);
+    if (equipesUsando.length > 0) {
+        const nomesEquipes = equipesUsando.map(e => `<strong>${e.nome}</strong>`).join(', ');
+        blockingIssues.push(`Está sendo utilizado pela(s) equipe(s): ${nomesEquipes}.`);
     }
 
-    // 3. Mostrar modal unificado se houver problemas
+
     if (blockingIssues.length > 0) {
         const messageHTML = `
-            <p>Este cargo não pode ser excluído pelos seguintes motivos:</p>
+            <p>Este cargo não pode ser arquivado pelos seguintes motivos:</p>
             <ul>
                 ${blockingIssues.map(issue => `<li>${issue}</li>`).join('')}
             </ul>
-            <p>Por favor, resolva estas dependências antes de tentar excluir o cargo.</p>
+            <p>Por favor, altere o cargo dos funcionários ou equipes ativas antes de arquivá-lo.</p>
         `;
         showInfoModal({
-            title: "Exclusão Bloqueada",
+            title: "Arquivamento Bloqueado",
             contentHTML: messageHTML
         });
         return;
     }
 
-    // 4. Se não houver problemas, prosseguir com a confirmação de exclusão
-    await handleDeleteItem({
-        id,
-        itemName: 'Cargo',
-        dispatchAction: 'DELETE_CARGO'
+    const { confirmed } = await showConfirm({
+        title: "Arquivar Cargo?",
+        message: "O cargo não aparecerá mais nas listas de seleção, mas seu histórico em escalas salvas será mantido. Deseja continuar?",
+        confirmText: "Sim, Arquivar"
     });
+
+    if (confirmed) {
+        store.dispatch('ARCHIVE_CARGO', id);
+        showToast(`Cargo arquivado com sucesso.`, 'success');
+        renderCargos();
+        renderCargosArquivados();
+    }
+}
+
+async function unarchiveCargo(id) {
+    store.dispatch('UNARCHIVE_CARGO', id);
+    showToast(`Cargo reativado com sucesso.`, 'success');
+    renderCargos();
+    renderCargosArquivados();
 }
 
 
@@ -547,15 +629,34 @@ function handleCargosTableClick(event) {
     const { action, id } = target.dataset;
     if (action === 'edit') {
         editCargoInForm(id);
-    } else if (action === 'delete') {
-        deleteCargo(id);
+    } else if (action === 'archive') {
+        archiveCargo(id);
     }
 }
 
+function handleCargosArquivadosTableClick(event) {
+    const target = event.target.closest('button');
+    if (!target) return;
+    const { action, id } = target.dataset;
+    if (action === 'unarchive') {
+        unarchiveCargo(id);
+    }
+}
+
+
 function initCargosPage() {
     switchCargosTab = setupTabbedPanel('#page-cargos .painel-gerenciamento', 'cargos', (tabId) => {
+        const addBtn = $('.btn-add-new', pageCargos);
+        if (addBtn) addBtn.style.display = (tabId === 'gerenciar' || tabId === 'arquivados') ? 'inline-flex' : 'none';
+
         if (tabId === 'gerenciar') {
             cancelEditCargo();
+            renderCargos();
+            filtroCargosInput.value = '';
+        } else if (tabId === 'arquivados') {
+            cancelEditCargo();
+            renderCargosArquivados();
+            filtroCargosArquivadosInput.value = '';
         }
     });
 
@@ -572,6 +673,7 @@ function initCargosPage() {
     });
 
     tblCargosBody.addEventListener('click', handleCargosTableClick);
+    tblCargosArquivadosBody.addEventListener('click', handleCargosArquivadosTableClick);
     
     cargoTurnosContainer.addEventListener('change', (e) => {
         if (e.target.name === 'cargoTurno') {
@@ -594,7 +696,7 @@ function initCargosPage() {
             
             checkboxes.forEach(chk => {
                 if (chk.checked === allChecked) {
-                    chk.click(); // Dispara o evento 'change'
+                    chk.click();
                 }
             });
         });
@@ -608,7 +710,7 @@ function initCargosPage() {
             checkboxes.forEach(chk => {
                 const shouldBeChecked = diasDeSemanaIds.includes(chk.value);
                 if (chk.checked !== shouldBeChecked) {
-                    chk.click(); // Dispara o evento 'change'
+                    chk.click();
                 }
             });
         });
@@ -616,7 +718,7 @@ function initCargosPage() {
 
     renderDiasSemanaCargo();
     $(`.toggle-btn[data-value="automatico"]`, cargoHorarioToggle).click();
-    updateAllocationRulesState(); // Chama para definir o estado inicial
+    updateAllocationRulesState();
     setCargoFormDirty(false);
 }
 

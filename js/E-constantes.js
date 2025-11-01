@@ -1,7 +1,3 @@
-/**************************************
- * 🏛️ Constantes Globais
- **************************************/
-
 const DIAS_SEMANA = [
     { id: 'dom', nome: 'Domingo', abrev: 'Dom' }, 
     { id: 'seg', nome: 'Segunda', abrev: 'Seg' },
@@ -12,7 +8,6 @@ const DIAS_SEMANA = [
     { id: 'sab', nome: 'Sábado', abrev: 'Sab' }
 ];
 
-// NOVOS TURNOS DE SISTEMA PARA AUSÊNCIAS
 const TURNO_FOLGA_ID = 'turno_folga_system_id';
 const TURNO_FERIAS_ID = 'turno_ferias_system_id';
 const TURNO_AFASTAMENTO_ID = 'turno_afastamento_system_id';
@@ -22,7 +17,7 @@ const TURNOS_SISTEMA_AUSENCIA = {
         id: TURNO_FOLGA_ID,
         nome: "Folga",
         sigla: "FO",
-        cor: "#d1fae5", // Verde Menta
+        cor: "#d1fae5",
         isSystem: true,
         cargaMin: 0,
     },
@@ -30,15 +25,15 @@ const TURNOS_SISTEMA_AUSENCIA = {
         id: TURNO_FERIAS_ID,
         nome: "Férias",
         sigla: "FÉ",
-        cor: "#cffafe", // Ciano Suave
+        cor: "#cffafe",
         isSystem: true,
         cargaMin: 0,
     },
     [TURNO_AFASTAMENTO_ID]: {
         id: TURNO_AFASTAMENTO_ID,
-        nome: "Afast.", // Abreviação para caber no pincel
+        nome: "Afastamento",
         sigla: "AF",
-        cor: "#ffedd5", // Laranja Suave
+        cor: "#ffedd5",
         isSystem: true,
         cargaMin: 0,
     },

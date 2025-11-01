@@ -450,7 +450,7 @@ function calculateMetricsForScale(escala) {
             };
 
             if (turno) {
-                const nomeTurno = turno.nome === 'Afast.' ? 'Afastamento' : turno.nome;
+                const nomeTurno = turno.nome;
                 turnosCount[nomeTurno] = (turnosCount[nomeTurno] || 0) + 1;
                 if (!turno.isSystem) {
                     totalTurnosCount[nomeTurno] = (totalTurnosCount[nomeTurno] || 0) + 1;
@@ -806,7 +806,7 @@ function renderIndividualAusenciasCard(container, escala, employeeData) {
         .sort((a, b) => a.date.localeCompare(b.date));
 
     const groupedAusencias = slotsAusencia.reduce((acc, slot) => {
-        const nome = slot.turnoInfo.nome === 'Afast.' ? 'Afastamento' : slot.turnoInfo.nome;
+        const nome = slot.turnoInfo.nome;
         if (!acc[nome]) acc[nome] = [];
         acc[nome].push(slot.date);
         return acc;

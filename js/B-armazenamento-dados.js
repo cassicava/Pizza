@@ -40,12 +40,13 @@ const store = {
 
         LOAD_STATE(state) {
             try {
-                const DATA_VERSION = "1.3";
+                const DATA_VERSION = "1.4";
                 const currentVersion = localStorage.getItem('ge_data_version');
 
                 state.escalas = loadJSON(KEYS.escalas, []).map(e => ({ ...e, observacoes: e.observacoes || '' }));
                 state.funcionarios = loadJSON(KEYS.funcs, []);
                 state.cargos = loadJSON(KEYS.cargos, []);
+                state.turnos = loadJSON(KEYS.turnos, []);
 
                 if (currentVersion !== DATA_VERSION) {
                     state.funcionarios = state.funcionarios.map(f => ({ ...f, status: f.status || 'ativo' }));
@@ -54,15 +55,17 @@ const store = {
                         if (!c.regras.hasOwnProperty('maxDiasConsecutivos')) c.regras.maxDiasConsecutivos = 6;
                         if (!c.regras.hasOwnProperty('minFolgasSabados')) c.regras.minFolgasSabados = 1;
                         if (!c.regras.hasOwnProperty('minFolgasDomingos')) c.regras.minFolgasDomingos = 1;
+                        c.status = c.status || 'ativo';
                         return c;
                     });
+                    state.turnos = state.turnos.map(t => ({ ...t, status: t.status || 'ativo' }));
 
                     saveJSON(KEYS.funcs, state.funcionarios);
                     saveJSON(KEYS.cargos, state.cargos);
+                    saveJSON(KEYS.turnos, state.turnos);
                     localStorage.setItem('ge_data_version', DATA_VERSION);
                 }
 
-                state.turnos = loadJSON(KEYS.turnos, []);
                 state.equipes = loadJSON(KEYS.equipes, []);
                 state.config = loadJSON(KEYS.config, { nome: '' });
                 delete state.config.autobackup;
@@ -88,12 +91,26 @@ const store = {
             if (index > -1) {
                 state.turnos[index] = { ...state.turnos[index], ...turno };
             } else {
-                state.turnos.push(turno);
+                state.turnos.push({ ...turno, status: 'ativo' });
             }
             saveJSON(KEYS.turnos, state.turnos);
         },
         DELETE_TURNO(state, turnoId) {
             state.turnos = state.turnos.filter(t => t.id !== turnoId);
+            saveJSON(KEYS.turnos, state.turnos);
+        },
+        ARCHIVE_TURNO(state, turnoId) {
+            const index = state.turnos.findIndex(t => t.id === turnoId);
+            if (index > -1) {
+                state.turnos[index].status = 'arquivado';
+            }
+            saveJSON(KEYS.turnos, state.turnos);
+        },
+        UNARCHIVE_TURNO(state, turnoId) {
+            const index = state.turnos.findIndex(t => t.id === turnoId);
+            if (index > -1) {
+                state.turnos[index].status = 'ativo';
+            }
             saveJSON(KEYS.turnos, state.turnos);
         },
 
@@ -112,12 +129,26 @@ const store = {
                 });
                 saveJSON(KEYS.funcs, state.funcionarios);
             } else {
-                state.cargos.push(cargo);
+                state.cargos.push({ ...cargo, status: 'ativo' });
             }
             saveJSON(KEYS.cargos, state.cargos);
         },
         DELETE_CARGO(state, cargoId) {
             state.cargos = state.cargos.filter(c => c.id !== cargoId);
+            saveJSON(KEYS.cargos, state.cargos);
+        },
+        ARCHIVE_CARGO(state, cargoId) {
+            const index = state.cargos.findIndex(c => c.id === cargoId);
+            if (index > -1) {
+                state.cargos[index].status = 'arquivado';
+            }
+            saveJSON(KEYS.cargos, state.cargos);
+        },
+        UNARCHIVE_CARGO(state, cargoId) {
+            const index = state.cargos.findIndex(c => c.id === cargoId);
+            if (index > -1) {
+                state.cargos[index].status = 'ativo';
+            }
             saveJSON(KEYS.cargos, state.cargos);
         },
 

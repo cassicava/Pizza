@@ -1,20 +1,13 @@
-/**************************************
- * 📅 Visualização da Escala (v3 - Abas Geral e Foco Individual)
- **************************************/
-
 let currentEscala = null;
-// NOVO: Estado para a aba de Foco Individual
 let focoIndividualState = {
     selectedEmployeeId: null,
     selectedBrushId: null,
-    editMode: 'employee', // 'employee' ou 'eraser'
+    editMode: 'employee',
 };
-
-// --- NOVOS HANDLERS PARA A ABA DE FOCO INDIVIDUAL (MOVIDOS PARA CÁ) ---
 
 function handleFocoFuncChange(event) {
     focoIndividualState.selectedEmployeeId = event.target.value;
-    focoIndividualState.selectedBrushId = null; // Reseta o pincel ao trocar de func
+    focoIndividualState.selectedBrushId = null;
     renderFocoIndividualView(currentEscala.owner);
 }
 
@@ -41,12 +34,11 @@ function handleFocoCalendarClick(event) {
 
     const date = dayCell.dataset.date;
     const employeeId = focoIndividualState.selectedEmployeeId;
-    // CORREÇÃO: Busca o slot usando currentEscala que é compartilhado
     const existingSlot = currentEscala.slots.find(s => s.assigned === employeeId && s.date === date);
 
     if (focoIndividualState.editMode === 'eraser') {
         if (existingSlot) {
-            handleRemoveShiftClick(existingSlot.id); // Chama a função global de remoção
+            handleRemoveShiftClick(existingSlot.id);
         }
     }
     else if (focoIndividualState.editMode === 'employee') {
@@ -56,11 +48,9 @@ function handleFocoCalendarClick(event) {
             return;
         }
         if (existingSlot && existingSlot.turnoId === brushId) {
-             // Se clicar com o mesmo pincel, remove (toggle)
-            handleRemoveShiftClick(existingSlot.id); // Chama a função global de remoção
+            handleRemoveShiftClick(existingSlot.id);
         } else {
-            // Adiciona ou substitui pelo turno do pincel
-            handleAddShiftClick(employeeId, brushId, date); // Chama a função global de adição
+            handleAddShiftClick(employeeId, brushId, date);
         }
     }
 }
@@ -116,7 +106,7 @@ function renderEscalaLegend(escala, container) {
 
 function renderGenericEscalaTable(escala, container, options = {}) {
     const { isInteractive = false } = options;
-    const { funcionarios, turnos, cargos, equipes } = store.getState(); // Adiciona equipes
+    const { funcionarios, turnos, cargos, equipes } = store.getState();
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
 
     if (!container) {
@@ -138,7 +128,6 @@ function renderGenericEscalaTable(escala, container, options = {}) {
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
 
-    // Adiciona informação de equipe aos funcionários para ordenação
     const equipesMap = new Map();
     equipes.filter(e => e.cargoId === escala.cargoId).forEach(e => {
         e.funcionarioIds.forEach(funcId => equipesMap.set(funcId, e.id));
@@ -147,7 +136,6 @@ function renderGenericEscalaTable(escala, container, options = {}) {
     const funcsDaEscala = [...allFuncsInvolved]
         .map(funcId => ({ id: funcId, ...getFuncInfo(funcId), equipeId: equipesMap.get(funcId) }))
         .filter(f => f.nome)
-        // Ordena por ID da equipe (nulls/sem equipe por último), depois pelo nome
         .sort((a, b) => {
             if (a.equipeId && !b.equipeId) return -1;
             if (!a.equipeId && b.equipeId) return 1;
@@ -156,7 +144,7 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 const equipeB = equipes.find(e => e.id === b.equipeId)?.nome || '';
                 return equipeA.localeCompare(equipeB);
             }
-            return a.nome.localeCompare(b.nome); // Desempate por nome
+            return a.nome.localeCompare(b.nome);
         });
 
     const turnosDoCargo = cargo
@@ -184,7 +172,6 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 <small class="muted">${func.documento || '---'}</small>
             </td>
         `;
-        // Adiciona classe de equipe se o funcionário pertencer a uma
         const equipeClass = func.equipeId ? `equipe-${func.equipeId}` : '';
         tableHTML += `<tr data-employee-row-id="${func.id}" class="${equipeClass}">${nomeHtml}`;
 
@@ -203,14 +190,13 @@ function renderGenericEscalaTable(escala, container, options = {}) {
                 const slotAttr = isInteractive ? `data-slot-id="${slot.id}" data-turno-id="${slot.turnoId}"` : '';
                 const equipeAttr = isInteractive && slot.equipeId ? `data-equipe-id="${slot.equipeId}"` : '';
                 const textColor = getContrastingTextColor(turno.cor);
-                const extraClass = slot.isExtra ? 'celula-hora-extra' : ''; // Aplica classe se for extra
+                const extraClass = slot.isExtra ? 'celula-hora-extra' : '';
                 tableHTML += `<td class="${cellClass} ${extraClass}" style="background-color:${turno.cor}; color: ${textColor};" ${dataAttrs} ${slotAttr} ${equipeAttr} title="${turno.nome}">${turno.sigla || '?'}</td>`;
             } else if (feriadoFolga) {
                 tableHTML += `<td class="celula-feriado-folga" title="${feriadoFolga.nome}">FOLGA</td>`;
             } else if (isCargoDiaNaoUtil) {
                 tableHTML += `<td class="celula-fechada" title="O cargo não opera neste dia"></td>`;
             } else {
-                 // Adiciona fundo cinza claro para células vazias de membros de equipe
                 const emptyBgStyle = (func.equipeId && isInteractive) ? 'style="background-color: #f0f0f0;"' : '';
                 tableHTML += `<td class="${cellClass}" ${dataAttrs} ${emptyBgStyle}></td>`;
             }
@@ -230,12 +216,11 @@ function renderGenericEscalaTable(escala, container, options = {}) {
             tableHTML += `</tr>`;
         });
 
-        // CORREÇÃO NO CÁLCULO DE VAGAS
         turnosDoCargo.forEach(turno => {
             let hasVagas = false;
             let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
 
-            const coberturaTurno = cobertura[turno.id] || {}; // Cobertura pode ser objeto ou número
+            const coberturaTurno = cobertura[turno.id] || {};
 
             dateRange.forEach(date => {
                 const d = new Date(date + 'T12:00:00');
@@ -245,10 +230,9 @@ function renderGenericEscalaTable(escala, container, options = {}) {
 
                 let vagas = 0;
                 if (isDiaUtil) {
-                    // Determina a cobertura necessária para ESTE dia da semana
                     const coberturaNecessaria = typeof coberturaTurno === 'object'
                         ? (coberturaTurno[diaSemanaId] || 0)
-                        : (coberturaTurno || 0); // Fallback se for número (versão antiga)
+                        : (coberturaTurno || 0);
 
                     const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
                     vagas = coberturaNecessaria - coberturaAtual;
@@ -300,12 +284,11 @@ function updateTableFooter(escala) {
         footerHTML += `</tr>`;
     });
 
-    // CORREÇÃO NO CÁLCULO DE VAGAS
     turnosDoCargo.forEach(turno => {
         let hasVagas = false;
         let rowVagasHTML = `<tr class="vagas-row"><td><strong style="color: var(--danger);">Faltam ${turno.sigla || '??'}</strong></td>`;
 
-        const coberturaTurno = cobertura[turno.id] || {}; // Cobertura pode ser objeto ou número
+        const coberturaTurno = cobertura[turno.id] || {};
 
         dateRange.forEach(date => {
             const d = new Date(date + 'T12:00:00');
@@ -315,10 +298,9 @@ function updateTableFooter(escala) {
 
             let vagas = 0;
             if (isDiaUtil) {
-                // Determina a cobertura necessária para ESTE dia da semana
                 const coberturaNecessaria = typeof coberturaTurno === 'object'
                     ? (coberturaTurno[diaSemanaId] || 0)
-                    : (coberturaTurno || 0); // Fallback se for número (versão antiga)
+                    : (coberturaTurno || 0);
 
                 const coberturaAtual = escala.slots.filter(s => s.date === date && s.turnoId === turno.id && s.assigned).length;
                 vagas = coberturaNecessaria - coberturaAtual;
@@ -345,14 +327,13 @@ function renderPainelDaEscala(escala) {
     const painelContainer = isGerador ? $('#gerador-painel-escala') : $('#salva-painel-escala');
     if (!painelContainer) return;
 
-    const { funcionarios, cargos, turnos } = store.getState(); // Adiciona cargos e turnos
+    const { funcionarios, cargos, turnos } = store.getState();
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const funcsDaEscala = funcionarios.filter(f => escala.historico && escala.historico[f.id]).sort((a, b) => a.nome.localeCompare(b.nome));
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
     const totalDias = dateRange.length;
     const totalFDS = dateRange.filter(d => [0, 6].includes(new Date(d + 'T12:00:00').getUTCDay())).length;
 
-    // CORREÇÃO NO CÁLCULO DE VAGAS TOTAIS
     let vagas = 0;
     const cargo = cargos.find(c => c.id === escala.cargoId);
     const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
@@ -381,7 +362,6 @@ function renderPainelDaEscala(escala) {
     const totalHorasExtras = funcsDaEscala.reduce((acc, func) => {
         if (func.medicaoCarga === 'horas' || !func.medicaoCarga) {
             const horasTrabalhadas = (escala.historico[func.id].horasTrabalhadas / 60);
-             // CORREÇÃO: Usa a meta calculada ou a override para calcular extra
             const metaOriginal = calcularMetaHoras(func, escala.inicio, escala.fim);
             const metaConsiderada = (escala.metasOverride && escala.metasOverride[func.id] !== undefined)
                 ? parseFloat(escala.metasOverride[func.id])
@@ -402,7 +382,7 @@ function renderPainelDaEscala(escala) {
     } else if (vagas > 0) {
         saudeStatus = 'warning';
         saudeIcon = '⚠️';
-        saudeTitle = `${vagas} turno(s) vago(s)`; // Atualiza o título com o número correto de vagas
+        saudeTitle = `${vagas} turno(s) vago(s)`;
     }
 
     $('.painel-header .painel-title', painelContainer).innerHTML = `
@@ -441,7 +421,7 @@ function renderPainelDaEscala(escala) {
             if (saldo > 0) {
                 saldoLabel = func.fazHoraExtra ? 'Turnos Extra' : 'Acima da Meta';
             }
-        } else { // Padrão 'horas'
+        } else {
             realizado = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
             const metaOriginal = calcularMetaHoras(func, escala.inicio, escala.fim);
             meta = temOverride ? parseFloat(escala.metasOverride[func.id]) : metaOriginal;
@@ -555,7 +535,6 @@ function renderPainelDaEscala(escala) {
     const obsTextarea = $(`#${obsTextareaId}`, painelContainer);
     if(obsTextarea) {
         obsTextarea.oninput = () => {
-             // Garante que currentEscala exista antes de modificar
             if (currentEscala) {
                 currentEscala.observacoes = obsTextarea.value;
                 setGeradorFormDirty(true);
@@ -576,7 +555,7 @@ function renderPainelDaEscala(escala) {
 
         btn.classList.add('active');
         const targetContent = $(`.painel-tab-content[data-tab-content="${btn.dataset.tab}"]`, painelContainer);
-        if (targetContent) targetContent.classList.add('active'); // Verifica se targetContent existe
+        if (targetContent) targetContent.classList.add('active');
 
         if (btn.dataset.tab === 'observacoes') {
              const obsField = $(`#${obsTextareaId}`, targetContent);
@@ -623,7 +602,6 @@ function renderPainelDaEscala(escala) {
             if (!funcItem) return;
 
             const funcId = funcItem.dataset.funcId;
-             // Garante que currentEscala exista antes de interagir
             if (!currentEscala) return;
 
             if (event.target.closest('.btn-edit-meta')) {
@@ -634,12 +612,11 @@ function renderPainelDaEscala(escala) {
                 const metaInput = $('.meta-input', funcItem);
                 if (metaInput) {
                     metaInput.focus();
-                    metaInput.select(); // Seleciona o texto para facilitar a edição
+                    metaInput.select();
                 }
             }
             else if (event.target.closest('.btn-cancel-edit')) {
                 funcItem.classList.remove('is-editing');
-                // Restaura o valor original do input ao cancelar
                 const func = funcsDaEscala.find(f => f.id === funcId);
                 if (func) {
                     const medicao = func.medicaoCarga || 'horas';
@@ -653,12 +630,12 @@ function renderPainelDaEscala(escala) {
                         metaOriginal = calcularMetaHoras(func, escala.inicio, escala.fim);
                     }
                      const metaInput = $('.meta-input', funcItem);
-                     if (metaInput) metaInput.value = metaOriginal; // Restaura valor visual
+                     if (metaInput) metaInput.value = metaOriginal;
                 }
             }
             else if (event.target.closest('.btn-confirm-edit')) {
                 const input = $('.meta-input', funcItem);
-                if (!input) return; // Sai se não encontrar o input
+                if (!input) return;
                 const novoValor = parseFloat(input.value);
 
                 if (!isNaN(novoValor) && novoValor >= 0) {
@@ -666,7 +643,7 @@ function renderPainelDaEscala(escala) {
 
                     currentEscala.metasOverride[funcId] = novoValor;
                     setGeradorFormDirty(true);
-                    renderPainelDaEscala(currentEscala); // Re-renderiza tudo para recalcular e sair do modo de edição
+                    renderPainelDaEscala(currentEscala);
                     showToast("Meta temporária atualizada para esta escala.");
                 } else {
                     showToast("Valor da meta inválido.", "error");
@@ -674,22 +651,19 @@ function renderPainelDaEscala(escala) {
             }
         });
     }
-     parseEmojisInElement(painelContainer); // Garante emojis no painel
+     parseEmojisInElement(painelContainer);
 }
-
-// --- FUNÇÕES DE RENDERIZAÇÃO PRINCIPAIS ---
 
 function renderEscalaTable(escala) {
     currentEscala = escala;
 
-    // Configura o estado inicial do Foco Individual
     const funcsDaEscala = store.getState().funcionarios.filter(f => escala.historico && escala.historico[f.id]);
     focoIndividualState.selectedEmployeeId = funcsDaEscala.length > 0 ? funcsDaEscala[0].id : null;
     focoIndividualState.selectedBrushId = null;
     focoIndividualState.editMode = 'employee';
 
-    const owner = escala.owner || 'gerador'; // Define 'gerador' como padrão se owner não existir
-    escala.owner = owner; // Garante que a propriedade owner esteja definida
+    const owner = escala.owner || 'gerador';
+    escala.owner = owner;
 
     const wizardContainer = $(`#${owner}-wizard-container`);
     if(wizardContainer) wizardContainer.classList.add('hidden');
@@ -705,7 +679,7 @@ function renderEscalaTable(escala) {
     renderCurrentView(owner);
     setupViewTabs(owner);
 
-    if (typeof initEditor === 'function' && owner === 'gerador') { // Só inicializa editor para o gerador
+    if (typeof initEditor === 'function' && owner === 'gerador') {
         initEditor();
     }
 }
@@ -720,36 +694,33 @@ function renderCurrentView(owner) {
 
     if (activeTab === 'geral') {
         renderEscalaGeralView(owner);
-        // Só mostra a toolbox se estiver na view do gerador
         if (owner === 'gerador' && toolbox) {
             toolbox.classList.remove('hidden');
             loadToolboxState();
-             // CORREÇÃO: Chama updateAllIndicators aqui também
             if (typeof updateAllIndicators === 'function') {
                 updateAllIndicators();
             }
         } else {
              if (toolbox) toolbox.classList.add('hidden');
              if (fab) fab.classList.add('hidden');
-             updatePagePaddingForToolbox(true); // Garante reset do padding
+             updatePagePaddingForToolbox(true);
         }
     } else if (activeTab === 'individual') {
         renderFocoIndividualView(owner);
-        // Esconde a toolbox principal na visão individual
         if (toolbox) toolbox.classList.add('hidden');
         if (fab) fab.classList.add('hidden');
-        updatePagePaddingForToolbox(true); // Reseta padding
+        updatePagePaddingForToolbox(true);
     }
 }
 
 function renderEscalaGeralView(owner) {
     const container = $(`#${owner}-escalaTabelaWrap`);
-    renderGenericEscalaTable(currentEscala, container, { isInteractive: owner === 'gerador' }); // Só interativo no gerador
+    renderGenericEscalaTable(currentEscala, container, { isInteractive: owner === 'gerador' });
     renderPainelDaEscala(currentEscala);
 }
 
 function renderFocoIndividualView(owner) {
-    const container = $(`#gerador-foco-individual-container`); // Foco individual só existe no gerador
+    const container = $(`#gerador-foco-individual-container`);
     if (!container || owner !== 'gerador') return;
 
     container.innerHTML = `
@@ -783,7 +754,6 @@ function renderFocoFerramentasSelecao(owner) {
         .filter(f => currentEscala.historico && currentEscala.historico[f.id])
         .sort((a,b) => a.nome.localeCompare(b.nome));
 
-    // Garante que haja um funcionário selecionado, se possível
     if (!focoIndividualState.selectedEmployeeId && funcsDaEscala.length > 0) {
         focoIndividualState.selectedEmployeeId = funcsDaEscala[0].id;
     }
@@ -837,7 +807,6 @@ function renderFocoFerramentasMetricas(owner) {
         </div>
     `;
     const card = $('.employee-indicators-card', container);
-    // CORREÇÃO: Chama updateIndicatorsInCard que agora lê o histórico do currentEscala global
     if (card && currentEscala) updateIndicatorsInCard(card);
 }
 
@@ -852,7 +821,7 @@ function renderFocoFerramentasPinceis(owner) {
 
     if (selectedFunc) {
         const { turnos } = store.getState();
-        const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)]; // Inclui sistema
+        const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
         const turnosDeTrabalho = allTurnos.filter(t => !t.isSystem && selectedFunc.disponibilidade && selectedFunc.disponibilidade[t.id]);
         const turnosDeSistema = Object.values(TURNOS_SISTEMA_AUSENCIA);
 
@@ -868,7 +837,7 @@ function renderFocoFerramentasPinceis(owner) {
         </div>
     `;
     container.onclick = handleFocoBrushClick;
-     parseEmojisInElement(container); // Garante emojis nos pincéis
+     parseEmojisInElement(container);
 }
 
 function renderFocoIndividualCalendar(owner) {
@@ -941,7 +910,6 @@ function renderFocoIndividualCalendar(owner) {
     }
     container.innerHTML = html;
 
-    // CORREÇÃO: Re-associa o listener ao grid após renderizar
     const calendarGrid = $('.calendar-grid', container);
     if(calendarGrid) calendarGrid.onclick = handleFocoCalendarClick;
 }
@@ -957,22 +925,17 @@ function renderBrush(turno, selectedBrushId) {
         </div>`;
 }
 
-// --- FUNÇÕES DE ATUALIZAÇÃO ---
-
 function updateTableAfterEdit(escala) {
     const owner = escala.owner;
-    // Atualiza ambas as visualizações para manter a sincronia
     updateTableCells(escala);
     updateTableFooter(escala);
     renderPainelDaEscala(escala);
 
-    // Se a aba de foco individual estiver visível, re-renderiza seu conteúdo
     const tabsContainer = $(`#${owner}-view-tabs`);
     const activeTab = tabsContainer ? $('.painel-tab-btn.active', tabsContainer)?.dataset.tab : 'geral';
     if (activeTab === 'individual') {
-        renderFocoIndividualView(owner); // Re-renderiza a visão individual completa
+        renderFocoIndividualView(owner);
     }
-     // CORREÇÃO: Atualiza os indicadores da toolbox principal também
      if (typeof updateAllIndicators === 'function') {
         updateAllIndicators();
     }
@@ -983,21 +946,19 @@ function updateTableCells(escala) {
     const table = $(`#${escala.owner}-escalaTabelaWrap .escala-final-table`);
     if (!table) return;
 
-    const { turnos, cargos, equipes } = store.getState(); // Adiciona equipes
+    const { turnos, cargos, equipes } = store.getState();
     const allTurnos = [...turnos, ...Object.values(TURNOS_SISTEMA_AUSENCIA)];
     const getTurnoInfo = (turnoId) => allTurnos.find(t => t.id === turnoId) || {};
 
     const cargo = cargos.find(c => c.id === escala.cargoId);
     const cargoDiasOperacionais = new Set(cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id));
 
-    // Busca o tbody para limpar apenas as linhas, preservando thead e tfoot
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-    tbody.innerHTML = ''; // Limpa apenas o corpo
+    tbody.innerHTML = '';
 
-    // Reordena os funcionários para o rendering
     const allFuncsInvolved = new Set();
-    escala.slots.forEach(s => { if (s.assigned) allFuncsInvolved.add(s.assigned); });
+    escala.slots.forEach(s => { if (s.assigned) allFuncsInvolved.add(s.assigned) });
     Object.keys(escala.historico || {}).forEach(funcId => allFuncsInvolved.add(funcId));
 
     const equipesMap = new Map();
@@ -1021,7 +982,6 @@ function updateTableCells(escala) {
 
     const dateRange = dateRangeInclusive(escala.inicio, escala.fim);
 
-    // Remonta as linhas do tbody na nova ordem
     funcsDaEscala.forEach(func => {
         const row = document.createElement('tr');
         row.dataset.employeeRowId = func.id;
@@ -1053,9 +1013,8 @@ function updateTableCells(escala) {
 
             if (slot) {
                 const turno = getTurnoInfo(slot.turnoId);
-                // CORREÇÃO: Garante que a classe 'celula-hora-extra' seja aplicada corretamente
                 if (slot.isExtra) cell.classList.add('celula-hora-extra');
-                else cell.classList.remove('celula-hora-extra'); // Garante remover se não for mais extra
+                else cell.classList.remove('celula-hora-extra');
                 cell.dataset.slotId = slot.id;
                 cell.dataset.turnoId = slot.turnoId;
                 if (slot.equipeId) cell.dataset.equipeId = slot.equipeId;
@@ -1073,16 +1032,15 @@ function updateTableCells(escala) {
                 cell.classList.add('celula-fechada');
                 cell.title = 'O cargo não opera neste dia';
             } else {
-                 // Adiciona fundo cinza claro para células vazias de membros de equipe
                  if (func.equipeId) cell.style.backgroundColor = '#f0f0f0';
-                 cell.textContent = ''; // Limpa conteúdo explícito
-                 cell.style.backgroundColor = ''; // Limpa bg explícito se não for de equipe
-                 cell.style.color = ''; // Limpa cor explícita
-                 cell.title = ''; // Limpa title
+                 cell.textContent = '';
+                 cell.style.backgroundColor = '';
+                 cell.style.color = '';
+                 cell.title = '';
             }
             row.appendChild(cell);
         });
-        tbody.appendChild(row); // Adiciona a linha ao tbody
+        tbody.appendChild(row);
     });
 }
 
@@ -1092,7 +1050,6 @@ async function salvarEscalaAtual(options = {}) {
         showToast: shouldShowToast = true
     } = options;
     if (currentEscala) {
-        // Adiciona/Atualiza a data de modificação
         currentEscala.lastModified = new Date().toISOString();
 
         const {

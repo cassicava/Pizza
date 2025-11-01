@@ -111,13 +111,17 @@ function generateVisaoGeralPDF(escala) {
             halign: 'center',
             valign: 'middle',
             minCellHeight: cellHeight,
+            lineColor: [180, 180, 180],
+            lineWidth: 0.5,
         },
         headStyles: {
             fillColor: [22, 163, 74],
             textColor: 255,
             fontStyle: 'bold',
             valign: 'middle',
-            cellPadding: { top: 5, bottom: 5 }
+            cellPadding: { top: 5, bottom: 5 },
+            lineColor: [180, 180, 180],
+            lineWidth: 0.5,
         },
         columnStyles: {
             0: {
@@ -315,12 +319,16 @@ function generateVisaoGeralPDF(escala) {
         const funcionarioOriginal = store.getState().funcionarios.find(f => f.id === func.id);
 
         if (funcionarioOriginal) {
-             if (funcionarioOriginal.medicaoCarga === 'turnos') {
+            const medicao = funcionarioOriginal.medicaoCarga || 'horas';
+            const temOverride = escala.metasOverride && escala.metasOverride[func.id] !== undefined;
+
+             if (medicao === 'turnos') {
                 const { cargos } = store.getState();
                 const cargo = cargos.find(c => c.id === escala.cargoId);
                 const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
 
-                const metaTurnos = calcularMetaTurnos(funcionarioOriginal, escala.inicio, escala.fim, cargoDiasOperacionais);
+                const metaOriginal = calcularMetaTurnos(funcionarioOriginal, escala.inicio, escala.fim, cargoDiasOperacionais);
+                const metaTurnos = temOverride ? parseFloat(escala.metasOverride[func.id]) : metaOriginal;
                 const realizadoTurnos = escala.historico[func.id]?.turnosTrabalhados || 0;
                 const saldo = realizadoTurnos - metaTurnos;
 
@@ -329,7 +337,10 @@ function generateVisaoGeralPDF(escala) {
                 saldoLabel = `${saldo > 0 ? '+' : ''}${saldo.toFixed(0)} turnos`;
             } else {
                 const horasTrabalhadas = (escala.historico[func.id]?.horasTrabalhadas / 60) || 0;
-                const metaHoras = calcularMetaHoras(funcionarioOriginal, escala.inicio, escala.fim);
+                
+                const metaOriginal = calcularMetaHoras(funcionarioOriginal, escala.inicio, escala.fim);
+                const metaHoras = temOverride ? parseFloat(escala.metasOverride[func.id]) : metaOriginal;
+                
                 const saldo = horasTrabalhadas - metaHoras;
 
                 metaLabel = `${metaHoras.toFixed(1)}h`;
@@ -636,8 +647,16 @@ function generateIndividualReportPDF(escala, funcionarioId) {
             body: turnosTableBody,
             startY: yPos,
             theme: 'grid',
-            headStyles: { fillColor: [45, 55, 72] },
-             columnStyles: { 0: { halign: 'center', fontStyle: 'bold' } },
+            styles: {
+                lineColor: [180, 180, 180],
+                lineWidth: 0.5
+            },
+            headStyles: {
+                fillColor: [45, 55, 72],
+                lineColor: [180, 180, 180],
+                lineWidth: 0.5
+            },
+            columnStyles: { 0: { halign: 'center', fontStyle: 'bold' } },
         });
         yPos = doc.lastAutoTable.finalY + 25;
      } else {

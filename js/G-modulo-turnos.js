@@ -1,14 +1,8 @@
-/**************************************
- * 🕒 Turnos
- **************************************/
-
 let editingTurnoId = null;
-let lastSavedTurnoId = null; // ALTERADO: de lastAdded... para lastSaved...
+let lastSavedTurnoId = null;
 
-// Referência à função de troca de abas, será definida na inicialização
 let switchTurnosTab = () => {};
 
-// --- Cache de Elementos DOM ---
 const pageTurnos = $("#page-turnos");
 const turnoNomeInput = $("#turnoNome");
 const turnoSiglaInput = $("#turnoSigla");
@@ -31,15 +25,15 @@ const filtroTurnosInput = $("#filtroTurnos");
 const tblTurnosBody = $("#tblTurnos tbody");
 const formTabButton = $('.painel-tab-btn[data-tab="formulario"]', pageTurnos);
 
-// --- MELHORIA: Paleta de Cores Atualizada ---
-// Cores removidas por semelhança com cores de ausência (Verde Menta, Ciano Suave, Laranja Suave)
+const filtroTurnosArquivadosInput = $("#filtroTurnosArquivados");
+const tblTurnosArquivadosBody = $("#tblTurnosArquivados tbody");
+
+
 const PALETA_CORES = [
-    /* '#e0f2fe', */ '#fecaca', /* '#fed7aa', */ '#fef08a', '#d9f99d', '#bfdbfe', '#a5b4fc', '#f5d0fe',
-    /* '#dcfce7', */ '#fca5a5', '#fbbf24', '#facc15', '#a3e635', '#93c5fd', '#818cf8', '#e879f9',
+    '#fecaca', '#fef08a', '#d9f99d', '#bfdbfe', '#a5b4fc', '#f5d0fe',
+    '#fca5a5', '#fbbf24', '#facc15', '#a3e635', '#93c5fd', '#818cf8', '#e879f9',
     '#fae8ff', '#f87171', '#f97316', '#eab308', '#84cc16', '#60a5fa', '#6366f1', '#d946ef'
 ];
-// -------------------------------------------
-
 
 function setTurnoFormDirty(isDirty) { dirtyForms.turnos = isDirty; }
 
@@ -152,13 +146,12 @@ function getLeastUsedColor() {
     const { turnos } = store.getState();
     const colorCounts = PALETA_CORES.reduce((acc, color) => ({ ...acc, [color]: 0 }), {});
 
-    turnos.filter(t => !t.isSystem).forEach(t => {
+    turnos.filter(t => !t.isSystem && t.status === 'ativo').forEach(t => {
         if (colorCounts.hasOwnProperty(t.cor)) {
             colorCounts[t.cor]++;
         }
     });
 
-    // Se a paleta estiver vazia, retorna uma cor padrão
     if (PALETA_CORES.length === 0) return '#e2e8f0';
 
     return Object.entries(colorCounts).sort((a, b) => a[1] - b[1])[0][0];
@@ -195,12 +188,13 @@ function renderTurnos() {
     const filtro = filtroTurnosInput.value.toLowerCase();
     tblTurnosBody.innerHTML = "";
 
-    const turnosEditaveis = turnos.filter(t => !t.isSystem);
+    const turnosAtivos = turnos.filter(t => !t.isSystem && t.status === 'ativo');
 
-    const turnosFiltrados = turnosEditaveis.filter(t => t.nome.toLowerCase().includes(filtro) || (t.sigla && t.sigla.toLowerCase().includes(filtro)));
+    const turnosFiltrados = turnosAtivos.filter(t => t.nome.toLowerCase().includes(filtro) || (t.sigla && t.sigla.toLowerCase().includes(filtro)));
     const turnosOrdenados = [...turnosFiltrados].sort((a, b) => a.nome.localeCompare(b.nome));
+    
     if (turnosOrdenados.length === 0) {
-        const isEmpty = filtro === '' && turnosEditaveis.length === 0;
+        const isEmpty = filtro === '' && turnosAtivos.length === 0;
         const emptyStateText = isEmpty
             ? `<div class="empty-state"><div class="empty-state-icon">🕒</div>
                <h3>Nenhum Turno Cadastrado</h3>
@@ -211,6 +205,7 @@ function renderTurnos() {
         parseEmojisInElement(tblTurnosBody);
         return;
     }
+    
     turnosOrdenados.forEach(t => {
         const tr = document.createElement("tr");
         tr.dataset.turnoId = t.id;
@@ -227,11 +222,13 @@ function renderTurnos() {
             <td>${descansoTxt}</td>
             <td>
                 <button class="secondary" data-action="edit" data-id="${t.id}" aria-label="Editar o turno ${t.nome}">✏️ Editar</button>
-                <button class="danger" data-action="delete" data-id="${t.id}" aria-label="Excluir o turno ${t.nome}">🔥 Excluir</button>
+                <button class="danger" data-action="archive" data-id="${t.id}" aria-label="Arquivar o turno ${t.nome}">🗃️ Arquivar</button>
             </td>`;
         tblTurnosBody.appendChild(tr);
     });
+    
     parseEmojisInElement(tblTurnosBody);
+    
     if (lastSavedTurnoId) {
         const row = tblTurnosBody.querySelector(`tr[data-turno-id="${lastSavedTurnoId}"]`);
         if(row) {
@@ -241,6 +238,45 @@ function renderTurnos() {
         lastSavedTurnoId = null;
     }
 }
+
+function renderTurnosArquivados() {
+    const { turnos } = store.getState();
+    const filtro = filtroTurnosArquivadosInput.value.toLowerCase();
+    tblTurnosArquivadosBody.innerHTML = "";
+
+    const turnosArquivados = turnos.filter(t => !t.isSystem && t.status === 'arquivado');
+    const turnosFiltrados = turnosArquivados.filter(t => t.nome.toLowerCase().includes(filtro) || (t.sigla && t.sigla.toLowerCase().includes(filtro)));
+    const turnosOrdenados = [...turnosFiltrados].sort((a, b) => a.nome.localeCompare(b.nome));
+
+    if (turnosOrdenados.length === 0) {
+        const isEmpty = filtro === '' && turnosArquivados.length === 0;
+        const emptyStateText = isEmpty
+            ? `<div class="empty-state" style="padding: 24px;"><div class="empty-state-icon">🗃️</div>
+               <h3>Nenhum Turno Arquivado</h3>
+               <p>Turnos arquivados aparecerão aqui.</p>
+               </div>`
+            : `<p class="muted center">Nenhum turno arquivado encontrado com o termo "${filtro}".</p>`;
+        tblTurnosArquivadosBody.innerHTML = `<tr><td colspan="4">${emptyStateText}</td></tr>`;
+        parseEmojisInElement(tblTurnosArquivadosBody);
+        return;
+    }
+
+    turnosOrdenados.forEach(t => {
+        const tr = document.createElement("tr");
+        tr.dataset.turnoId = t.id;
+        tr.style.opacity = '0.7';
+        tr.innerHTML = `
+            <td>${t.nome}</td>
+            <td><strong>${t.sigla || '--'}</strong></td>
+            <td>${minutesToHHMM(t.cargaMin)}</td>
+            <td>
+                <button class="secondary" data-action="unarchive" data-id="${t.id}" aria-label="Reativar o turno ${t.nome}">🔄 Reativar</button>
+            </td>`;
+        tblTurnosArquivadosBody.appendChild(tr);
+    });
+    parseEmojisInElement(tblTurnosArquivadosBody);
+}
+
 
 function validateTurnoForm() {
     let isValid = true;
@@ -289,7 +325,8 @@ async function saveTurnoFromForm() {
         id: editingTurnoId || uid(), nome, sigla, cor: turnoCorHiddenInput.value,
         inicio, fim, diasDeDiferenca, almocoMin,
         descansoObrigatorioHoras: descansoObrigatorio ? Number(descansoHorasInput.value || 0) : null,
-        cargaMin: cargaMin
+        cargaMin: cargaMin,
+        status: 'ativo'
     };
 
     lastSavedTurnoId = dadosTurno.id;
@@ -346,57 +383,63 @@ function cancelEditTurno() {
     updateTurnoCargaPreview();
 
     btnSalvarTurno.textContent = "💾 Salvar Turno";
-    formTabButton.innerHTML = "📝 Novo Turno"; // Redefine o título da aba com emoji
+    formTabButton.innerHTML = "📝 Novo Turno";
     parseEmojisInElement(btnSalvarTurno);
     setTurnoFormDirty(false);
 
     turnoNomeInput.focus();
 }
 
-async function deleteTurno(id) {
-    const { escalas, cargos, equipes } = store.getState();
+async function archiveTurno(id) {
+    const { cargos, equipes } = store.getState();
     const blockingIssues = [];
 
-    // 1. Verificar em escalas salvas
-    const isTurnoInUseEscala = escalas.some(escala =>
-        escala.slots.some(slot => slot.turnoId === id)
-    );
-    if (isTurnoInUseEscala) {
-        blockingIssues.push("Está sendo utilizado em uma ou mais <strong>escalas salvas</strong>.");
-    }
-
-    // 2. Verificar em cargos
-    const cargosUsando = cargos.filter(c => (c.turnosIds || []).includes(id));
+    const cargosUsando = cargos.filter(c => c.status === 'ativo' && (c.turnosIds || []).includes(id));
     if (cargosUsando.length > 0) {
         const nomesCargos = cargosUsando.map(c => `<strong>${c.nome}</strong>`).join(', ');
-        blockingIssues.push(`Está associado ao(s) cargo(s): ${nomesCargos}.`);
+        blockingIssues.push(`Está associado ao(s) cargo(s) ativo(s): ${nomesCargos}.`);
     }
 
-    // 3. Verificar em equipes
     const equipesUsando = equipes.filter(e => e.turnoId === id);
     if (equipesUsando.length > 0) {
         const nomesEquipes = equipesUsando.map(e => `<strong>${e.nome}</strong>`).join(', ');
         blockingIssues.push(`Está sendo utilizado pela(s) equipe(s): ${nomesEquipes}.`);
     }
 
-    // 4. Mostrar modal unificado se houver problemas
     if (blockingIssues.length > 0) {
         const messageHTML = `
-            <p>Este turno não pode ser excluído pelos seguintes motivos:</p>
+            <p>Este turno não pode ser arquivado pelos seguintes motivos:</p>
             <ul>
                 ${blockingIssues.map(issue => `<li>${issue}</li>`).join('')}
             </ul>
-            <p>Por favor, resolva estas dependências antes de tentar excluir o turno.</p>
+            <p>Por favor, remova este turno dos cargos ou equipes ativas antes de arquivá-lo.</p>
         `;
         showInfoModal({
-            title: "Exclusão Bloqueada",
+            title: "Arquivamento Bloqueado",
             contentHTML: messageHTML
         });
         return;
     }
 
-    // 5. Se não houver problemas, prosseguir com a confirmação de exclusão
-    await handleDeleteItem({ id, itemName: 'Turno', dispatchAction: 'DELETE_TURNO' });
+    const { confirmed } = await showConfirm({
+        title: "Arquivar Turno?",
+        message: "O turno não aparecerá mais nas listas de seleção, mas seu histórico em escalas salvas será mantido. Deseja continuar?",
+        confirmText: "Sim, Arquivar"
+    });
+
+    if (confirmed) {
+        store.dispatch('ARCHIVE_TURNO', id);
+        showToast(`Turno arquivado com sucesso.`, 'success');
+        renderTurnos();
+        renderTurnosArquivados();
+    }
+}
+
+async function unarchiveTurno(id) {
+    store.dispatch('UNARCHIVE_TURNO', id);
+    showToast(`Turno reativado com sucesso.`, 'success');
+    renderTurnos();
+    renderTurnosArquivados();
 }
 
 
@@ -405,14 +448,31 @@ function handleTurnosTableClick(event) {
     if (!target) return;
     const { action, id } = target.dataset;
     if (action === 'edit') editTurnoInForm(id);
-    else if (action === 'delete') deleteTurno(id);
+    else if (action === 'archive') archiveTurno(id);
+}
+
+function handleTurnosArquivadosTableClick(event) {
+    const target = event.target.closest('button');
+    if (!target) return;
+    const { action, id } = target.dataset;
+    if (action === 'unarchive') unarchiveTurno(id);
 }
 
 function initTurnosPage() {
     switchTurnosTab = setupTabbedPanel('#page-turnos .painel-gerenciamento', 'turnos', (tabId) => {
         if (tabId === 'gerenciar') {
             cancelEditTurno();
+            renderTurnos();
+        } else if (tabId === 'arquivados') {
+            cancelEditTurno();
+            renderTurnosArquivados();
         }
+        
+        const addBtn = $('.btn-add-new', pageTurnos);
+        if (addBtn) addBtn.style.display = (tabId === 'gerenciar' || tabId === 'arquivados') ? 'inline-flex' : 'none';
+
+        if (tabId === 'gerenciar') filtroTurnosInput.value = '';
+        if (tabId === 'arquivados') filtroTurnosArquivadosInput.value = '';
     });
 
     $('.btn-add-new', pageTurnos).addEventListener('click', () => {
@@ -428,7 +488,9 @@ function initTurnosPage() {
     });
 
     tblTurnosBody.addEventListener('click', handleTurnosTableClick);
+    tblTurnosArquivadosBody.addEventListener('click', handleTurnosArquivadosTableClick);
     filtroTurnosInput.addEventListener("input", renderTurnos);
+    filtroTurnosArquivadosInput.addEventListener("input", renderTurnosArquivados);
 
     renderCorPalette();
     selectCor(getLeastUsedColor() || PALETA_CORES[0]);

@@ -265,8 +265,9 @@
             <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
-                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Cadastrados</button>
+                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Ativos</button>
                         <button class="painel-tab-btn" data-tab="formulario">📝 Novo Turno</button>
+                        <button class="painel-tab-btn" data-tab="arquivados">🗃️ Arquivados</button>
                     </div>
                     <div class="painel-actions">
                         <button class="primary btn-add-new" data-action="add-new">➕ Adicionar Novo Turno</button>
@@ -365,6 +366,20 @@
                             <button id="btnCancelarTurno" class="purple">🗑️ Cancelar</button>
                         </div>
                     </div>
+                    <div class="painel-tab-content" data-tab-content="arquivados">
+                        <div class="form-row"><input type="search" id="filtroTurnosArquivados" placeholder="🔎 Buscar turno arquivado..." style="width: 100%;" /></div>
+                        <table class="table" id="tblTurnosArquivados">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Sigla</th>
+                                    <th>Carga</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -373,8 +388,9 @@
             <div class="card painel-gerenciamento painel-crud">
                 <div class="painel-header">
                     <div class="painel-tabs">
-                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Cadastrados</button>
+                        <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Ativos</button>
                         <button class="painel-tab-btn" data-tab="formulario">📝 Novo Cargo</button>
+                        <button class="painel-tab-btn" data-tab="arquivados">🗃️ Arquivados</button>
                     </div>
                     <div class="painel-actions">
                         <button class="primary btn-add-new" data-action="add-new">➕ Adicionar Novo Cargo</button>
@@ -463,6 +479,20 @@
                             <button id="btnCancelarCargo" class="purple">🗑️ Cancelar</button>
                         </div>
                     </div>
+                    <div class="painel-tab-content" data-tab-content="arquivados">
+                        <div class="form-row"><input type="search" id="filtroCargosArquivados" placeholder="🔎 Buscar cargo arquivado..." style="width: 100%;" /></div>
+                        <table class="table" id="tblCargosArquivados">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Turnos</th>
+                                    <th>Funcionamento</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -473,7 +503,6 @@
                     <div class="painel-tabs">
                         <button class="painel-tab-btn active" data-tab="gerenciar">🗂️ Gerenciar Ativos</button>
                         <button class="painel-tab-btn" data-tab="formulario">📝 Novo Funcionário</button>
-
                         <button class="painel-tab-btn" data-tab="arquivados">🗃️ Arquivados</button>
                     </div>
                     <div class="painel-actions">
