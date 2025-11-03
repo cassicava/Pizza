@@ -15,9 +15,9 @@
   --font-sans: 'Figtree', sans-serif;
   --text-brush-color: #1e293b;
   --overtime-color: #f97316;
-  --gradient-start: #00BFFF;
-  --gradient-mid: #FF00FF;
-  --gradient-end: #FF0000;
+  --gradient-start: #06b6d4;
+  --gradient-mid: #2563eb;
+  --gradient-end: #10b681;
 }
 
 * {
@@ -43,4 +43,20 @@ body {
   font-family: var(--font-sans);
   color: var(--fg);
   background: var(--bg);
+  
+  /* NOVO: Impede a seleção de texto na interface */
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE 10+ */
+  user-select: none;
+}
+
+/* NOVO: Permite a seleção de texto DENTRO de campos de formulário e inputs */
+input, 
+textarea, 
+[contenteditable="true"] {
+  -webkit-user-select: auto;
+  -moz-user-select: auto;
+  -ms-user-select: auto;
+  user-select: auto;
 }

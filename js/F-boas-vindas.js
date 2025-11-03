@@ -14,6 +14,9 @@ let termsAcceptedState = {
     privacy: false,
 };
 
+// --- NOVO: Variável de controle do carrossel ---
+let featureCarouselInterval = null;
+
 function validateWelcomeStep2() {
     const nomeValido = nomeInput.value.trim() !== '';
     personalizacaoNextBtn.disabled = !nomeValido;
@@ -34,6 +37,32 @@ function loadOnboardingProgress() {
         onboardingState = savedState;
         nomeInput.value = onboardingState.nome;
     }
+}
+
+// --- NOVO: Função para iniciar o carrossel animado ---
+function startFeatureCarousel() {
+    if (featureCarouselInterval) {
+        clearInterval(featureCarouselInterval);
+    }
+
+    const carousel = $("#welcome-feature-carousel");
+    if (!carousel) return;
+
+    const items = $$(".carousel-item", carousel);
+    if (items.length === 0) return;
+
+    let currentIndex = 0;
+    // Garante que apenas o primeiro item esteja ativo no início
+    items.forEach((item, index) => {
+        item.classList.toggle('active', index === currentIndex);
+    });
+
+    // Inicia o temporizador para trocar os itens
+    featureCarouselInterval = setInterval(() => {
+        items[currentIndex].classList.remove('active');
+        currentIndex = (currentIndex + 1) % items.length;
+        items[currentIndex].classList.add('active');
+    }, 2500); 
 }
 
 function showStep(stepNumber, direction = 'forward') {
@@ -64,6 +93,14 @@ function showStep(stepNumber, direction = 'forward') {
     onboardingState.currentStep = stepNumber;
     saveOnboardingProgress();
 
+    // Inicia o carrossel especificamente quando o passo 3 é exibido
+    if (stepNumber === 3) {
+        startFeatureCarousel();
+    } else {
+        // Para o carrossel se não estiver no passo 3
+        if (featureCarouselInterval) clearInterval(featureCarouselInterval);
+    }
+
     setTimeout(() => {
         const firstInput = $('input:not([type=checkbox]), button.welcome-btn-primary', nextStepEl);
         if(firstInput && firstInput.id !== 'welcome-nome-input') {
@@ -73,6 +110,9 @@ function showStep(stepNumber, direction = 'forward') {
 }
 
 async function handleWelcomeImport() {
+    // Para o carrossel se estiver rodando
+    if (featureCarouselInterval) clearInterval(featureCarouselInterval);
+
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.json,application/json';
@@ -145,6 +185,9 @@ function finishOnboarding() {
         return;
     }
 
+    // Para o carrossel se estiver rodando
+    if (featureCarouselInterval) clearInterval(featureCarouselInterval);
+
     onboardingState.nome = nomeInput.value.trim();
     const initialConfig = { nome: onboardingState.nome };
     store.dispatch('SAVE_CONFIG', initialConfig);
@@ -172,6 +215,11 @@ function initWelcomeScreen() {
     parseEmojisInElement(welcomeOverlay);
     
     showStep(onboardingState.currentStep || 1);
+    
+    // Inicia o carrossel se o usuário reabrir na etapa 3
+    if (onboardingState.currentStep === 3) {
+        startFeatureCarousel();
+    }
 
     $("#welcome-start-fresh").onclick = () => showStep(2, 'forward');
     $("#welcome-import-backup").onclick = handleWelcomeImport;

@@ -136,3 +136,8 @@
     opacity: 0;
     pointer-events: none;
 }
+
+/* --- CORREÇÃO: Ajuste de altura de linha para nomes de usuário --- */
+#splash-user-name {
+    line-height: 1.3; /* Ajuste para evitar corte em letras descendentes (j, g, p) */
+}

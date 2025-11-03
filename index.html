@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Escala Facil</title>
+    <title>PlantãoPro</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,7 +42,7 @@
 <body>
     <div id="splash-screen">
         <div class="splash-logo-container">
-            <span class="logo-compact">EF</span>
+            <span class="logo-compact">PP</span>
         </div>
         <div class="splash-grid">
             <div class="grid-line h-line h-line-1"></div>
@@ -65,7 +65,7 @@
 
             <div id="welcome-step-1" class="welcome-step">
                 <h2 class="welcome-title">Boas-vindas ao <span class="animated-brand-text"
-                        style="font-size: inherit;">Escala Fácil</span>!</h2>
+                        style="font-size: inherit;">PlantãoPro</span>!</h2>
                 <p class="welcome-subtitle">Sua nova ferramenta para criar escalas de trabalho de forma inteligente e sem estresse.</p>
                 <div class="welcome-options-container">
                     <div class="welcome-option-card" id="welcome-start-fresh">
@@ -95,20 +95,25 @@
 
             <div id="welcome-step-3" class="welcome-step">
                 <h2 class="welcome-title">Como vamos simplificar o seu dia a dia:</h2>
-                <ul class="welcome-features-list">
-                    <li class="welcome-feature-item"><span>🚀</span>
-                        <div><strong>Geração Inteligente:</strong> Crie escalas complexas em minutos, não em horas.</div>
-                    </li>
-                    <li class="welcome-feature-item"><span>✅</span>
-                        <div><strong>Prevenção de Erros:</strong> Evite conflitos de horário e garanta o descanso da equipe.</div>
-                    </li>
-                    <li class="welcome-feature-item"><span>🎨</span>
-                        <div><strong>Edição Rápida e Visual:</strong> Ajuste, troque e aloque turnos de forma ágil e intuitiva.</div>
-                    </li>
-                    <li class="welcome-feature-item"><span>📂</span>
-                        <div><strong>Tudo Centralizado:</strong> Mantenha cadastros e escalas organizados em um só lugar.</div>
-                    </li>
-                </ul>
+                
+                <div id="welcome-feature-carousel">
+                    <div class="carousel-item active">
+                        <span>🚀</span>
+                        <h3>Crie escalas em minutos, não em horas.</h3>
+                    </div>
+                    <div class="carousel-item">
+                        <span>✅</span>
+                        <h3>Evite conflitos e garanta o descanso da equipe.</h3>
+                    </div>
+                    <div class="carousel-item">
+                        <span>🎨</span>
+                        <h3>Edite sua escala de forma visual e intuitiva.</h3>
+                    </div>
+                    <div class="carousel-item">
+                        <span>📂</span>
+                        <h3>Centralize tudo em um só lugar.</h3>
+                    </div>
+                </div>
                 <button id="welcome-proposta-next" class="welcome-btn welcome-btn-primary">Próximo</button>
                 <button class="welcome-btn-secondary welcome-btn-back" data-to-step="2">
                     &lt; Voltar</button>
@@ -144,8 +149,8 @@
     </div>
     <nav id="sidebar">
         <a href="#" class="app-brand" onclick="go('home')">
-            <span class="logo-compact">EF</span>
-            <span class="logo-full animated-brand-text">Escala Fácil</span>
+            <span class="logo-compact">PP</span>
+            <span class="logo-full animated-brand-text">PlantãoPro</span>
         </a>
 
         <div class="sidebar-links">
@@ -956,8 +961,9 @@
                             </div>
                         </div>
                         <div class="card" style="text-align: center;">
-                            <p style="margin: 0; font-weight: bold;">Escala Fácil v1.0.0</p>
-                            <p style="font-size: 0.9rem; color: var(--muted); margin: 4px 0 0 0;">Uma ferramenta para simplificar a criação e o gerenciamento de escalas.</p>
+                            <p style="margin: 0; font-weight: bold;">PlantãoPro v1.0.0</p>
+                            <p style="font-size: 0.9rem; color: var(--muted); margin: 4px 0 0 0;">desenvolvido por Cassiano | Escala Fácil</p>
+                            <p style="font-size: 0.9rem; color: var(--muted); margin: 4px 0 0 0;">Uma ferramenta para simplificar a criação e o gerenciamento de plantões.</p>
                             <p style="font-size: 0.8rem; color: var(--muted); margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
                                 © <span id="copyright-year">2025</span> Escala Fácil — Todos os direitos reservados.<br>
                                 Uso sujeito aos Termos de Licença e Política de Privacidade.
