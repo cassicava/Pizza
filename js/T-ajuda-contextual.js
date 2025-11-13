@@ -1,15 +1,9 @@
-/**************************************
- * 🆘 Módulo de Ajuda Contextual (v2.1 - Conteúdo Refinado)
- **************************************/
-
-// --- Armazenamento do Conteúdo de Ajuda Detalhado ---
 const helpContentData = {
-    // --- CONTEÚDO PARA A TELA INICIAL ---
     home: {
         title: "Ajuda: Tela Inicial",
         content: `
             <div class="help-card">
-                <h4>🏠 Bem-vindo ao Escala Fácil!</h4>
+                <h4>🏠 Bem-vindo ao PlantãoPro!</h4>
                 <p>Esta é a sua central de controle. A partir daqui, você acessa todas as funcionalidades para criar e gerenciar suas escalas.</p>
                 <p>O fluxo recomendado para começar é seguir os passos indicados nos cards de <strong>Cadastros Essenciais</strong>.</p>
             </div>
@@ -27,7 +21,7 @@ const helpContentData = {
                 <h4>⚙️ Crie e Gerencie suas Escalas</h4>
                 <p>Após realizar os cadastros essenciais, você está pronto para:</p>
                 <p><strong>✨ Geração Automática:</strong> Use o assistente inteligente para criar uma nova escala. O sistema distribuirá os funcionários (ou equipes) de acordo com as regras, disponibilidade e cobertura definidas por você.</p>
-                <p><strong>🗂️ Escalas Salvas:</strong> Acesse, visualize, edite ou exporte todas as escalas que você já salvou.</p>
+                <p><strong>🗂️ Escalas Salvas:</strong> Acesse, visualize, edite ou exporte todas as escalas que você já criou e salvou.</p>
                 <p><strong>📈 Relatórios:</strong> Analise as métricas das suas escalas salvas, como distribuição de horas, folgas e cumprimento de metas.</p>
             </div>
             <div class="help-card">
@@ -36,7 +30,6 @@ const helpContentData = {
             </div>
         `
     },
-    // --- FIM DO CONTEÚDO DA TELA INICIAL ---
     turnos: {
         title: "Ajuda: Cadastro de Turnos",
         content: `
@@ -129,10 +122,14 @@ const helpContentData = {
             <div class="help-card">
                 <h4>✨ Assistente de Geração</h4>
                 <p>Siga os passos para configurar os parâmetros que o algoritmo inteligente usará para montar a escala.</p>
-                <p><strong>Passo 1: Período:</strong> Escolha o <strong>Cargo</strong> e o <strong>intervalo de datas</strong> da escala. Este é o único passo obrigatório.</p>
-                <p><strong>Passo 2: Feriados:</strong> Informe os feriados do período e se eles serão de <strong>Folga Geral</strong> ou não. Configure também se um feriado de folga deve descontar horas/turnos da meta dos funcionários.</p>
-                <p><strong>Passo 3: Ausências:</strong> Registre <strong>Férias, Folgas ou Afastamentos</strong> para funcionários específicos. O gerador garantirá que eles não sejam escalados nestas datas.</p>
-                <p><strong>Passo 4: Cobertura:</strong> Informe a "demanda". Escolha entre definir quantos funcionários são necessários por turno/dia (<strong>Individual</strong>) ou configurar o padrão de trabalho das suas <strong>Equipes</strong> (ex: trabalham 2 dias e folgam 2), podendo adicionar cobertura individual complementar se necessário.</p>
+                <p><strong>Passo 1: Período e Metas:</strong> Escolha o <strong>Cargo</strong> e o <strong>intervalo de datas</strong>. O sistema calculará automaticamente o <strong>total de horas/turnos</strong> que sua equipe deve cumprir (Metas) para esse período, agrupado por tipo de contrato (ex: 30h/semana, 15 turnos/mês).</p>
+                <p>Você pode <strong>ajustar o total</strong> de cada grupo clicando em '✏️ Ajustar Total'. O sistema distribuirá esse ajuste proporcionalmente entre os funcionários daquele grupo. Clique em <strong>✔️ Confirmar Metas</strong> para habilitar os próximos passos.</p>
+                <p><strong>Passo 2: Feriados:</strong> Informe os feriados do período e se eles serão de <strong>Folga Geral</strong> ou não. As folgas configuradas aqui irão <strong>atualizar a 'Meta Líquida'</strong> (disponibilidade real) da sua equipe.</p>
+                <p><strong>Passo 3: Ausências:</strong> Registre <strong>Férias, Folgas ou Afastamentos</strong> para funcionários específicos. O gerador garantirá que eles não sejam escalados e as ausências também serão <strong>descontadas da 'Meta Líquida'</strong> total.</p>
+                <p><strong>Passo 4: Cobertura:</strong> Informe a "demanda" (quantos funcionários você precisa em cada turno/dia).</p>
+                <p>Observe o <strong>Balanço da Escala</strong> no topo da tela. Esta barra única mostra, em tempo real, se a sua demanda (o que você *pede*) está alinhada com a sua 'Meta Líquida' (o que sua equipe *pode entregar* após descontar feriados e ausências).</p>
+                <p>• <strong>Barra Azul/Verde (OK):</strong> Sua demanda está dentro da capacidade da equipe.</p>
+                <p>• <strong>Barra Laranja (Hora Extra):</strong> Sua demanda excede a capacidade, resultando em horas extras.</p>
             </div>
             <div class="help-card">
                 <h4>🎨 Visualização e Edição</h4>
@@ -187,7 +184,6 @@ const helpContentData = {
                 <h4>💾 Dados (Backup e Restauração)</h4>
                 <p><strong>ESSENCIAL:</strong> Seus dados (turnos, funcionários, escalas, etc.) são salvos <strong>apenas neste programa</strong>, no seu computador. Use a função de <strong>📤 Exportar (Backup)</strong> regularmente para criar um arquivo de segurança (<code>.json</code>). Guarde este arquivo em local seguro!</p>
                 <p>Se você trocar de computador, limpar os dados do programa, ou ocorrer algum problema, poderá usar a função de <strong>📥 Importar</strong> para restaurar tudo a partir do seu arquivo de backup. <strong>Atenção:</strong> A importação substitui todos os dados atuais.</p>
-                 <p><strong>Backup Automático:</strong> Você pode configurar o sistema para baixar um arquivo de backup automaticamente Diariamente ou Semanalmente, como uma segurança adicional.</p>
                  <p><strong>⚠️ Ações Irreversíveis:</strong> Tenha muito cuidado nesta seção. A opção de <strong>🔥 Apagar Todos os Dados</strong> remove permanentemente tudo do aplicativo neste programa. Use apenas se tiver certeza absoluta e possuir um backup recente.</p>
             </div>
             <div class="help-card">
@@ -196,14 +192,13 @@ const helpContentData = {
                 <p>• <strong>Termos de Uso e Política de Privacidade:</strong> Documentos legais sobre o uso do software.</p>
                 <p>• <strong>Atalhos de Teclado:</strong> Lista os comandos de teclado disponíveis no Editor Manual da escala.</p>
                 <p>• <strong>Reportar um Problema:</strong> Abre seu cliente de e-mail para enviar um feedback ou relatar um erro.</p>
-                <p>• <strong>Apoiar o Projeto (PIX):</strong> Se o Escala Fácil te ajudou, considere apoiar o desenvolvimento!</p>
+                <p>• <strong>Apoiar o Projeto (PIX):</strong> Se o PlantãoPro te ajudou, considere apoiar o desenvolvimento!</p>
             </div>
 
         `
     }
 };
 
-// --- Referências do DOM ---
 const contextHelpBtn = document.getElementById('context-help-btn');
 const helpPanel = document.getElementById('help-panel');
 const helpPanelBackdrop = document.getElementById('help-panel-backdrop');
@@ -212,48 +207,35 @@ const helpPanelContent = document.getElementById('help-panel-content');
 const helpPanelCloseBtn = document.getElementById('help-panel-close-btn');
 const body = document.body;
 
-/**
- * Mostra ou esconde o painel de ajuda com animação.
- * @param {boolean} show - True para mostrar, false para esconder.
- */
 function toggleHelpPanel(show) {
     if (show) {
         body.classList.remove('help-panel-hiding');
         body.classList.add('help-panel-active');
-        // Garante que o painel volte ao topo ao abrir
         if(helpPanelContent) helpPanelContent.scrollTop = 0;
     } else {
         body.classList.add('help-panel-hiding');
-        // Espera a animação de fechamento terminar para remover a classe principal
         setTimeout(() => {
             body.classList.remove('help-panel-active');
             body.classList.remove('help-panel-hiding');
-        }, 400); // Mesmo tempo da transição no CSS
+        }, 400); 
     }
 }
 
-/**
- * Carrega o conteúdo de ajuda específico para a tela atual.
- * @param {string} pageId - O ID da tela (ex: 'turnos', 'cargos').
- * @returns {boolean} - Retorna true se encontrou conteúdo de ajuda, false caso contrário.
- */
 function loadHelpContent(pageId) {
     const helpData = helpContentData[pageId];
 
     if (helpData) {
         helpPanelTitle.textContent = helpData.title;
         helpPanelContent.innerHTML = helpData.content;
-        parseEmojisInElement(helpPanelContent); // Garante que emojis sejam renderizados corretamente
-        return true; // Encontrou conteúdo
+        parseEmojisInElement(helpPanelContent); 
+        return true; 
     } else {
-        // Limpa o conteúdo se não houver ajuda (evita mostrar conteúdo antigo)
         helpPanelTitle.textContent = 'Ajuda';
         helpPanelContent.innerHTML = '<p class="muted">Não há ajuda disponível para esta seção.</p>';
-        return false; // Não encontrou conteúdo
+        return false; 
     }
 }
 
-// --- Event Listeners ---
 if (contextHelpBtn) {
     contextHelpBtn.addEventListener('click', () => toggleHelpPanel(true));
 }
@@ -262,12 +244,10 @@ if (helpPanelCloseBtn) {
     helpPanelCloseBtn.addEventListener('click', () => toggleHelpPanel(false));
 }
 
-// Fecha o painel se o usuário clicar no fundo (backdrop)
 if (helpPanelBackdrop) {
     helpPanelBackdrop.addEventListener('click', () => toggleHelpPanel(false));
 }
 
-// Fecha o painel se o usuário pressionar a tecla Escape
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && body.classList.contains('help-panel-active')) {
         toggleHelpPanel(false);
