@@ -1004,38 +1004,16 @@ function renderPasso4_Cobertura() {
     if(!container) return;
 
     const balancoHTML = `
-        <div class="balanco-carga-container card">
-            <div class="balanco-grupo">
-                <div class="balanco-header">
-                    <span class="balanco-label">Demanda (Horas):</span>
-                    <span class="balanco-numeros" id="balanco-demanda-horas">0.0h</span>
-                </div>
-                <div class="balanco-header">
-                    <span class="balanco-label">Meta (Disponível):</span>
-                    <span class="balanco-numeros" id="balanco-meta-horas">${(geradorState.totalMetaHoras || 0).toFixed(1)}h</span>
-                </div>
-                <div class="balanco-barra-fundo">
-                    <div class="balanco-barra" id="balanco-barra-horas" style="width: 0%;"></div>
-                </div>
-                <div class="balanco-aviso hidden" id="balanco-aviso-horas"></div>
-            </div>
-            <div class="balanco-grupo">
-                <div class="balanco-header">
-                    <span class="balanco-label">Demanda (Turnos):</span>
-                    <span class="balanco-numeros" id="balanco-demanda-turnos">0 turnos</span>
-                </div>
-                <div class="balanco-header">
-                    <span class="balanco-label">Meta (Disponível):</span>
-                    <span class="balanco-numeros" id="balanco-meta-turnos">${(geradorState.totalMetaTurnos || 0)} turnos</span>
-                </div>
-                <div class="balanco-barra-fundo">
-                    <div class="balanco-barra" id="balanco-barra-turnos" style="width: 0%;"></div>
-                </div>
-                <div class="balanco-aviso hidden" id="balanco-aviso-turnos"></div>
+        <div class="balanco-mestre-container card">
+            <span class="balanco-mestre-label">Balanço de Carga (Demanda vs. Meta Líquida)</span>
+            <span class="balanco-mestre-status" id="balanco-mestre-status">OK ✅</span>
+            <div class="balanco-mestre-barra-fundo">
+                <div class="balanco-mestre-barra" id="balanco-mestre-barra" style="width: 0%;"></div>
             </div>
         </div>
     `;
     container.innerHTML = balancoHTML;
+    parseEmojisInElement(container);
 
 
     if (!cargo || !cargo.turnosIds || cargo.turnosIds.length === 0) {
@@ -1141,7 +1119,7 @@ function renderPasso4_Cobertura() {
 }
 
 function updateBalançoCarga() {
-    const { turnos, equipes } = store.getState();
+    const { turnos, equipes, funcionarios } = store.getState();
     const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
     const equipesMap = Object.fromEntries(equipes.map(e => [e.id, e]));
     const dateRange = dateRangeInclusive(geradorState.inicio, geradorState.fim);
@@ -1202,35 +1180,71 @@ function updateBalançoCarga() {
         }
     });
 
-    const { totalMetaHoras, totalMetaTurnos } = geradorState;
+    let netMetaHoras = geradorState.totalMetaHoras;
+    let netMetaTurnos = geradorState.totalMetaTurnos;
 
-    $('#balanco-demanda-horas').textContent = `${totalDemandaHoras.toFixed(1)}h`;
-    $('#balanco-demanda-turnos').textContent = `${totalDemandaTurnos} turnos`;
+    geradorState.feriados.filter(f => !f.trabalha && f.descontaMeta).forEach(feriado => {
+        const funcsDoCargo = funcionarios.filter(f => f.cargoId === geradorState.cargoId && f.status === 'ativo');
+        funcsDoCargo.forEach(func => {
+            const isAusente = geradorState.excecoes[func.id] && Object.values(geradorState.excecoes[func.id]).flat().includes(feriado.date);
+            if (!isAusente) {
+                if (func.medicaoCarga === 'horas') {
+                    netMetaHoras -= (feriado.desconto.horas || 0);
+                } else {
+                    netMetaTurnos -= (feriado.desconto.turnos || 0);
+                }
+            }
+        });
+    });
 
-    const percentHoras = (totalMetaHoras > 0) ? (totalDemandaHoras / totalMetaHoras) * 100 : (totalDemandaHoras > 0 ? 101 : 0);
-    const percentTurnos = (totalMetaTurnos > 0) ? (totalDemandaTurnos / totalMetaTurnos) * 100 : (totalDemandaTurnos > 0 ? 101 : 0);
+    Object.keys(geradorState.excecoes).forEach(funcId => {
+        const func = funcionarios.find(f => f.id === funcId);
+        if (!func || func.cargoId !== geradorState.cargoId) return;
 
-    const barraHoras = $('#balanco-barra-horas');
-    const avisoHoras = $('#balanco-aviso-horas');
-    if (barraHoras) {
-        barraHoras.style.width = `${Math.min(percentHoras, 100)}%`;
-        barraHoras.classList.toggle('excesso', percentHoras > 100);
-    }
-    if (avisoHoras) {
-        avisoHoras.classList.toggle('hidden', percentHoras <= 100);
-        avisoHoras.textContent = 'Atenção: A demanda de horas excede a meta disponível.';
-    }
+        const ausencias = Object.values(geradorState.excecoes[funcId]).flat();
+        const diasDeAusenciaUnicos = [...new Set(ausencias)];
 
-    const barraTurnos = $('#balanco-barra-turnos');
-    const avisoTurnos = $('#balanco-aviso-turnos');
-    if (barraTurnos) {
-        barraTurnos.style.width = `${Math.min(percentTurnos, 100)}%`;
-        barraTurnos.classList.toggle('excesso', percentTurnos > 100);
+        diasDeAusenciaUnicos.forEach(date => {
+            if (func.medicaoCarga === 'horas') {
+                const valorDia = (func.cargaHoraria / (func.periodoHoras === 'semanal' ? 7 : 30.41));
+                netMetaHoras -= valorDia;
+            } else {
+                const valorDia = (func.cargaHoraria / (func.periodoHoras === 'semanal' ? 7 : 30.41));
+                netMetaTurnos -= valorDia;
+            }
+        });
+    });
+    
+    netMetaHoras = Math.max(0, netMetaHoras);
+    netMetaTurnos = Math.max(0, netMetaTurnos);
+
+
+    const percentHoras = (netMetaHoras > 0) ? (totalDemandaHoras / netMetaHoras) * 100 : (totalDemandaHoras > 0 ? 101 : 0);
+    const percentTurnos = (netMetaTurnos > 0) ? (totalDemandaTurnos / netMetaTurnos) * 100 : (totalDemandaTurnos > 0 ? 101 : 0);
+    const percentCritico = Math.max(percentHoras, percentTurnos);
+
+    const barra = $('#balanco-mestre-barra');
+    const status = $('#balanco-mestre-status');
+
+    if (!barra || !status) return;
+
+    barra.style.width = `${Math.min(percentCritico, 100)}%`;
+    barra.classList.remove('verde', 'excesso');
+    status.classList.remove('ok', 'excesso');
+
+    if (percentCritico > 100) {
+        barra.classList.add('excesso');
+        status.textContent = 'Hora Extra Necessária 🟠';
+        status.classList.add('excesso');
+    } else if (percentCritico >= 90) {
+        barra.classList.add('verde');
+        status.textContent = 'Meta Atingida ✅';
+        status.classList.add('ok');
+    } else {
+        status.textContent = 'OK ✅';
+        status.classList.add('ok');
     }
-    if (avisoTurnos) {
-        avisoTurnos.classList.toggle('hidden', percentTurnos <= 100);
-        avisoTurnos.textContent = 'Atenção: A demanda de turnos excede a meta disponível.';
-    }
+    parseEmojisInElement(status);
 }
 
 

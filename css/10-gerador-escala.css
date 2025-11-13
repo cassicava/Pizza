@@ -1095,6 +1095,9 @@
     max-height: none;
     grid-column: auto;
   }
+  .balanco-mestre-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1397,47 +1400,40 @@
 }
 
 
-.balanco-carga-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
+.balanco-mestre-container {
+    background-color: var(--card);
+    border-radius: 12px;
     padding: 16px 24px;
     margin-bottom: 24px;
+    border: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px 24px;
 }
 
-.balanco-grupo {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.balanco-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-}
-
-.balanco-label {
-    font-size: 0.9rem;
+.balanco-mestre-label {
+    font-size: 1rem;
     font-weight: 500;
-    color: var(--muted);
-}
-
-.balanco-numeros {
-    font-size: 1.1rem;
-    font-weight: 700;
     color: var(--fg);
 }
 
-.balanco-barra-fundo {
-    height: 10px;
+.balanco-mestre-status {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: right;
+}
+
+.balanco-mestre-barra-fundo {
+    grid-column: 1 / -1;
+    height: 16px;
     background-color: var(--bg);
     border: 1px solid var(--border);
     border-radius: 999px;
     overflow: hidden;
 }
 
-.balanco-barra {
+.balanco-mestre-barra {
     height: 100%;
     width: 0%;
     background-color: var(--brand);
@@ -1445,13 +1441,13 @@
     transition: width 0.4s ease-out, background-color 0.4s ease-out;
 }
 
-.balanco-barra.excesso {
-    background-color: var(--danger);
+.balanco-mestre-barra.verde {
+    background-color: #22c55e;
 }
 
-.balanco-aviso {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--danger);
-    text-align: right;
+.balanco-mestre-barra.excesso {
+    background-color: var(--overtime-color);
 }
+
+.balanco-mestre-status.ok { color: #22c55e; }
+.balanco-mestre-status.excesso { color: var(--overtime-color); }
