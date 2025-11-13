@@ -10,7 +10,6 @@ function saveJSON(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {
         console.error("Erro ao salvar no localStorage:", e);
-        // Alterado "navegador" para "programa"
         showToast("Erro ao salvar! O armazenamento local do programa pode estar cheio.", "error");
     }
 }
@@ -20,10 +19,6 @@ function loadJSON(key, fallback){
   catch { return fallback; }
 }
 
-/**
- * Roda o parser do Twemoji em um elemento específico do DOM para substituir emojis nativos por imagens.
- * @param {HTMLElement} element O elemento container cujos emojis devem ser parseados.
- */
 function parseEmojisInElement(element) {
     if (element && typeof twemoji !== 'undefined') {
         twemoji.parse(element, {
@@ -123,10 +118,32 @@ function showToast(message, type = 'info') {
     }, 4500);
 }
 
+function openNativeModal() {
+    const backdrop = $("#modalBackdrop");
+    const modal = $("#modal");
+    if (!backdrop || !modal) return;
+
+    backdrop.classList.remove("hidden", "modal-hiding");
+    void modal.offsetWidth; 
+    modal.classList.add("modal-showing");
+}
+
+function closeNativeModal() {
+    const backdrop = $("#modalBackdrop");
+    const modal = $("#modal");
+    if (!backdrop || !modal) return;
+
+    backdrop.classList.add("modal-hiding");
+    modal.classList.remove("modal-showing");
+
+    backdrop.addEventListener('transitionend', () => {
+        backdrop.classList.add("hidden");
+        backdrop.classList.remove("modal-hiding");
+    }, { once: true });
+}
+
 function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "Cancelar", checkbox = null }) {
     return new Promise((resolve) => {
-        const backdrop = $("#modalBackdrop");
-        const modal = $("#modal");
         const modalMessageEl = $("#modalMessage");
         const modalConfirmBtn = $("#modalConfirm");
         const modalCancelBtn = $("#modalCancel");
@@ -151,7 +168,7 @@ function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "
         modalConfirmBtn.style.display = 'inline-flex';
         modalCancelBtn.style.display = 'inline-flex';
 
-        backdrop.classList.remove("hidden");
+        openNativeModal();
 
         const cleanupAndResolve = (value) => {
             const result = { confirmed: value };
@@ -161,7 +178,7 @@ function showConfirm({ title, message, confirmText = "Confirmar", cancelText = "
             modalConfirmBtn.onclick = null;
             modalCancelBtn.onclick = null;
             modalMessageEl.innerHTML = '';
-            backdrop.classList.add("hidden");
+            closeNativeModal();
             resolve(result);
         };
         modalConfirmBtn.onclick = () => cleanupAndResolve(true);
@@ -190,7 +207,7 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
             parseEmojisInElement(button);
         });
 
-        backdrop.classList.remove("hidden");
+        openNativeModal();
 
         const cleanupAndResolve = (value) => {
             modalActionsContainer.innerHTML = '';
@@ -200,7 +217,7 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
                 <button id="modalConfirm" class="primary">✓ Confirmar</button>
             `;
             $("#modalMessage").innerHTML = '';
-            backdrop.classList.add("hidden");
+            closeNativeModal();
             resolve(value);
         };
 
@@ -215,7 +232,6 @@ function showActionModal({ title, message, actions = [], columnLayout = false })
 }
 
 function showInfoModal({ title, contentHTML }) {
-    const backdrop = $("#modalBackdrop");
     const modalMessageEl = $("#modalMessage");
     const modalCancelBtn = $("#modalCancel");
     $("#modalTitle").textContent = title;
@@ -224,9 +240,11 @@ function showInfoModal({ title, contentHTML }) {
     $("#modalConfirm").style.display = 'none';
     modalCancelBtn.textContent = "Fechar";
     modalCancelBtn.style.display = 'inline-flex';
-    backdrop.classList.remove("hidden");
+    
+    openNativeModal();
+
     const closeHandler = () => {
-        backdrop.classList.add("hidden");
+        closeNativeModal();
         modalCancelBtn.onclick = null;
         $("#modalConfirm").style.display = 'inline-flex';
         modalMessageEl.innerHTML = '';
@@ -236,7 +254,6 @@ function showInfoModal({ title, contentHTML }) {
 
 function showScrollableConfirmModal({ title, contentHTML, confirmText = "Li e concordo" }) {
     return new Promise((resolve) => {
-        const backdrop = $("#modalBackdrop");
         const modalMessageEl = $("#modalMessage");
         const modalConfirmBtn = $("#modalConfirm");
         const modalCancelBtn = $("#modalCancel");
@@ -248,6 +265,7 @@ function showScrollableConfirmModal({ title, contentHTML, confirmText = "Li e co
         modalCancelBtn.textContent = "Voltar";
         modalConfirmBtn.style.display = 'inline-flex';
         modalCancelBtn.style.display = 'inline-flex';
+        
         const enableButtonIfReady = () => {
             const hasScrollbar = modalMessageEl.scrollHeight > modalMessageEl.clientHeight;
             const isAtBottom = modalMessageEl.scrollHeight - modalMessageEl.scrollTop <= modalMessageEl.clientHeight + 5;
@@ -256,19 +274,22 @@ function showScrollableConfirmModal({ title, contentHTML, confirmText = "Li e co
                 modalMessageEl.removeEventListener('scroll', enableButtonIfReady);
             }
         };
+        
         setTimeout(() => {
             modalMessageEl.scrollTop = 0;
             enableButtonIfReady();
             modalMessageEl.addEventListener('scroll', enableButtonIfReady);
         }, 100);
-        backdrop.classList.remove("hidden");
+        
+        openNativeModal();
+
         const cleanupAndResolve = (value) => {
             modalMessageEl.removeEventListener('scroll', enableButtonIfReady);
             modalConfirmBtn.onclick = null;
             modalCancelBtn.onclick = null;
             modalConfirmBtn.disabled = false;
             $("#modalMessage").innerHTML = '';
-            backdrop.classList.add("hidden");
+            closeNativeModal();
             resolve(value);
         };
         modalConfirmBtn.onclick = () => cleanupAndResolve(true);
@@ -278,7 +299,6 @@ function showScrollableConfirmModal({ title, contentHTML, confirmText = "Li e co
 
 async function showPromptConfirm({ title, message, promptLabel, requiredWord, confirmText = "Confirmar" }) {
     return new Promise((resolve) => {
-        const backdrop = $("#modalBackdrop");
         const modalMessageEl = $("#modalMessage");
         const modalConfirmBtn = $("#modalConfirm");
         const modalCancelBtn = $("#modalCancel");
@@ -299,14 +319,16 @@ async function showPromptConfirm({ title, message, promptLabel, requiredWord, co
             modalConfirmBtn.disabled = promptInput.value !== requiredWord;
         };
         promptInput.addEventListener('input', inputHandler);
-        backdrop.classList.remove("hidden");
+        
+        openNativeModal();
+        
         const cleanupAndResolve = (value) => {
             promptInput.removeEventListener('input', inputHandler);
             modalConfirmBtn.onclick = null;
             modalCancelBtn.onclick = null;
             modalConfirmBtn.disabled = false;
             $("#modalMessage").innerHTML = '';
-            backdrop.classList.add("hidden");
+            closeNativeModal();
             resolve(value);
         };
         modalConfirmBtn.onclick = () => cleanupAndResolve(true);
@@ -452,7 +474,6 @@ function playEmojiBurst(event) {
     }
 }
 
-/* --- CORREÇÃO: Função `playStarBurst` agora aceita coordenadas --- */
 function playStarBurst(originX, originY) {
     if (typeof originX === 'undefined' || typeof originY === 'undefined') return;
 
@@ -485,12 +506,6 @@ function playStarBurst(originX, originY) {
     }
 }
 
-/**
- * Limita a frequência de execução de uma função.
- * @param {Function} func - A função a ser executada.
- * @param {number} limit - O intervalo de tempo em milissegundos.
- * @returns {Function} A nova função com throttle.
- */
 const throttle = (func, limit) => {
   let inThrottle;
   return function() {
@@ -504,13 +519,6 @@ const throttle = (func, limit) => {
   }
 };
 
-/**
- * Configura um painel com abas, gerenciando a troca de visualização.
- * @param {string} panelSelector - O seletor CSS para o elemento do painel principal (ex: '.painel-gerenciamento').
- * @param {string|null} dirtyFormKey - A chave do objeto dirtyForms a ser verificada.
- * @param {Function} [onTabSwitch=null] - Uma função de callback opcional executada quando uma aba é trocada, recebendo o ID da nova aba.
- * @returns {Function|null} Uma função que pode ser chamada com um ID de aba para trocar programaticamente, ou null se o painel não for encontrado.
- */
 function setupTabbedPanel(panelSelector, dirtyFormKey = null, onTabSwitch = null) {
     const panel = $(panelSelector);
     if (!panel) return null;
@@ -538,7 +546,6 @@ function setupTabbedPanel(panelSelector, dirtyFormKey = null, onTabSwitch = null
 
             const currentTabId = $('.painel-tab-btn.active', panel)?.dataset.tab;
 
-            // Verifica se está saindo da aba de formulário e se há alterações não salvas
             if (dirtyFormKey && dirtyForms[dirtyFormKey] && currentTabId === 'formulario') {
                 const { confirmed } = await showConfirm({
                     title: "Descartar Alterações?",
@@ -555,11 +562,6 @@ function setupTabbedPanel(panelSelector, dirtyFormKey = null, onTabSwitch = null
     return switchTab;
 }
 
-/**
- * NOVA FUNÇÃO: Agrupa uma lista de escalas por ano e depois por mês.
- * @param {Array} escalas - A lista de objetos de escala.
- * @returns {Object} Um objeto aninhado com as escalas agrupadas.
- */
 function groupEscalasByMonth(escalas) {
     return escalas.reduce((acc, esc) => {
         const ano = esc.inicio.substring(0, 4);
@@ -576,11 +578,6 @@ function groupEscalasByMonth(escalas) {
 }
 
 let downloadToastTimeout = null;
-/**
- * NOVA FUNÇÃO: Exibe uma notificação toast animada para feedback de downloads.
- * @param {boolean} isSuccess - True para animação de sucesso, false para erro.
- * @param {string} [message] - Mensagem de erro a ser exibida.
- */
 function showDownloadToast(isSuccess, message = '') {
     const toast = $('#download-feedback-toast');
     if (!toast) return;
@@ -611,14 +608,13 @@ function showDownloadToast(isSuccess, message = '') {
 
     downloadToastTimeout = setTimeout(() => {
         toast.classList.remove('visible');
-    }, 5000); // 5 segundos
+    }, 5000);
 }
 
 
 function createRipple(event) {
     const button = event.currentTarget;
 
-    // Remove ondulações antigas para evitar acúmulo
     const oldRipple = button.querySelector(".ripple");
     if(oldRipple) {
         oldRipple.remove();
@@ -637,23 +633,17 @@ function createRipple(event) {
     button.appendChild(circle);
 }
 
-// Função para aplicar o efeito a todos os botões
 function applyRippleEffectToAllButtons() {
-    const buttons = document.querySelectorAll("button, .btn-cta, .home-card, .escala-card, .welcome-option-card"); // Aplica a vários tipos de botões
+    const buttons = document.querySelectorAll("button, .btn-cta, .home-card, .escala-card, .welcome-option-card"); 
     for (const button of buttons) {
         if (getComputedStyle(button).position === "static") {
             button.style.position = "relative";
         }
         button.style.overflow = "hidden";
-        button.addEventListener("mousedown", createRipple); // Mudar para mousedown para melhor feedback visual
+        button.addEventListener("mousedown", createRipple);
     }
 }
 
-/**
- * Formata uma data no formato ISO para dd/mm/aaaa hh:mm.
- * @param {string} isoString - A data em formato ISO 8601.
- * @returns {string} A data formatada.
- */
 function formatISODate(isoString) {
     if (!isoString) return '';
     const date = new Date(isoString);

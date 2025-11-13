@@ -1,20 +1,15 @@
-/**************************************
- * ✨ Assistente de Geração Automática (Versão Final Completa)
- **************************************/
-
-// Estado global do assistente
 let geradorState = {};
-// Estado temporário para o editor de feriados
 let tempHolidayData = {};
-// Estado temporário para o editor de ausências
 let tempAusencia = {
     tipo: TURNO_FERIAS_ID,
     funcionarios: new Set(),
     start: null,
     end: null,
 };
-// Gerenciador do estado do wizard (passos)
 let wizardManager = null;
+
+let metasAgrupadasCache = {};
+let metasConfirmadas = false;
 
 function setGeradorFormDirty(isDirty) {
     dirtyForms['gerar-escala'] = isDirty;
@@ -28,9 +23,11 @@ function resetGeradorWizard() {
         excecoes: {},
         feriados: [],
         selectedDate: null,
-        // As regras foram movidas para o objeto do cargo
         cobertura: {}, 
         coberturaPorEquipe: {},
+        metasOverride: {}, 
+        totalMetaHoras: 0, 
+        totalMetaTurnos: 0,
     };
     currentEscala = null;
     tempHolidayData = {};
@@ -40,6 +37,8 @@ function resetGeradorWizard() {
         start: null,
         end: null,
     };
+    metasAgrupadasCache = {};
+    metasConfirmadas = false;
 
     const wizardContainer = $("#gerador-wizard-container");
     if (wizardContainer) wizardContainer.classList.remove('hidden');
@@ -54,6 +53,7 @@ function resetGeradorWizard() {
     if (fimInput) fimInput.disabled = true;
 
     updateGeradorResumoDias();
+    resetMetasContent();
 
     if ($("#holiday-calendars-container")) $("#holiday-calendars-container").innerHTML = '';
     if ($("#holiday-editor-container")) $("#holiday-editor-container").innerHTML = '';
@@ -66,8 +66,12 @@ function resetGeradorWizard() {
 
     if (wizardManager) {
         wizardManager.goToStep(1);
+        wizardManager.updateButtonState(); 
     }
     
+    const nextBtn = $("#btn-gerador-next");
+    if (nextBtn) nextBtn.classList.remove('pulsing-button');
+
     setGeradorFormDirty(false);
 }
 
@@ -82,7 +86,7 @@ function initGeradorPage(options = {}) {
             if (actionId === 'go-cargos') {
                 go('cargos');
             } else {
-                go('home'); // Se o usuário fechar o modal, volta para o início
+                go('home');
             }
         });
         return;
@@ -111,7 +115,7 @@ function renderGeradorCargoSelect() {
     if (!sel) return;
     const { cargos } = store.getState();
     sel.innerHTML = "<option value=''>Selecione um cargo para a escala</option>";
-    cargos.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(c => {
+    cargos.filter(c => c.status === 'ativo').sort((a, b) => a.nome.localeCompare(b.nome)).forEach(c => {
         const o = document.createElement("option");
         o.value = c.id;
         o.textContent = c.nome;
@@ -132,7 +136,245 @@ function updateGeradorResumoDias() {
     }
 }
 
-// --- LÓGICA DO ASSISTENTE (WIZARD) ---
+function resetMetasContent() {
+    const metasContent = $("#gerador-passo1-metas-content");
+    const btnConfirmarMetas = $("#btn-confirmar-metas");
+
+    if (metasContent) {
+        metasContent.innerHTML = `
+            <div class="metas-placeholder">
+                <p class="muted">Selecione o Cargo e o Período para calcular as metas de trabalho.</p>
+            </div>`;
+    }
+    if (btnConfirmarMetas) {
+        btnConfirmarMetas.classList.add('hidden');
+        btnConfirmarMetas.disabled = false;
+        btnConfirmarMetas.textContent = '✔️ Confirmar Metas';
+        btnConfirmarMetas.classList.remove('pulsing-button');
+    }
+    metasAgrupadasCache = {};
+    metasConfirmadas = false;
+    geradorState.metasOverride = {};
+    geradorState.totalMetaHoras = 0;
+    geradorState.totalMetaTurnos = 0;
+    if(wizardManager) wizardManager.updateButtonState();
+}
+
+function checkPasso1Inputs() {
+    const cargoId = $("#gerar-escCargo").value;
+    const inicio = $("#gerar-escIni").value;
+    const fim = $("#gerar-escFim").value;
+    
+    resetMetasContent();
+
+    if (cargoId && inicio && fim && fim >= inicio) {
+        calcularEMostrarMetasAgrupadas(cargoId, inicio, fim);
+    }
+}
+
+function animateNumero(el, valorFinal, unidade) {
+    let valorAtual = 0;
+    const duracao = 800;
+    const inicio = performance.now();
+    const eDecimal = unidade === 'h';
+
+    function step(timestamp) {
+        const progresso = Math.min((timestamp - inicio) / duracao, 1);
+        let valorExibido = progresso * valorFinal;
+
+        if (eDecimal) {
+            valorExibido = valorExibido.toFixed(1);
+        } else {
+            valorExibido = Math.floor(valorExibido);
+        }
+        
+        el.textContent = valorExibido;
+
+        if (progresso < 1) {
+            requestAnimationFrame(step);
+        } else {
+            el.textContent = eDecimal ? valorFinal.toFixed(1) : valorFinal.toFixed(0);
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+function calcularEMostrarMetasAgrupadas(cargoId, inicio, fim) {
+    const { funcionarios, cargos } = store.getState();
+    const metasContent = $("#gerador-passo1-metas-content");
+    const btnConfirmarMetas = $("#btn-confirmar-metas");
+    if (!metasContent || !btnConfirmarMetas) return;
+
+    metasContent.innerHTML = `<div class="metas-placeholder"><p class="muted">Calculando metas...</p></div>`;
+
+    const cargo = cargos.find(c => c.id === cargoId);
+    const cargoDiasOperacionais = cargo?.regras?.dias || DIAS_SEMANA.map(d => d.id);
+
+    const funcsDoCargo = funcionarios.filter(f => f.cargoId === cargoId && f.status === 'ativo');
+    
+    if (funcsDoCargo.length === 0) {
+        metasContent.innerHTML = `<div class="metas-placeholder"><p class="muted">⚠️ Nenhum funcionário ativo cadastrado para este cargo.</p></div>`;
+        btnConfirmarMetas.classList.add('hidden');
+        metasConfirmadas = false; 
+        wizardManager.updateButtonState();
+        parseEmojisInElement(metasContent);
+        return;
+    }
+
+    const grupos = {};
+    funcsDoCargo.forEach(func => {
+        const medicao = func.medicaoCarga || 'horas';
+        const valor = func.cargaHoraria || 0;
+        const periodo = func.periodoHoras || 'semanal';
+        const key = `${medicao}_${valor}_${periodo}`;
+
+        if (!grupos[key]) {
+            grupos[key] = {
+                funcionarios: [],
+                totalMeta: 0,
+                label: `${valor} ${medicao === 'horas' ? 'horas' : 'turnos'}/${periodo === 'semanal' ? 'semana' : 'mês'}`
+            };
+        }
+        
+        let metaIndividual = 0;
+        if (medicao === 'turnos') {
+            metaIndividual = calcularMetaTurnos(func, inicio, fim, cargoDiasOperacionais);
+        } else {
+            metaIndividual = calcularMetaHoras(func, inicio, fim);
+        }
+        
+        grupos[key].funcionarios.push({ ...func, metaCalculada: metaIndividual });
+        grupos[key].totalMeta += metaIndividual;
+    });
+
+    metasAgrupadasCache = grupos; 
+
+    let html = '';
+    const sortedKeys = Object.keys(grupos).sort((a,b) => grupos[a].label.localeCompare(grupos[b].label));
+
+    if (sortedKeys.length === 0) {
+        metasContent.innerHTML = `<div class="metas-placeholder"><p class="muted">Nenhum funcionário com meta definida para este cargo.</p></div>`;
+        btnConfirmarMetas.classList.remove('hidden');
+        metasConfirmadas = false;
+        wizardManager.updateButtonState();
+        return;
+    }
+
+    sortedKeys.forEach((key, index) => {
+        const grupo = grupos[key];
+        const unidade = key.startsWith('horas') ? 'h' : ' turnos';
+        const valorFinal = grupo.totalMeta;
+        const valorExibido = (unidade === 'h') ? valorFinal.toFixed(1) : valorFinal.toFixed(0);
+
+        html += `
+            <div class="meta-group-card" style="animation-delay: ${index * 100}ms;">
+              <div class="meta-group-header">
+                <span>Contrato: <strong>${grupo.label}</strong></span>
+                <span class="muted">(${grupo.funcionarios.length} ${grupo.funcionarios.length > 1 ? 'funcionários' : 'funcionário'})</span>
+              </div>
+              <div class="meta-group-barra-animada">
+                <div class="barra-progresso" style="width: 0;"></div>
+                <span class="meta-numero-animado" data-target="${valorFinal}">${valorExibido}</span>${unidade}
+              </div>
+              <button class="secondary edit-meta-grupo-btn" data-group-key="${key}">✏️ Ajustar Total</button>
+            </div>
+        `;
+    });
+
+    metasContent.innerHTML = html;
+    btnConfirmarMetas.classList.remove('hidden');
+    btnConfirmarMetas.classList.add('pulsing-button');
+    metasConfirmadas = false; 
+    wizardManager.updateButtonState();
+
+    setTimeout(() => {
+        $$('.barra-progresso', metasContent).forEach(barra => {
+            barra.style.animation = 'fill-width 0.8s ease-out forwards';
+        });
+        $$('.meta-numero-animado', metasContent).forEach(numEl => {
+            const valorFinal = parseFloat(numEl.dataset.target);
+            const unidade = numEl.nextSibling.textContent.trim().startsWith('h') ? 'h' : 'turnos';
+            animateNumero(numEl, valorFinal, unidade);
+        });
+    }, 100);
+
+    $$('.edit-meta-grupo-btn', metasContent).forEach(btn => {
+        btn.onclick = () => handleAjustarMetaGrupo(btn.dataset.groupKey);
+    });
+    parseEmojisInElement(metasContent);
+}
+
+async function handleAjustarMetaGrupo(groupKey) {
+    if (!metasAgrupadasCache[groupKey]) return;
+
+    const grupo = metasAgrupadasCache[groupKey];
+    const unidade = groupKey.startsWith('horas') ? 'horas' : 'turnos';
+    const valorAtual = grupo.totalMeta;
+
+    const { value: novoTotalStr } = await Swal.fire({
+        title: `Ajustar Meta do Grupo`,
+        html: `
+            <p style="font-size: 0.9rem; color: #64748b; text-align: left;">
+                Defina a meta total para o grupo <strong>${grupo.label}</strong>.<br>
+                Este valor será distribuído proporcionalmente entre os <strong>${grupo.funcionarios.length}</strong> funcionários do grupo.
+            </p>
+        `,
+        input: 'number',
+        inputValue: unidade === 'horas' ? valorAtual.toFixed(1) : valorAtual.toFixed(0),
+        inputLabel: `Nova meta total (${unidade}):`,
+        confirmButtonText: 'Ajustar',
+        showCancelButton: true,
+        inputValidator: (value) => {
+            if (!value || isNaN(parseFloat(value)) || parseFloat(value) < 0) {
+                return 'Por favor, insira um número válido maior ou igual a zero.';
+            }
+        }
+    });
+
+    if (novoTotalStr) {
+        const novoTotal = parseFloat(novoTotalStr);
+        const proporcao = (valorAtual > 0) ? (novoTotal / valorAtual) : 0;
+
+        grupo.funcionarios.forEach(func => {
+            let novaMetaIndividual;
+            if (valorAtual > 0) {
+                novaMetaIndividual = func.metaCalculada * proporcao;
+            } else {
+                novaMetaIndividual = novoTotal / grupo.funcionarios.length;
+            }
+            geradorState.metasOverride[func.id] = novaMetaIndividual;
+        });
+
+        grupo.totalMeta = novoTotal;
+
+        const card = $(`button[data-group-key="${groupKey}"]`).closest('.meta-group-card');
+        if (card) {
+            const numEl = $('.meta-numero-animado', card);
+            const barraEl = $('.barra-progresso', card);
+            
+            numEl.textContent = unidade === 'horas' ? novoTotal.toFixed(1) : novoTotal.toFixed(0);
+            numEl.dataset.target = novoTotal;
+            
+            barraEl.style.animation = 'none';
+            barraEl.style.width = '100%'; 
+            
+            card.classList.add('modified'); 
+        }
+
+        setGeradorFormDirty(true);
+        metasConfirmadas = false;
+        const btnConfirmarMetas = $("#btn-confirmar-metas");
+        if(btnConfirmarMetas) {
+             btnConfirmarMetas.disabled = false;
+             btnConfirmarMetas.textContent = '✔️ Confirmar Metas';
+             btnConfirmarMetas.classList.add('pulsing-button');
+             parseEmojisInElement(btnConfirmarMetas);
+        }
+        wizardManager.updateButtonState();
+    }
+}
+
+
 function createWizardManager() {
     const container = $("#gerador-wizard-container");
     if (!container) return { goToStep: () => {}, updateButtonState: () => {} };
@@ -147,13 +389,15 @@ function createWizardManager() {
         const cargoId = $("#gerar-escCargo").value;
         const inicio = $("#gerar-escIni").value;
         const fim = $("#gerar-escFim").value;
-        const isStep1Complete = cargoId && inicio && fim && fim >= inicio;
+        const isStep1InputsComplete = cargoId && inicio && fim && fim >= inicio;
 
         if (currentStep === 1) {
-            nextBtn.disabled = !isStep1Complete;
+            nextBtn.disabled = !isStep1InputsComplete || !metasConfirmadas;
         } else {
             nextBtn.disabled = false;
         }
+
+        nextBtn.classList.toggle('pulsing-button', !nextBtn.disabled);
         
         if (currentStep === 4) {
             nextBtn.innerHTML = '✨ Gerar Escala';
@@ -169,7 +413,10 @@ function createWizardManager() {
         tabs.forEach(tab => {
             const step = parseInt(tab.dataset.step, 10);
             tab.classList.remove('active', 'completed');
-            tab.disabled = step > currentStep;
+            
+            const isStep1Complete = $("#gerar-escCargo").value && $("#gerar-escIni").value && $("#gerar-escFim").value && metasConfirmadas;
+            tab.disabled = (step > 1 && !isStep1Complete) || step > currentStep;
+            
             if (step === currentStep) {
                 tab.classList.add('active');
             } else if (step < currentStep) {
@@ -191,7 +438,7 @@ function createWizardManager() {
 
     if (nextBtn) {
         nextBtn.onclick = (event) => {
-             // Adiciona efeito de estrela ao clicar
+            nextBtn.classList.remove('pulsing-button');
             const rect = event.currentTarget.getBoundingClientRect();
             const originX = rect.left + rect.width / 2;
             const originY = rect.top + rect.height / 2;
@@ -204,7 +451,6 @@ function createWizardManager() {
                     geradorState.cargoId = $("#gerar-escCargo").value;
                     geradorState.inicio = $("#gerar-escIni").value;
                     geradorState.fim = $("#gerar-escFim").value;
-                    // playEmojiBurst(event); // Removido Emoji, mantido só StarBurst
                 }
                 goToStep(currentStep + 1);
             }
@@ -212,9 +458,8 @@ function createWizardManager() {
     }
     
     tabs.forEach(tab => {
-        tab.onclick = (event) => { // Adiciona event ao handler
+        tab.onclick = (event) => {
             if (!tab.disabled) {
-                 // Adiciona efeito de estrela ao clicar na aba
                 const rect = event.currentTarget.getBoundingClientRect();
                 const originX = rect.left + rect.width / 2;
                 const originY = rect.top + rect.height / 2;
@@ -230,8 +475,6 @@ function createWizardManager() {
     return { goToStep, updateButtonState };
 }
 
-// --- PASSO 2: LÓGICA DE FERIADOS ---
-// ... (O código do Passo 2 permanece inalterado) ...
 function renderHolidayStep() {
     renderHolidayCalendar();
     renderHolidayEditor(geradorState.selectedDate);
@@ -410,8 +653,6 @@ function addHolidayEditorListeners(date) {
 }
 
 
-// --- PASSO 3: LÓGICA DE AUSÊNCIAS ---
-// ... (O código do Passo 3 permanece inalterado) ...
 function renderAusenciasStep() {
     const { funcionarios } = store.getState();
     const funcs = funcionarios.filter(f => f.cargoId === geradorState.cargoId && f.status !== 'arquivado').sort((a,b) => a.nome.localeCompare(b.nome));
@@ -692,7 +933,6 @@ function renderAusenciaList() {
         for (const tipoId in geradorState.excecoes[funcId]) {
             const dates = geradorState.excecoes[funcId][tipoId];
             if (dates && dates.length > 0) {
-                // Agrupa datas consecutivas
                 const ranges = dates.reduce((acc, date) => {
                     if (acc.length > 0 && addDays(acc[acc.length - 1].end, 1) === date) {
                         acc[acc.length - 1].end = date;
@@ -757,16 +997,49 @@ function renderAusenciaList() {
 
 
 
-// --- PASSO 4: LÓGICA DE COBERTURA (REFORMULADO) ---
 function renderPasso4_Cobertura() {
     const { cargos, turnos, equipes } = store.getState();
     const cargo = cargos.find(c => c.id === geradorState.cargoId);
     const container = $("#gerador-cobertura-turnos-container");
     if(!container) return;
-    container.innerHTML = "";
+
+    const balancoHTML = `
+        <div class="balanco-carga-container card">
+            <div class="balanco-grupo">
+                <div class="balanco-header">
+                    <span class="balanco-label">Demanda (Horas):</span>
+                    <span class="balanco-numeros" id="balanco-demanda-horas">0.0h</span>
+                </div>
+                <div class="balanco-header">
+                    <span class="balanco-label">Meta (Disponível):</span>
+                    <span class="balanco-numeros" id="balanco-meta-horas">${(geradorState.totalMetaHoras || 0).toFixed(1)}h</span>
+                </div>
+                <div class="balanco-barra-fundo">
+                    <div class="balanco-barra" id="balanco-barra-horas" style="width: 0%;"></div>
+                </div>
+                <div class="balanco-aviso hidden" id="balanco-aviso-horas"></div>
+            </div>
+            <div class="balanco-grupo">
+                <div class="balanco-header">
+                    <span class="balanco-label">Demanda (Turnos):</span>
+                    <span class="balanco-numeros" id="balanco-demanda-turnos">0 turnos</span>
+                </div>
+                <div class="balanco-header">
+                    <span class="balanco-label">Meta (Disponível):</span>
+                    <span class="balanco-numeros" id="balanco-meta-turnos">${(geradorState.totalMetaTurnos || 0)} turnos</span>
+                </div>
+                <div class="balanco-barra-fundo">
+                    <div class="balanco-barra" id="balanco-barra-turnos" style="width: 0%;"></div>
+                </div>
+                <div class="balanco-aviso hidden" id="balanco-aviso-turnos"></div>
+            </div>
+        </div>
+    `;
+    container.innerHTML = balancoHTML;
+
 
     if (!cargo || !cargo.turnosIds || cargo.turnosIds.length === 0) {
-        container.innerHTML = `<p class="muted">Este cargo não possui turnos associados.</p>`;
+        container.innerHTML += `<p class="muted">Este cargo não possui turnos associados.</p>`;
         return;
     }
     
@@ -785,7 +1058,6 @@ function renderPasso4_Cobertura() {
         legend.innerHTML = `${turno.nome} <span>(${turno.inicio} - ${turno.fim})</span>`;
         fieldset.appendChild(legend);
 
-        // --- Toggle Individual/Equipes ---
         const toggleContainer = document.createElement('div');
         toggleContainer.className = 'toggle-group';
         toggleContainer.style.marginBottom = '16px';
@@ -795,7 +1067,6 @@ function renderPasso4_Cobertura() {
         `;
         fieldset.appendChild(toggleContainer);
         
-        // --- Opções Individuais ---
         const individualOptions = document.createElement('div');
         individualOptions.className = 'cobertura-individual-options';
         let diasInputsHTML = '<div class="cobertura-individual-dias-container">';
@@ -812,7 +1083,6 @@ function renderPasso4_Cobertura() {
         individualOptions.innerHTML = `<label class="form-label">Nº de funcionários necessários por dia:</label>${diasInputsHTML}`;
         fieldset.appendChild(individualOptions);
 
-        // --- Opções de Equipes ---
         const equipesOptions = document.createElement('div');
         equipesOptions.className = 'cobertura-equipes-options';
         equipesOptions.style.display = 'none';
@@ -843,7 +1113,6 @@ function renderPasso4_Cobertura() {
         }
         equipesHTML += '</div>';
         
-        // --- Cobertura Complementar ---
         let complementarHTML = `
             <hr style="border: none; border-top: 1px solid var(--border); margin: 24px 0 16px 0;">
             <div class="cobertura-complementar-container">
@@ -867,19 +1136,111 @@ function renderPasso4_Cobertura() {
         container.appendChild(fieldset);
     });
     
-    // Adiciona os listeners para a nova UI
     addPasso4Listeners();
+    updateBalançoCarga();
 }
+
+function updateBalançoCarga() {
+    const { turnos, equipes } = store.getState();
+    const turnosMap = Object.fromEntries(turnos.map(t => [t.id, t]));
+    const equipesMap = Object.fromEntries(equipes.map(e => [e.id, e]));
+    const dateRange = dateRangeInclusive(geradorState.inicio, geradorState.fim);
+
+    let totalDemandaHoras = 0;
+    let totalDemandaTurnos = 0;
+
+    $$('#gerador-cobertura-turnos-container .cobertura-turno-fieldset').forEach(fieldset => {
+        const turnoId = fieldset.dataset.turnoId;
+        const turnoInfo = turnosMap[turnoId];
+        if (!turnoInfo) return;
+
+        const modo = $('.toggle-btn.active', fieldset)?.dataset.value || 'individual';
+        const turnoCargaHoras = (turnoInfo.cargaMin || 0) / 60;
+
+        if (modo === 'individual') {
+            $$('.cobertura-individual-options .dia-input-group input', fieldset).forEach(input => {
+                if (!input.disabled) {
+                    const count = parseInt(input.value, 10) || 0;
+                    totalDemandaTurnos += count;
+                    totalDemandaHoras += count * turnoCargaHoras;
+                }
+            });
+        } else {
+            $$('.equipe-config-card.selected', fieldset).forEach(card => {
+                const equipeId = card.dataset.equipeId;
+                const equipe = equipesMap[equipeId];
+                if (!equipe) return;
+
+                const numMembros = equipe.funcionarioIds.length;
+                const work = parseInt($('[data-pattern="work"]', card).value, 10) || 1;
+                const off = parseInt($('[data-pattern="off"]', card).value, 10) || 1;
+                const start = $('[data-pattern="start"]', card).value;
+                const ciclo = work + off;
+                const startIndex = dateRange.indexOf(start);
+                
+                if (startIndex === -1) return; 
+
+                let diasDeTrabalho = 0;
+                dateRange.forEach((date, index) => {
+                    const diaNoCiclo = (index - startIndex) % ciclo;
+                    if (diaNoCiclo >= 0 && diaNoCiclo < work) {
+                        diasDeTrabalho++;
+                    }
+                });
+
+                totalDemandaTurnos += diasDeTrabalho * numMembros;
+                totalDemandaHoras += (diasDeTrabalho * numMembros) * turnoCargaHoras;
+            });
+
+            $$('.cobertura-complementar-container .dia-input-group input', fieldset).forEach(input => {
+                if (!input.disabled) {
+                    const count = parseInt(input.value, 10) || 0;
+                    totalDemandaTurnos += count;
+                    totalDemandaHoras += count * turnoCargaHoras;
+                }
+            });
+        }
+    });
+
+    const { totalMetaHoras, totalMetaTurnos } = geradorState;
+
+    $('#balanco-demanda-horas').textContent = `${totalDemandaHoras.toFixed(1)}h`;
+    $('#balanco-demanda-turnos').textContent = `${totalDemandaTurnos} turnos`;
+
+    const percentHoras = (totalMetaHoras > 0) ? (totalDemandaHoras / totalMetaHoras) * 100 : (totalDemandaHoras > 0 ? 101 : 0);
+    const percentTurnos = (totalMetaTurnos > 0) ? (totalDemandaTurnos / totalMetaTurnos) * 100 : (totalDemandaTurnos > 0 ? 101 : 0);
+
+    const barraHoras = $('#balanco-barra-horas');
+    const avisoHoras = $('#balanco-aviso-horas');
+    if (barraHoras) {
+        barraHoras.style.width = `${Math.min(percentHoras, 100)}%`;
+        barraHoras.classList.toggle('excesso', percentHoras > 100);
+    }
+    if (avisoHoras) {
+        avisoHoras.classList.toggle('hidden', percentHoras <= 100);
+        avisoHoras.textContent = 'Atenção: A demanda de horas excede a meta disponível.';
+    }
+
+    const barraTurnos = $('#balanco-barra-turnos');
+    const avisoTurnos = $('#balanco-aviso-turnos');
+    if (barraTurnos) {
+        barraTurnos.style.width = `${Math.min(percentTurnos, 100)}%`;
+        barraTurnos.classList.toggle('excesso', percentTurnos > 100);
+    }
+    if (avisoTurnos) {
+        avisoTurnos.classList.toggle('hidden', percentTurnos <= 100);
+        avisoTurnos.textContent = 'Atenção: A demanda de turnos excede a meta disponível.';
+    }
+}
+
 
 function addPasso4Listeners() {
     const container = $("#gerador-cobertura-turnos-container");
     if (!container) return;
 
-    // Listener para os toggles Individual/Equipes
     $$('.toggle-group', container).forEach(toggle => {
         toggle.addEventListener('click', (e) => {
             const btn = e.target.closest('.toggle-btn');
-            // Impede a troca se o botão estiver desabilitado
             if (!btn || btn.disabled) return; 
             
             const fieldset = btn.closest('.cobertura-turno-fieldset');
@@ -891,13 +1252,12 @@ function addPasso4Listeners() {
             $('.cobertura-individual-options', fieldset).style.display = modo === 'individual' ? 'block' : 'none';
             $('.cobertura-equipes-options', fieldset).style.display = modo === 'equipes' ? 'block' : 'none';
             setGeradorFormDirty(true);
+            updateBalançoCarga();
         });
     });
 
-    // Listener para os CARDS de equipe (substitui o checkbox)
     $$('.equipe-config-card', container).forEach(card => {
         card.addEventListener('click', (e) => {
-             // Só ativa o clique se o target for o próprio card (ignora cliques nos inputs internos)
             if (e.target !== card && !e.target.closest('h4')) return;
             
             card.classList.toggle('selected');
@@ -909,27 +1269,26 @@ function addPasso4Listeners() {
                 updateTeamPatternExplanation(detailsDiv);
             }
             setGeradorFormDirty(true);
+            updateBalançoCarga();
         });
     });
 
-    // Listener para os inputs de padrão da equipe
     $$('.equipe-config-details input', container).forEach(input => {
         input.addEventListener('input', () => {
             const detailsDiv = input.closest('.equipe-config-details');
             updateTeamPatternExplanation(detailsDiv);
             setGeradorFormDirty(true);
+            updateBalançoCarga();
         });
-        // Evita que o clique no input propague para o card e o desmarque
         input.addEventListener('click', (e) => e.stopPropagation()); 
     });
     
-    // Listener para os botões de replicar
     $$('.btn-replicar-cobertura').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const container = e.target.closest('.cobertura-individual-dias-container');
             const allInputs = $$('input[type="number"]', container);
-            const firstInput = allInputs.find(input => !input.disabled); // Pega o primeiro habilitado
-            if(!firstInput) return; // Se todos estiverem desabilitados, não faz nada
+            const firstInput = allInputs.find(input => !input.disabled);
+            if(!firstInput) return;
             
             const firstValue = firstInput.value;
             allInputs.forEach(input => {
@@ -938,12 +1297,15 @@ function addPasso4Listeners() {
                 }
             });
             setGeradorFormDirty(true);
+            updateBalançoCarga();
         });
     });
 
-    // Listener para qualquer input numérico mudar o estado para "sujo"
     $$('input[type="number"]', container).forEach(input => {
-        input.addEventListener('input', () => setGeradorFormDirty(true));
+        input.addEventListener('input', () => {
+            setGeradorFormDirty(true);
+            updateBalançoCarga();
+        });
     });
 }
 
@@ -970,7 +1332,6 @@ function updateTeamPatternExplanation(detailsDiv) {
 
     const ciclo = work + off;
     const diasDeTrabalho = [];
-    // Calcula os 5 primeiros dias de trabalho DENTRO da escala
     for (let i = startIndex; i < dateRange.length && diasDeTrabalho.length < 5; i++) {
         const diaNoCiclo = (i - startIndex) % ciclo;
         if (diaNoCiclo < work) {
@@ -982,7 +1343,6 @@ function updateTeamPatternExplanation(detailsDiv) {
     parseEmojisInElement(explanationDiv);
 }
 
-// --- CONTROLES DA ESCALA GERADA ---
 function handleStartGeneration() {
     geradorState.cobertura = {};
     geradorState.coberturaPorEquipe = {};
@@ -1002,7 +1362,7 @@ function handleStartGeneration() {
                 }
             });
             geradorState.cobertura[turnoId] = coberturaDiaria;
-        } else { // modo equipes
+        } else { 
             const coberturaComplementar = {};
              $$('.cobertura-complementar-container .dia-input-group input', fieldset).forEach(input => {
                 if (!input.disabled) {
@@ -1012,7 +1372,6 @@ function handleStartGeneration() {
             geradorState.cobertura[turnoId] = coberturaComplementar;
 
             geradorState.coberturaPorEquipe[turnoId] = [];
-            // Lê a seleção pelo card ter a classe 'selected'
             $$('.equipe-config-card.selected', fieldset).forEach(card => {
                 const equipeId = card.dataset.equipeId;
                 const configContainer = card.querySelector('.equipe-config-details');
@@ -1076,13 +1435,14 @@ function setupGeradorPage() {
     const escCargoSelect = $("#gerar-escCargo");
     const escIniInput = $("#gerar-escIni");
     const escFimInput = $("#gerar-escFim");
+    const btnConfirmarMetas = $("#btn-confirmar-metas");
 
     if (escCargoSelect) {
         escCargoSelect.addEventListener('change', (e) => {
             if (e.target.value && escIniInput) {
                 try { escIniInput.showPicker(); } catch (e) {}
             }
-            wizardManager.updateButtonState();
+            checkPasso1Inputs();
             setGeradorFormDirty(true);
         });
     }
@@ -1099,19 +1459,47 @@ function setupGeradorPage() {
                 }
             }
             updateGeradorResumoDias();
-            wizardManager.updateButtonState();
+            checkPasso1Inputs();
             setGeradorFormDirty(true);
         });
     }
     if (escFimInput) {
         escFimInput.addEventListener('change', () => {
             updateGeradorResumoDias();
-            wizardManager.updateButtonState();
+            checkPasso1Inputs();
             setGeradorFormDirty(true);
         });
     }
+
+    if (btnConfirmarMetas) {
+        btnConfirmarMetas.addEventListener('click', () => {
+            metasConfirmadas = true;
+            
+            geradorState.totalMetaHoras = 0;
+            geradorState.totalMetaTurnos = 0;
+            
+            for (const key in metasAgrupadasCache) {
+                const grupo = metasAgrupadasCache[key];
+                if (key.startsWith('horas')) {
+                    geradorState.totalMetaHoras += grupo.totalMeta;
+                } else if (key.startsWith('turnos')) {
+                    geradorState.totalMetaTurnos += grupo.totalMeta;
+                }
+            }
+            
+            wizardManager.updateButtonState();
+            wizardManager.goToStep(1); 
+            btnConfirmarMetas.disabled = true;
+            btnConfirmarMetas.textContent = 'Metas Confirmadas ✅';
+            btnConfirmarMetas.classList.remove('pulsing-button');
+            $$('.edit-meta-grupo-btn').forEach(btn => btn.disabled = true);
+            parseEmojisInElement(btnConfirmarMetas);
+        });
+    }
+
     const calendarsContainer = $('#holiday-calendars-container');
     if (calendarsContainer) calendarsContainer.addEventListener('click', handleCalendarDayClick);
+    
     const btnSalvar = $("#btnSalvarEscalaGerador");
     if (btnSalvar) {
         btnSalvar.addEventListener('click', async (event) => {

@@ -11,6 +11,7 @@
     z-index: 1000;
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
+    transition: opacity 0.3s ease-in-out;
 }
 
 .modal-backdrop.hidden {
@@ -26,13 +27,16 @@
     width: 90%;
     max-width: 400px;
     text-align: center;
-    transform: scale(1);
-    transition: transform 0.3s ease-in-out;
+    opacity: 0;
 }
 
-.modal-backdrop.hidden .modal {
-    transform: scale(0.95);
+.modal-backdrop:not(.hidden) .modal.modal-showing {
+    animation: modal-pop-in 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
+.modal-backdrop.modal-hiding .modal {
+    animation: modal-pop-out 0.2s ease-in forwards;
+}
+
 
 .modal h3 {
     margin-top: 0;
@@ -148,4 +152,59 @@
     background-color: var(--danger);
     border-color: var(--danger);
     color: #fff;
+}
+
+/* --- Override de Estilo para SweetAlert2 --- */
+.swal2-container {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.swal2-popup {
+    border-radius: var(--radius) !important;
+    background-color: var(--card) !important;
+    box-shadow: var(--shadow) !important;
+    border: 1px solid var(--border) !important;
+}
+
+.swal2-title {
+    color: var(--fg) !important;
+}
+
+.swal2-html-container,
+.swal2-input-label {
+    color: var(--muted) !important;
+}
+
+.swal2-input {
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    color: var(--fg) !important;
+    background-color: var(--bg) !important;
+    width: 80% !important;
+}
+.swal2-input:focus {
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2) !important;
+}
+
+.swal2-confirm {
+    border-radius: 999px !important;
+    border: 2px solid var(--brand) !important;
+    background-color: var(--brand) !important;
+    color: #fff !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.swal2-cancel {
+     border-radius: 999px !important;
+    border: 2px solid var(--secondary) !important;
+    background-color: transparent !important;
+    color: var(--secondary) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+.swal2-cancel:hover {
+    background-color: var(--secondary) !important;
+    color: #fff !important;
 }

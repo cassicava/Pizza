@@ -1084,6 +1084,9 @@
 }
 
 @media (max-width: 992px) {
+  .passo1-grid {
+    grid-template-columns: 1fr;
+  }
   .passo2-holiday-grid,
   #ausencia-step-container {
     grid-template-columns: 1fr;
@@ -1096,6 +1099,9 @@
 
 @media (max-width: 768px) {
     .painel-resumo-horas-list {
+        grid-template-columns: 1fr;
+    }
+    #gerador-passo1-metas-content {
         grid-template-columns: 1fr;
     }
 }
@@ -1294,4 +1300,158 @@
     font-size: 0.9rem;
     color: var(--muted);
     padding: 8px 0; 
+}
+
+.metas-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 150px;
+}
+
+#gerador-passo1-metas-content {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+    flex-grow: 1;
+}
+
+.meta-group-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    animation: pop-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.meta-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.meta-group-barra-animada {
+    position: relative;
+    height: 30px;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    margin-top: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.barra-progresso {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    background-color: var(--brand);
+    border-radius: 999px;
+    transition: width 1s ease-out;
+}
+
+.meta-numero-animado {
+    position: relative;
+    z-index: 1;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    transition: color 0.5s;
+}
+
+.meta-group-card.modified .meta-numero-animado {
+    color: #FFFFFF;
+}
+
+.edit-meta-grupo-btn {
+    font-size: 0.8rem;
+    padding: 2px 10px;
+    margin-top: 8px;
+    align-self: center;
+}
+
+#btn-confirmar-metas {
+    align-self: center;
+    width: 100%;
+    max-width: 300px;
+    margin-top: 16px;
+}
+
+#btn-gerador-next:not(:disabled).pulsing-button {
+    animation: pulse-shadow 2s infinite;
+}
+#btn-confirmar-metas:not(:disabled).pulsing-button {
+    animation: pulse-shadow-success 2s infinite;
+}
+
+
+.balanco-carga-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding: 16px 24px;
+    margin-bottom: 24px;
+}
+
+.balanco-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.balanco-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.balanco-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.balanco-numeros {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--fg);
+}
+
+.balanco-barra-fundo {
+    height: 10px;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.balanco-barra {
+    height: 100%;
+    width: 0%;
+    background-color: var(--brand);
+    border-radius: 999px;
+    transition: width 0.4s ease-out, background-color 0.4s ease-out;
+}
+
+.balanco-barra.excesso {
+    background-color: var(--danger);
+}
+
+.balanco-aviso {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--danger);
+    text-align: right;
 }

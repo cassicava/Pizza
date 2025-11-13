@@ -34,8 +34,12 @@
     <link rel="stylesheet" href="css/23-foco-individual.css" />
     <link rel="stylesheet" href="css/24-splash-screen.css" />
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </head>
 
@@ -719,7 +723,7 @@
             <div id="gerador-wizard-container" class="card painel-gerenciamento">
                  <div class="painel-header" id="gerador-wizard-header">
                     <div class="painel-tabs" id="gerador-wizard-tabs">
-                        <button class="painel-tab-btn" data-step="1" disabled>1. Período da Escala</button>
+                        <button class="painel-tab-btn" data-step="1" disabled>1. Período e Metas</button>
                         <button class="painel-tab-btn" data-step="2" disabled>2. Feriados</button>
                         <button class="painel-tab-btn" data-step="3" disabled>3. Ausências</button>
                         <button class="painel-tab-btn" data-step="4" disabled>4. Cobertura</button>
@@ -743,15 +747,12 @@
                                 </fieldset>
                                 <span id="gerar-escResumoDias" class="dias-resumo-box">Selecione o período para ver a duração da escala.</span>
                             </fieldset>
-                            <fieldset class="regras-fieldset">
-                                <legend>Como Funciona?</legend>
-                                <p class="muted" style="margin-top: 0; margin-bottom: 16px;">Siga os passos nas abas acima para criar sua escala de forma inteligente.</p>
-                                <div class="form-section-column" style="gap: 16px;">
-                                    <div class="explanation-box" style="margin: 0;"><strong>1. Período da Escala:</strong> Defina o cargo e as datas. Este é o único passo obrigatório.</div>
-                                    <div class="explanation-box" style="margin: 0;"><strong>2. Feriados:</strong> Marque os feriados do período e configure-os como dias de trabalho ou folga geral.</div>
-                                    <div class="explanation-box" style="margin: 0;"><strong>3. Ausências:</strong> Registre férias, folgas ou afastamentos para funcionários específicos.</div>
-                                    <div class="explanation-box" style="margin: 0;"><strong>4. Cobertura:</strong> Informe quantos funcionários você precisa em cada turno.</div>
+                            <fieldset class="regras-fieldset" id="gerador-passo1-metas-container">
+                                <legend>Metas de Trabalho Calculadas</legend>
+                                <div id="gerador-passo1-metas-content" class="metas-placeholder">
+                                    <p class="muted">Selecione o Cargo e o Período para calcular as metas de trabalho.</p>
                                 </div>
+                                <button id="btn-confirmar-metas" class="success hidden" style="margin-top: auto; align-self: flex-end;">Confirmar Metas</button>
                             </fieldset>
                         </div>
                     </div>
@@ -1140,6 +1141,7 @@
    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script src="js/D-utilitarios-compartilhados.js"></script>
     <script src="js/E-constantes.js"></script>
