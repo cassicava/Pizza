@@ -244,7 +244,7 @@ function calcularEMostrarMetasAgrupadas(cargoId, inicio, fim) {
         }
         
         grupos[key].funcionarios.push({ ...func, metaCalculada: metaIndividual });
-        grupos[key].totalMeta += metaIndividual;
+        grupos[key].totalMeta = metaIndividual;
     });
 
     metasAgrupadasCache = grupos; 
@@ -312,16 +312,16 @@ async function handleAjustarMetaGrupo(groupKey) {
     const valorAtual = grupo.totalMeta;
 
     const { value: novoTotalStr } = await Swal.fire({
-        title: `Ajustar Meta do Grupo`,
+        title: `Ajustar Meta do Contrato`,
         html: `
             <p style="font-size: 0.9rem; color: #64748b; text-align: left;">
-                Defina a meta total para o grupo <strong>${grupo.label}</strong>.<br>
-                Este valor será distribuído proporcionalmente entre os <strong>${grupo.funcionarios.length}</strong> funcionários do grupo.
+                Defina a meta <strong>individual</strong> para o contrato <strong>${grupo.label}</strong> neste período.<br>
+                Este valor será aplicado a todos os <strong>${grupo.funcionarios.length}</strong> funcionários deste grupo.
             </p>
         `,
         input: 'number',
         inputValue: unidade === 'horas' ? valorAtual.toFixed(1) : valorAtual.toFixed(0),
-        inputLabel: `Nova meta total (${unidade}):`,
+        inputLabel: `Nova meta individual (${unidade}):`,
         confirmButtonText: 'Ajustar',
         showCancelButton: true,
         inputValidator: (value) => {
@@ -332,28 +332,21 @@ async function handleAjustarMetaGrupo(groupKey) {
     });
 
     if (novoTotalStr) {
-        const novoTotal = parseFloat(novoTotalStr);
-        const proporcao = (valorAtual > 0) ? (novoTotal / valorAtual) : 0;
+        const novoTotalIndividual = parseFloat(novoTotalStr);
 
         grupo.funcionarios.forEach(func => {
-            let novaMetaIndividual;
-            if (valorAtual > 0) {
-                novaMetaIndividual = func.metaCalculada * proporcao;
-            } else {
-                novaMetaIndividual = novoTotal / grupo.funcionarios.length;
-            }
-            geradorState.metasOverride[func.id] = novaMetaIndividual;
+            geradorState.metasOverride[func.id] = novoTotalIndividual;
         });
 
-        grupo.totalMeta = novoTotal;
+        grupo.totalMeta = novoTotalIndividual;
 
         const card = $(`button[data-group-key="${groupKey}"]`).closest('.meta-group-card');
         if (card) {
             const numEl = $('.meta-numero-animado', card);
             const barraEl = $('.barra-progresso', card);
             
-            numEl.textContent = unidade === 'horas' ? novoTotal.toFixed(1) : novoTotal.toFixed(0);
-            numEl.dataset.target = novoTotal;
+            numEl.textContent = unidade === 'horas' ? novoTotalIndividual.toFixed(1) : novoTotalIndividual.toFixed(0);
+            numEl.dataset.target = novoTotalIndividual;
             
             barraEl.style.animation = 'none';
             barraEl.style.width = '100%'; 
@@ -1491,14 +1484,21 @@ function setupGeradorPage() {
             
             geradorState.totalMetaHoras = 0;
             geradorState.totalMetaTurnos = 0;
-            
+
             for (const key in metasAgrupadasCache) {
                 const grupo = metasAgrupadasCache[key];
-                if (key.startsWith('horas')) {
-                    geradorState.totalMetaHoras += grupo.totalMeta;
-                } else if (key.startsWith('turnos')) {
-                    geradorState.totalMetaTurnos += grupo.totalMeta;
-                }
+                const isHoras = key.startsWith('horas');
+                
+                grupo.funcionarios.forEach(func => {
+                    const override = geradorState.metasOverride[func.id];
+                    const meta = (override !== undefined) ? override : func.metaCalculada;
+                    
+                    if (isHoras) {
+                        geradorState.totalMetaHoras += meta;
+                    } else {
+                        geradorState.totalMetaTurnos += meta;
+                    }
+                });
             }
             
             wizardManager.updateButtonState();

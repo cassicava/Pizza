@@ -2,11 +2,28 @@ let currentEscalaToExport = null;
 
 function showExportModal(escala) {
     currentEscalaToExport = escala;
-    $('#exportModalBackdrop').classList.remove('hidden');
+    const backdrop = $('#exportModalBackdrop');
+    const modal = $('#exportModal');
+    if (!backdrop || !modal) return;
+
+    backdrop.classList.remove('hidden', 'modal-hiding');
+    void modal.offsetWidth;
+    modal.classList.add('modal-showing');
 }
 
 function hideExportModal() {
-    $('#exportModalBackdrop').classList.add('hidden');
+    const backdrop = $('#exportModalBackdrop');
+    const modal = $('#exportModal');
+    if (!backdrop || !modal) return;
+
+    backdrop.classList.add('modal-hiding');
+    modal.classList.remove('modal-showing');
+
+    backdrop.addEventListener('transitionend', () => {
+        backdrop.classList.add('hidden');
+        backdrop.classList.remove('modal-hiding');
+    }, { once: true });
+    
     currentEscalaToExport = null;
 }
 
