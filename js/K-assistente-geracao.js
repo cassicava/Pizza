@@ -76,22 +76,6 @@ function resetGeradorWizard() {
 }
 
 function initGeradorPage(options = {}) {
-    const { cargos } = store.getState();
-    if (cargos.length === 0) {
-        showActionModal({
-            title: "Cadastro de Cargos Necessário",
-            message: "<p>Para usar a geração automática, você precisa primeiro cadastrar pelo menos um cargo no sistema.</p>",
-            actions: [{ id: 'go-cargos', text: 'Ir para Cargos', class: 'primary' }]
-        }).then(actionId => {
-            if (actionId === 'go-cargos') {
-                go('cargos');
-            } else {
-                go('home');
-            }
-        });
-        return;
-    }
-
     if (options.isEditing && options.escalaParaEditar) {
         const wizardContainer = $("#gerador-wizard-container");
         if(wizardContainer) wizardContainer.classList.add('hidden');

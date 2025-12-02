@@ -8,6 +8,174 @@ const dirtyForms = {
 
 let isNavigating = false;
 
+const PROGRESS_STEPS = [
+    { 
+        level: 1, 
+        title: 'Vamos começar!', 
+        description: 'O primeiro passo é definir os horários de trabalho da sua operação. Crie um turno para começar.',
+        unlockText: '🔓 Desbloqueia: Cargos',
+        percent: 0 
+    },
+    { 
+        level: 2, 
+        title: 'Ótimo começo!', 
+        description: 'Agora precisamos criar as funções ou postos de trabalho. Cadastre pelo menos um Cargo e associe o turno que você criou.',
+        unlockText: '🔓 Desbloqueia: Funcionários',
+        percent: 25 
+    },
+    { 
+        level: 3, 
+        title: 'Cadastre seus Funcionários', 
+        description: 'Agora é hora de registrar quem trabalha com você. Cadastre seus colaboradores, defina o cargo e a disponibilidade.',
+        unlockText: '🔓 Desbloqueia: Gerar Escala',
+        percent: 50 
+    },
+    { 
+        level: 4, 
+        title: 'Tudo pronto para a mágica', 
+        description: 'Você já tem o essencial. Use o Assistente de Geração para criar sua primeira escala automática.',
+        unlockText: '🔓 Desbloqueia: Relatórios e Análises',
+        percent: 75 
+    },
+    { 
+        level: 5, 
+        title: 'Parabéns! Configuração Concluída 🚀', 
+        description: 'Você dominou o básico! Agora você pode gerenciar suas escalas, ver relatórios e muito mais. Lembre-se: os botões de 💡 Ajuda estão disponíveis em cada tela se precisar.',
+        unlockText: '',
+        percent: 100 
+    }
+];
+
+const PAGE_ACCESS_LEVEL = {
+    'home': 1,
+    'configuracoes': 1,
+    'turnos': 1,
+    'cargos': 2,
+    'funcionarios': 3,
+    'equipes': 3,
+    'gerar-escala': 4,
+    'escalas-salvas': 5,
+    'relatorios': 5
+};
+
+function getCurrentDataLevel() {
+    const { turnos, cargos, funcionarios, escalas } = store.getState();
+    
+    const hasTurnos = turnos.filter(t => !t.isSystem && t.status === 'ativo').length > 0;
+    const hasCargos = cargos.filter(c => c.status === 'ativo').length > 0;
+    const hasFuncs = funcionarios.filter(f => f.status === 'ativo').length > 0;
+    const hasEscalas = escalas.length > 0;
+
+    if (hasEscalas) return 5;
+    if (hasFuncs) return 4;
+    if (hasCargos) return 3;
+    if (hasTurnos) return 2;
+    return 1;
+}
+
+function getEffectiveLevel() {
+    const dataLevel = getCurrentDataLevel();
+    const savedLevel = parseInt(localStorage.getItem('ge_unlock_level') || '1', 10);
+    const finalLevel = Math.max(dataLevel, savedLevel);
+    
+    if (finalLevel > savedLevel) {
+        localStorage.setItem('ge_unlock_level', finalLevel.toString());
+        if(finalLevel < 5) {
+            setTimeout(() => {
+                showToast(`🎉 Passo concluído! Próxima etapa desbloqueada.`, 'success');
+            }, 500);
+        }
+    }
+    
+    return finalLevel;
+}
+
+function dismissTutorial() {
+    localStorage.setItem('ge_tutorial_dismissed', 'true');
+    const panel = $("#home-progress-section");
+    if(panel) {
+        panel.style.opacity = '0';
+        setTimeout(() => panel.style.display = 'none', 300);
+    }
+}
+
+function updateUnlockUI() {
+    const currentLevel = getEffectiveLevel();
+    const stepInfo = PROGRESS_STEPS.find(s => s.level === currentLevel) || PROGRESS_STEPS[0];
+    const isDismissed = localStorage.getItem('ge_tutorial_dismissed') === 'true';
+
+    const progressSection = $("#home-progress-section");
+    
+    if (progressSection) {
+        if (isDismissed) {
+            progressSection.style.display = 'none';
+        } else {
+            progressSection.style.display = 'flex';
+            
+            const contentHTML = `
+                <div class="home-progress-info">
+                    <div class="home-progress-header">
+                        <div class="home-progress-title">
+                            ${currentLevel === 5 ? '🌟' : '📍'} ${stepInfo.title}
+                        </div>
+                        <div class="home-progress-subtitle">
+                            ${stepInfo.description}
+                        </div>
+                        ${stepInfo.unlockText ? `<div class="home-progress-unlock-badge">${stepInfo.unlockText}</div>` : ''}
+                    </div>
+                </div>
+                <div class="home-progress-visual">
+                    ${currentLevel < 5 ? `
+                    <div class="home-progress-bar-container">
+                        <div id="home-progress-bar" class="home-progress-bar-fill" style="width: ${stepInfo.percent}%"></div>
+                        <span id="home-progress-percent" class="home-progress-text">${stepInfo.percent}%</span>
+                    </div>` : `
+                    <button class="tutorial-close-btn" onclick="dismissTutorial()">👋 Tchau</button>
+                    `}
+                </div>
+            `;
+            
+            progressSection.innerHTML = contentHTML;
+            
+            if(currentLevel === 5) {
+                progressSection.classList.add('completed');
+            }
+            parseEmojisInElement(progressSection);
+        }
+    }
+
+    $$(".tab-btn").forEach(btn => {
+        const page = btn.dataset.page;
+        const requiredLevel = PAGE_ACCESS_LEVEL[page] || 1;
+        const isLocked = currentLevel < requiredLevel;
+
+        if (isLocked) {
+            btn.classList.add('locked');
+            btn.title = "Complete a etapa anterior para desbloquear.";
+        } else {
+            btn.classList.remove('locked');
+            btn.title = "";
+        }
+        void btn.offsetWidth; 
+    });
+
+    $$(".home-card-wrapper").forEach(wrapper => {
+        const link = wrapper.querySelector('.home-card');
+        if (link) {
+            const page = link.dataset.goto;
+            const requiredLevel = PAGE_ACCESS_LEVEL[page] || 1;
+            const isLocked = currentLevel < requiredLevel;
+            
+            if (isLocked) {
+                wrapper.classList.add('locked');
+            } else {
+                wrapper.classList.remove('locked');
+            }
+            void wrapper.offsetWidth;
+        }
+    });
+}
+
 async function handleDataCorruptionError() {
     const splashScreen = $("#splash-screen");
     if (splashScreen) {
@@ -47,22 +215,38 @@ function updateWelcomeMessage() {
 }
 
 function updateHomeScreenDashboard() {
-    const { turnos, cargos, funcionarios, equipes } = store.getState();
-    const metricTurnosEl = $("#metric-turnos");
-    const metricCargosEl = $("#metric-cargos");
-    const metricFuncionariosEl = $("#metric-funcionarios");
-    const metricEquipesEl = $("#metric-equipes");
+    try {
+        const { turnos, cargos, funcionarios, equipes } = store.getState();
+        const metricTurnosEl = $("#metric-turnos");
+        const metricCargosEl = $("#metric-cargos");
+        const metricFuncionariosEl = $("#metric-funcionarios");
+        const metricEquipesEl = $("#metric-equipes");
 
-    if (metricTurnosEl) metricTurnosEl.textContent = `🕒 Turnos: ${turnos.filter(t => !t.isSystem).length}`;
-    if (metricCargosEl) metricCargosEl.textContent = `🏥 Cargos: ${cargos.length}`;
-    if (metricFuncionariosEl) metricFuncionariosEl.textContent = `👨‍⚕️ Funcionários: ${funcionarios.length}`;
-    if (metricEquipesEl) metricEquipesEl.textContent = `🤝 Equipes: ${equipes.length}`;
+        if (metricTurnosEl) metricTurnosEl.textContent = `🕒 Turnos: ${turnos.filter(t => !t.isSystem).length}`;
+        if (metricCargosEl) metricCargosEl.textContent = `🏥 Cargos: ${cargos.length}`;
+        if (metricFuncionariosEl) metricFuncionariosEl.textContent = `👨‍⚕️ Funcionários: ${funcionarios.length}`;
+        if (metricEquipesEl) metricEquipesEl.textContent = `🤝 Equipes: ${equipes.length}`;
 
-    parseEmojisInElement($(".quick-metrics-panel"));
+        const metricsPanel = $(".quick-metrics-panel");
+        if (metricsPanel) {
+            parseEmojisInElement(metricsPanel);
+        }
+    } catch (e) {
+    }
 }
 
 function go(page, options = {}) {
     if (isNavigating) return;
+
+    const currentLevel = getEffectiveLevel();
+    const requiredLevel = PAGE_ACCESS_LEVEL[page] || 1;
+
+    if (currentLevel < requiredLevel && !options.force) {
+        const prevStep = PROGRESS_STEPS.find(s => s.level === requiredLevel - 1);
+        const prevStepTitle = prevStep ? prevStep.title : 'etapa anterior';
+        showToast(`🔒 Conclua a etapa: "${prevStepTitle}" para desbloquear.`, 'error');
+        return;
+    }
 
     const currentPageEl = $('.page.active');
     const currentPageId = currentPageEl ? currentPageEl.id.replace('page-', '') : null;
@@ -127,6 +311,8 @@ function go(page, options = {}) {
 
             window.scrollTo(0, 0);
 
+            updateUnlockUI();
+
             switch (page) {
                 case 'home':
                     updateWelcomeMessage();
@@ -169,6 +355,7 @@ function renderRouter(actionName) {
     const currentPageEl = $('.page.active');
     const currentPageId = currentPageEl ? currentPageEl.id.replace('page-', '') : null;
 
+    updateUnlockUI();
     updateHomeScreenDashboard();
 
     switch(actionName) {
@@ -176,6 +363,7 @@ function renderRouter(actionName) {
             renderTurnos(); renderCargos(); renderFuncs(); renderArchivedFuncs(); renderEquipes(); renderEscalasList();
             renderTurnosSelects(); renderFuncCargoSelect(); renderEquipeCargoSelect();
             loadConfigForm(); updateWelcomeMessage();
+            updateUnlockUI(); 
             break;
         case 'SAVE_TURNO':
         case 'DELETE_TURNO':
@@ -203,6 +391,8 @@ function renderRouter(actionName) {
         case 'DELETE_EQUIPE':
             if (currentPageId === 'equipes') renderEquipes();
             break;
+        case 'SAVE_ESCALA':
+             break;
         case 'DELETE_ESCALA_SALVA':
              if (currentPageId === 'escalas-salvas') renderEscalasList();
              if (currentPageId === 'relatorios') renderRelatoriosPage();
@@ -212,6 +402,11 @@ function renderRouter(actionName) {
             updateWelcomeMessage();
             break;
     }
+
+    setTimeout(() => {
+        updateUnlockUI();
+        updateHomeScreenDashboard();
+    }, 50);
 }
 
 function setupAppListeners() {
@@ -225,6 +420,31 @@ function setupAppListeners() {
     if(btnGotoRelatorios) {
         btnGotoRelatorios.addEventListener('click', () => go('relatorios'));
     }
+}
+
+function setupGlobalAutocomplete() {
+    const enforce = () => {
+        document.querySelectorAll('input').forEach(input => {
+            if (input.getAttribute('autocomplete') !== 'off') {
+                input.setAttribute('autocomplete', 'off');
+                if (input.name) {
+                    input.setAttribute('autocomplete', 'off'); 
+                }
+            }
+        });
+    };
+
+    enforce();
+
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
+                enforce();
+            }
+        });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 function initMainApp() {
@@ -250,6 +470,7 @@ function initMainApp() {
         splashScreen.addEventListener('transitionend', () => {
             splashScreen.style.display = 'none';
             body.classList.remove('app-loading');
+            document.body.classList.add('app-ready');
 
             go("home", { force: true });
             const pageTitleEl = $("#page-title");
@@ -261,12 +482,22 @@ function initMainApp() {
 }
 
 function init() {
+    setupGlobalAutocomplete();
+
     window.addEventListener('mousemove', e => {
         document.body.style.setProperty('--mouse-x', `${e.clientX}px`);
         document.body.style.setProperty('--mouse-y', `${e.clientY}px`);
     });
 
     const splashScreen = $("#splash-screen");
+
+    if (typeof checkLicenseOnStartup === 'function') {
+        const isLicensed = checkLicenseOnStartup();
+        if (!isLicensed) {
+            if (splashScreen) splashScreen.style.display = 'none';
+            return; 
+        }
+    }
 
     store.dispatch('LOAD_STATE');
 

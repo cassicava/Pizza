@@ -1,9 +1,19 @@
 async function performHardReset() {
+    const savedLicenseKey = localStorage.getItem('ge_license_key');
+
     Object.values(KEYS).forEach(key => localStorage.removeItem(key));
+    
     localStorage.removeItem('ge_onboarding_complete');
     localStorage.removeItem('ge_onboarding_progress');
     localStorage.removeItem('ge_data_version');
     localStorage.removeItem('ge_last_auto_backup_timestamp');
+    localStorage.removeItem('ge_unlock_level');
+    localStorage.removeItem('ge_tutorial_dismissed');
+    
+    if (savedLicenseKey) {
+        localStorage.setItem('ge_license_key', savedLicenseKey);
+    }
+    
     await new Promise(resolve => setTimeout(resolve, 100));
     showToast("Todos os dados foram apagados. O programa será reiniciado.", "success");
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -111,7 +121,7 @@ async function importAllData() {
                             saveJSON(KEYS[key], importedData[key] || (key === 'config' ? {} : []));
                         }
                     }
-                    localStorage.setItem('ge_data_version', "1.3");
+                    localStorage.setItem('ge_data_version', "1.4");
                     localStorage.removeItem('ge_last_auto_backup_timestamp');
                     await new Promise(resolve => setTimeout(resolve, 500));
                     hideLoader();
@@ -166,34 +176,40 @@ function exibirTermosDeUso(requireScrollableConfirm = false) {
             <p><strong>3.5. Uso Indevido:</strong> O uso, cópia ou distribuição não autorizada do Escala Fácil, no todo ou em parte, poderá resultar em medidas legais e indenizações previstas pela Lei nº 9.609/98 (Lei de Software).</p>
             <hr>
 
-            <h4>4. Responsabilidade do Usuário</h4>
-            <p><strong>4.1. Segurança e Backup:</strong> O Usuário é <strong>único responsável pela segurança e manutenção dos seus dados</strong>. O Software disponibiliza ferramenta de exportação (“backup”) que deve ser usada <strong>regularmente</strong>. A perda de dados causada por limpeza de dados do programa, falha no dispositivo ou reinstalação do programa é de responsabilidade exclusiva do Usuário.</p>
-            <p><strong>4.2. Conformidade Legal e Resultados:</strong> As escalas e informações geradas são baseadas nas regras inseridas pelo Usuário. É de sua exclusiva responsabilidade garantir que as escalas estejam <strong>em conformidade com leis trabalhistas, acordos coletivos e regulamentações aplicáveis</strong>. O Licenciante não se responsabiliza por decisões de gestão ou interpretações incorretas da legislação trabalhista. O Software é uma ferramenta de auxílio e, embora projetado para ser preciso, está sujeito a erros. É de responsabilidade do Usuário revisar e validar todas as escalas geradas para garantir sua exatidão e conformidade.</p>
+            <h4>4. Chave de Ativação e Segurança</h4>
+            <p><strong>4.1. Chave Única:</strong> O acesso ao Software é liberado mediante a inserção de uma <strong>Chave de Ativação (Serial Key)</strong> única e exclusiva, fornecida ao Usuário no momento da compra.</p>
+            <p><strong>4.2. Confidencialidade:</strong> A Chave de Ativação é <strong>pessoal e intransferível</strong>. O Usuário é responsável por mantê-la em sigilo e não compartilhá-la com terceiros.</p>
+            <p><strong>4.3. Bloqueio por Uso Indevido:</strong> O Licenciante reserva-se o direito de revogar ou bloquear chaves de ativação que tenham sido comprovadamente distribuídas publicamente, vendidas ilegalmente ou utilizadas em violação a estes Termos.</p>
             <hr>
 
-            <h4>5. Suporte e Atualizações</h4>
-            <p><strong>5.1.</strong> O Licenciante <strong>não é obrigado a fornecer suporte técnico</strong>, correções, manutenções ou atualizações futuras.</p>
-            <p><strong>5.2.</strong> Qualquer atualização ou versão aprimorada será considerada produto separado, sujeito a novo licenciamento.</p>
+            <h4>5. Responsabilidade do Usuário</h4>
+            <p><strong>5.1. Segurança e Backup:</strong> O Usuário é <strong>único responsável pela segurança e manutenção dos seus dados</strong>. O Software disponibiliza ferramenta de exportação (“backup”) que deve ser usada <strong>regularmente</strong>. A perda de dados causada por limpeza de dados do programa, falha no dispositivo ou reinstalação do programa é de responsabilidade exclusiva do Usuário.</p>
+            <p><strong>5.2. Conformidade Legal e Resultados:</strong> As escalas e informações geradas são baseadas nas regras inseridas pelo Usuário. É de sua exclusiva responsabilidade garantir que as escalas estejam <strong>em conformidade com leis trabalhistas, acordos coletivos e regulamentações aplicáveis</strong>. O Licenciante não se responsabiliza por decisões de gestão ou interpretações incorretas da legislação trabalhista. O Software é uma ferramenta de auxílio e, embora projetado para ser preciso, está sujeito a erros. É de responsabilidade do Usuário revisar e validar todas as escalas geradas para garantir sua exatidão e conformidade.</p>
             <hr>
 
-            <h4>6. Isenção de Garantias</h4>
+            <h4>6. Suporte e Atualizações</h4>
+            <p><strong>6.1.</strong> O Licenciante <strong>não é obrigado a fornecer suporte técnico</strong>, correções, manutenções ou atualizações futuras.</p>
+            <p><strong>6.2.</strong> Qualquer atualização ou versão aprimorada será considerada produto separado, sujeito a novo licenciamento.</p>
+            <hr>
+
+            <h4>7. Isenção de Garantias</h4>
             <p>O Software é fornecido <strong>“COMO ESTÁ” (“AS IS”)</strong>, sem garantias de qualquer tipo, expressas ou implícitas, incluindo, sem limitação, garantias de comerciabilidade, adequação a uma finalidade específica, precisão ou ausência de falhas. O Licenciante <strong>não garante</strong> que o Software atenderá a requisitos específicos, nem que funcionará de forma ininterrupta, livre de erros ou segura.</p>
             <hr>
 
-            <h4>7. Limitação de Responsabilidade</h4>
+            <h4>8. Limitação de Responsabilidade</h4>
             <p>Em nenhuma circunstância o Licenciante será responsável por <strong>quaisquer danos diretos, indiretos, acidentais, consequenciais ou punitivos</strong>, incluindo perda de dados, lucros cessantes, interrupção de negócios ou outras perdas resultantes do uso ou incapacidade de uso do Software. A responsabilidade total do Licenciante fica <strong>limitada ao valor efetivamente pago pela licença</strong>.</p>
             <hr>
 
-            <h4>8. Rescisão e Alterações dos Termos</h4>
-            <p><strong>8.1. Rescisão:</strong> O Licenciante poderá rescindir esta licença a qualquer momento em caso de violação destes Termos. Em caso de rescisão, o Usuário deve <strong>cessar imediatamente o uso</strong> e remover todas as cópias do Software.</p>
-            <p><strong>8.2. Alterações:</strong> O Licenciante poderá modificar estes Termos a qualquer momento, publicando nova versão. O uso continuado após a atualização implica aceitação integral das alterações.</p>
+            <h4>9. Rescisão e Alterações dos Termos</h4>
+            <p><strong>9.1. Rescisão:</strong> O Licenciante poderá rescindir esta licença a qualquer momento em caso de violação destes Termos. Em caso de rescisão, o Usuário deve <strong>cessar imediatamente o uso</strong> e remover todas as cópias do Software.</p>
+            <p><strong>9.2. Alterações:</strong> O Licenciante poderá modificar estes Termos a qualquer momento, publicando nova versão. O uso continuado após a atualização implica aceitação integral das alterações.</p>
             <hr>
 
-            <h4>9. Legislação e Foro</h4>
+            <h4>10. Legislação e Foro</h4>
             <p>Estes Termos são regidos pelas <strong>leis brasileiras</strong>. Fica eleito o foro da <strong>comarca de Pradópolis - SP</strong> como competente para resolver quaisquer controvérsias, com renúncia a qualquer outro.</p>
             <hr>
 
-            <h4>10. Contato</h4>
+            <h4>11. Contato</h4>
             <p>Dúvidas sobre estes Termos podem ser enviadas para:<br>
             📩 escalafacil.contato@gmail.com</p>
         </div>
